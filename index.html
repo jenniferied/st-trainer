@@ -12,7 +12,20 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
 </head>
 <body>
-<div id="app" aria-live="polite"></div>
+<div id="app" aria-live="polite"><noscript>Bitte JavaScript aktivieren.</noscript></div>
+<script>
+// Fehler sichtbar machen statt weißer Seite (hilft beim Debuggen, v.a. mobil)
+window.addEventListener("error", function (e) {
+  var app = document.getElementById("app");
+  var box = document.createElement("div");
+  box.style.cssText = "margin:16px;padding:14px;border:2px solid #b3362b;border-radius:12px;background:#fbe7e4;color:#7a2018;font:14px/1.5 monospace;white-space:pre-wrap;word-break:break-word";
+  box.textContent = "Fehler: " + (e.message || e.type) + (e.filename ? "\n" + e.filename.split("/").pop() + ":" + e.lineno : "");
+  app.appendChild(box);
+});
+window.addEventListener("unhandledrejection", function (e) {
+  window.dispatchEvent(new ErrorEvent("error", { message: String(e.reason && e.reason.message || e.reason) }));
+});
+</script>
 <script src="js/config.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>

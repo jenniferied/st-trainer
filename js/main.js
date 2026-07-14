@@ -41,6 +41,9 @@ function bankZeit() {
   const r = R.runde[R.idx];
   if (r) r.zeitSek = (r.zeitSek || 0) + Math.round((Date.now() - qStart) / 1000);
   qStart = null; C.save();
+  // Anzeige sofort auf den gebankten Stand bringen (nicht erst beim nächsten Tick)
+  const qz = document.getElementById("q-zeit");
+  if (qz && r) qz.textContent = `⏱ ${fmtUhr(r.zeitSek)}`;
 }
 
 // ================= HOME =================

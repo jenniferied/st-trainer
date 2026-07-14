@@ -112,11 +112,23 @@ export function leitnerUpdate(qid, ergebnis) {
 export const lvl = (qid) => (state().leitner[qid] || {}).lvl || 0;
 export const gemeistert = (qid) => lvl(qid) >= 3;
 
+// Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten
+export function splitFortschritt(qs) {
+  const og = qs.filter((q) => q.quelle !== "generiert");
+  const ki = qs.filter((q) => q.quelle === "generiert");
+  const mo = og.filter((q) => gemeistert(q.id)).length;
+  const mk = ki.filter((q) => gemeistert(q.id)).length;
+  return {
+    n: qs.length, m: mo + mk,
+    pct: qs.length ? Math.round((100 * (mo + mk)) / qs.length) : 0,
+    og: { m: mo, n: og.length }, ki: { m: mk, n: ki.length },
+  };
+}
 export function themaFortschritt(thema) {
-  const qs = POOL.filter((q) => q.oberthema === thema && q.quizbar && q.relevanz !== "laut-rose-nicht-relevant");
-  if (!qs.length) return { pct: 0, n: 0, m: 0 };
-  const m = qs.filter((q) => gemeistert(q.id)).length;
-  return { pct: Math.round((100 * m) / qs.length), n: qs.length, m };
+  return splitFortschritt(POOL.filter((q) => q.oberthema === thema && q.quizbar && q.relevanz !== "laut-rose-nicht-relevant"));
+}
+export function gesamtFortschritt() {
+  return splitFortschritt(POOL.filter((q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant"));
 }
 export function lernscore() {
   const qs = POOL.filter((q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant");

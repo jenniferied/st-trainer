@@ -5,6 +5,10 @@ const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
 const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+// „gemeistert"-Anzeige: Originalfragen und KI-Fragen getrennt ausweisen
+const fmtMN = (f) => f.ki.n
+  ? `<span title="Originalfragen">${f.og.m}/${f.og.n}</span><small style="display:block;opacity:.75">KI ${f.ki.m}/${f.ki.n}</small>`
+  : `${f.og.m}/${f.og.n}`;
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
@@ -34,17 +38,16 @@ function home() {
   const themenDetail = Object.entries(C.THEMEN).map(([slug, t]) => {
     const f = C.themaFortschritt(slug);
     const subs = C.unterthemen(slug).map(([u], ui) => {
-      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar);
-      if (!qs.length) return "";
-      const m = qs.filter((q) => C.gemeistert(q.id)).length;
+      const sf = C.splitFortschritt(C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar));
+      if (!sf.n) return "";
       return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}">
         <span class="lbl" style="font-weight:500;font-size:.87rem">${esc(labelU(u))}</span>
-        <span class="bar thin"><i style="width:${Math.round((100 * m) / qs.length)}%"></i></span>
-        <span class="val">${m}/${qs.length}</span></div>`;
+        <span class="bar thin"><i style="width:${sf.pct}%"></i></span>
+        <span class="val">${fmtMN(sf)}</span></div>`;
     }).join("");
     return `<details style="--tc:${t.color}">
       <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}">
-        <span class="lbl">${t.name}</span><span class="bar"><i style="width:${f.pct}%"></i></span><span class="val">${f.m}/${f.n}</span></div></summary>
+        <span class="lbl">${t.name}</span><span class="bar"><i style="width:${f.pct}%"></i></span><span class="val">${fmtMN(f)}</span></div></summary>
       <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
 
@@ -71,6 +74,7 @@ function home() {
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
       </div>
+      <p class="muted" style="margin:0 0 6px">Gemeistert: ${(() => { const g = C.gesamtFortschritt(); return `${g.og.m}/${g.og.n} Originalfragen` + (g.ki.n ? ` · ${g.ki.m}/${g.ki.n} KI-Fragen` : ""); })()}</p>
       <div class="progress-row" style="--tc:var(--ok)">
         <span class="lbl">Prüfungsreife</span>
         <span class="streak" style="flex:2;justify-content:flex-start">${[0,1,2,3,4].map((i) => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</span>
@@ -419,7 +423,7 @@ function explore() {
       return `<details class="sub"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}</summary>${items}</details>`;
     }).join("");
     const f = C.themaFortschritt(slug);
-    return `<details class="topic" style="--tc:${t.color}"><summary>${t.name} <span class="muted" style="font-family:Karla;font-size:.85rem">· ${f.m}/${f.n} gemeistert</span></summary>${inner}</details>`;
+    return `<details class="topic" style="--tc:${t.color}"><summary>${t.name} <span class="muted" style="font-family:Karla;font-size:.85rem">· OG ${f.og.m}/${f.og.n}${f.ki.n ? ` · KI ${f.ki.m}/${f.ki.n}` : ""} gemeistert</span></summary>${inner}</details>`;
   }).join("");
   h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${bloecke}</div>`);
   document.getElementById("back").onclick = home;

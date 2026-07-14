@@ -104,7 +104,8 @@ button { font: inherit; cursor: pointer; }
 .progress-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .progress-row .lbl { flex: 1; min-width: 0; font-weight: 700; font-size: .95rem; }
 .progress-row .bar { flex: 2; }
-.progress-row .val { width: 44px; text-align: right; font-size: .85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.progress-row .val { min-width: 48px; text-align: right; font-size: .85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; line-height: 1.25; }
+.progress-row .val small { font-size: .72rem; }
 
 /* Hero / Lernscore */
 .hero { text-align: center; padding: 26px 18px 22px; }

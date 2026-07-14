@@ -5,6 +5,8 @@ const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // Grafik-Fragen: Bild unter dem Fragetext (Tippen/Klicken = Vollbild-Zoom via CSS :target-frei per Klasse)
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
+// Fallvignetten aus der Vorlesung (Sachverhalt) — steht ueber der Frage, wie im Original-PDF
+const fallHtml = (q) => q.sachverhalt ? `<div class="q-fall"><b>Sachverhalt</b>${esc(q.sachverhalt)}</div>` : "";
 const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
 
 // Night Mode: settings.theme = "auto" | "hell" | "dunkel" — auto folgt dem System.
@@ -130,7 +132,7 @@ function home() {
   const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
 
   h(`<div class="fade-in">
-    <div class="topbar"><h1>ST‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
 
@@ -481,6 +483,7 @@ function zeigFrage() {
       <div class="q-head"><span id="qmeta" style="display:contents"></span>
         <span class="q-zeit" id="q-zeit" style="margin-left:auto"></span>
         <span class="q-pts">${q.maxPunkte} P.</span></div>
+      ${fallHtml(q)}
       <div class="q-text">${esc(q.frage)}</div>
       ${bildHtml(q)}
       <div class="answers" id="answers">
@@ -578,6 +581,7 @@ function zeigMoodle() {
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
+        ${fallHtml(q)}
         <div class="qtext">${esc(q.frage)}</div>
         <div style="clear:both"></div>
         ${bildHtml(q)}
@@ -691,6 +695,7 @@ function ergebnis(session, runde, opts = {}) {
         ${reviewTags(q, t)}
         ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
         <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
+      ${fallHtml(q)}
       <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
       ${bildHtml(q)}
       <div class="answers">${r.optOrder.map((oi) => {
@@ -813,7 +818,7 @@ function tryInline(qid, btn) {
   const item = btn.closest(".q-item");
   const wrap = item.querySelector(".try-zone");
   const order = [...q.optionen.keys()]; // im Stöbern: Original-Reihenfolge behalten (gemischt wird nur in Sessions)
-  wrap.innerHTML = `${bildHtml(q)}<div class="answers mt" id="try-${qid}">
+  wrap.innerHTML = `${fallHtml(q)}${bildHtml(q)}<div class="answers mt" id="try-${qid}">
     ${order.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
     </div><button class="btn small mt" id="chk-${qid}">Prüfen (${q.maxPunkte} P.)</button><div class="fbz"></div>`;
   btn.classList.add("hidden");

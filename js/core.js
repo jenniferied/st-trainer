@@ -61,7 +61,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
@@ -76,9 +76,13 @@ export function state() {
       S.antwortLog.sort((a, b) => a.ts - b.ts);
     }
     delete S.einzeln;
+    for (const a of S.antwortLog) if (!a.aid) a.aid = antwortId(a); // Sync-Schluessel nachtragen
   }
   return S;
 }
+// Stabiler Schluessel je Antwort: dieselbe Antwort ergibt auf jedem Geraet dieselbe
+// aid, damit der Merge nicht dupliziert. ts ist pro Antwort eindeutig (werteAus zaehlt hoch).
+const antwortId = (a) => `${a.ts}-${a.qid}`;
 export function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
 
 export function exportState() {
@@ -91,6 +95,7 @@ export function exportState() {
 export async function importState(file) {
   const txt = await file.text();
   S = { ...defState(), ...JSON.parse(txt) };
+  for (const a of S.antwortLog) if (!a.aid) a.aid = antwortId(a); // Sync-Schluessel fuer Alt-Backups
   save();
 }
 
@@ -124,8 +129,11 @@ export const gemeistert = (qid) => lvl(qid) >= 3;
 // { ts, qid, sid (Session-Id oder null), modus, gewaehlt, punkte, max, voll, zeit }
 export function logAntwort(a) {
   const st = state();
-  st.antwortLog.push({ sid: null, gewaehlt: null, max: null, zeit: null, ...a, ts: a.ts ?? Date.now() });
+  const e = { sid: null, gewaehlt: null, max: null, zeit: null, ...a, ts: a.ts ?? Date.now() };
+  e.aid = e.aid || antwortId(e);
+  st.antwortLog.push(e);
   save();
+  syncBald(); // Explore-Antworten gebuendelt hochschieben
 }
 
 // Lernstand komplett neu aus dem Antwort-Log aufbauen (chronologisch
@@ -137,11 +145,15 @@ export function rebuildLeitner() {
   save();
 }
 
+// Loeschen muss den anderen Geraeten mitgeteilt werden — sonst holt der Merge
+// die Session beim naechsten Sync wieder zurueck. Darum Grabstein-Liste.
 export function loescheSession(id) {
   const st = state();
   st.sessions = st.sessions.filter((s) => s.id !== id);
   st.antwortLog = st.antwortLog.filter((a) => a.sid !== id);
+  if (!st.geloescht.includes(id)) st.geloescht.push(id);
   rebuildLeitner();
+  syncLernstand();
 }
 
 // Fertige/abgebrochene Session aus dem Verlauf wieder öffnen: alte Wertung
@@ -153,6 +165,7 @@ export function reaktiviereSession(id) {
   if (!s?.runde) return null; // ältere Sessions ohne Fragen-Snapshot
   st.sessions = st.sessions.filter((x) => x.id !== id);
   st.antwortLog = st.antwortLog.filter((a) => a.sid !== id);
+  if (!st.geloescht.includes(id)) st.geloescht.push(id); // alte Wertung ist ueberall weg
   rebuildLeitner();
   const runde = s.runde.filter((r) => frage(r.qid)).map((r) => ({
     qid: r.qid,
@@ -167,10 +180,13 @@ export function reaktiviereSession(id) {
     if (restSek < 60) { cfg.timerModus = "aus"; restSek = null; } // Zeit war um → ohne Zeitdruck zu Ende
   }
   const erste = runde.findIndex((r) => !r.gewaehlt);
-  const sess = { id: s.id, erstellt: s.erstellt, cfg, runde, idx: erste < 0 ? 0 : erste, restSek, dauerSek: s.dauerSek || 0 };
+  // Neue Id: die alte traegt jetzt einen Grabstein und darf nicht wiederverwendet werden
+  const sess = { id: neueId(), erstellt: s.erstellt, cfg, runde, idx: erste < 0 ? 0 : erste, restSek, dauerSek: s.dauerSek || 0 };
   st.offen.push(sess); save();
+  syncLernstand();
   return sess;
 }
+const neueId = () => "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 
 // ---------- Statistiken ----------
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -341,14 +357,20 @@ export function timerMinuten(anzahl, modus) {
 export function erstelleSession(cfg) {
   const runde = baueRunde(cfg);
   if (!runde.length) return null;
-  const sess = {
-    id: "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
-    erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0,
-  };
+  const sess = { id: neueId(), erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0 };
   state().offen.push(sess); save();
+  syncLernstand();
   return sess;
 }
-export function verwerfeOffene(id) { const st = state(); st.offen = st.offen.filter((s) => s.id !== id); save(); }
+// grabstein=false beim regulaeren Abschluss: die Session lebt gleich als gewertete
+// Session mit derselben Id weiter, ein Grabstein wuerde sie beim Merge killen.
+export function verwerfeOffene(id, grabstein = true) {
+  const st = state();
+  st.offen = st.offen.filter((s) => s.id !== id);
+  if (grabstein && !st.geloescht.includes(id)) st.geloescht.push(id);
+  save();
+  if (grabstein) syncLernstand();
+}
 
 export function werteAus(runde, meta) {
   const proFrage = runde.filter((r) => r.gewaehlt).map((r) => {
@@ -375,6 +397,7 @@ export function werteAus(runde, meta) {
   for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();
   syncSession(session);
+  syncLernstand();
   return session;
 }
 
@@ -413,6 +436,112 @@ export function syncSession(s) {
   } });
   save(); flushSync();
 }
+// ---------- Lernstand-Sync (gemeinsamer Stand ueber alle Geraete) ----------
+// Ein Sync-Code = ein Lernstand. Ablauf immer Pull → Merge → Push, damit zwei
+// Geraete, die gleichzeitig ueben, sich nicht gegenseitig ueberschreiben.
+// Der Merge ist eine Vereinigung: Antworten und Sessions kommen nur dazu,
+// Geloeschtes traegt einen Grabstein, der Lernstand wird danach neu berechnet.
+export const syncCode = () => (state().settings.syncCode || window.ST_CONFIG.syncCode || "").trim();
+export const syncAktiv = () => supaAktiv() && !!syncCode();
+
+function snapshot() {
+  const st = state();
+  // pending/deviceId/settings bleiben lokal — die gehoeren dem Geraet, nicht dem Lernstand
+  return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen, geloescht: st.geloescht };
+}
+
+// Kompakte Signatur eines Stands — jsonb aus Postgres kommt mit anderer Schluessel-
+// reihenfolge zurueck, ein JSON-Textvergleich waere darum immer ungleich.
+function signatur(d) {
+  const ids = (arr, f) => (arr || []).map(f).sort().join(",");
+  return [
+    ids(d.sessions, (s) => s.id),
+    ids(d.antwortLog, (a) => a.aid || antwortId(a)),
+    ids(d.offen, (s) => s.id + ":" + (s.runde || []).filter((r) => r.gewaehlt?.length).length),
+    (d.geloescht || []).slice().sort().join(","),
+  ].join("|");
+}
+
+// Vereinigt den Remote-Stand in den lokalen. Gibt true zurueck, wenn sich lokal etwas geaendert hat.
+export function mergeLernstand(remote) {
+  const st = state();
+  const vorher = signatur(snapshot());
+
+  st.geloescht = [...new Set([...st.geloescht, ...(remote.geloescht || [])])];
+  const tot = new Set(st.geloescht);
+
+  const sess = new Map();
+  for (const s of [...(remote.sessions || []), ...st.sessions]) if (!tot.has(s.id)) sess.set(s.id, s);
+  st.sessions = [...sess.values()].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+  const log = new Map();
+  for (const a of [...(remote.antwortLog || []), ...st.antwortLog]) {
+    if (!a?.qid) continue;
+    if (a.sid && tot.has(a.sid)) continue;
+    log.set(a.aid || antwortId(a), a);
+  }
+  st.antwortLog = [...log.values()].sort((a, b) => a.ts - b.ts);
+
+  // Offene Runden: die weiter fortgeschrittene Fassung gewinnt; fertig gewertete
+  // oder verworfene fliegen raus.
+  const beantwortet = (s) => (s.runde || []).filter((r) => r.gewaehlt?.length).length;
+  const off = new Map();
+  for (const s of [...(remote.offen || []), ...st.offen]) {
+    if (tot.has(s.id) || sess.has(s.id)) continue;
+    const alt = off.get(s.id);
+    if (!alt || beantwortet(s) >= beantwortet(alt)) off.set(s.id, s);
+  }
+  st.offen = [...off.values()];
+
+  rebuildLeitner(); // save() steckt drin
+  return signatur(snapshot()) !== vorher;
+}
+
+let syncLauft = false, syncNochmal = false;
+export let syncStatus = { ts: 0, fehler: null, laeuft: false };
+const horcher = new Set();
+export function onSync(fn) { horcher.add(fn); return () => horcher.delete(fn); }
+const melde = () => horcher.forEach((f) => { try { f(syncStatus); } catch { /* egal */ } });
+
+export async function syncLernstand() {
+  if (!syncAktiv()) return false;
+  if (syncLauft) { syncNochmal = true; return false; } // waehrend eines Laufs kam neue Aenderung
+  syncLauft = true; syncStatus = { ...syncStatus, laeuft: true, fehler: null }; melde();
+  let geaendert = false;
+  try {
+    const url = window.ST_CONFIG.supabaseUrl + "/rest/v1/lernstand";
+    const q = `?code=eq.${encodeURIComponent(syncCode())}&select=daten&order=ts.desc&limit=1`;
+    const r = await fetch(url + q, { headers: { ...supaHeaders(), Prefer: "" } });
+    if (!r.ok) throw new Error("Pull " + r.status);
+    const rows = await r.json();
+    const remote = rows[0]?.daten || null;
+
+    const lokalGeaendert = remote ? mergeLernstand(remote) : false;
+    const neu = snapshot();
+    // Push nur, wenn der Server nicht schon genau unseren Stand hat
+    if (!remote || signatur(remote) !== signatur(neu)) {
+      const p = await fetch(url, {
+        method: "POST", headers: supaHeaders(),
+        body: JSON.stringify({ code: syncCode(), device_id: state().deviceId, daten: neu }),
+      });
+      if (!p.ok) throw new Error("Push " + p.status);
+    }
+    geaendert = lokalGeaendert;
+    syncStatus = { ts: Date.now(), fehler: null, laeuft: false };
+  } catch (e) {
+    syncStatus = { ...syncStatus, laeuft: false, fehler: e.message || "offline" };
+  }
+  syncLauft = false; melde();
+  if (syncNochmal) { syncNochmal = false; return (await syncLernstand()) || geaendert; }
+  return geaendert;
+}
+
+let syncTimer = null;
+export function syncBald(ms = 2500) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncLernstand(), ms);
+}
+
 let flushLauft = false;
 export async function flushSync() {
   if (!supaAktiv() || flushLauft || !state().pending.length) return;
@@ -427,4 +556,4 @@ export async function flushSync() {
   } catch { /* offline — bleibt in der Queue */ }
   flushLauft = false;
 }
-if (typeof window !== "undefined") window.addEventListener("online", () => flushSync());
+if (typeof window !== "undefined") window.addEventListener("online", () => { flushSync(); syncLernstand(); });

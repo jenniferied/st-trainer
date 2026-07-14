@@ -131,7 +131,7 @@ function home() {
 
   const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
 
-  h(`<div class="fade-in">
+  h(`<div class="fade-in" id="homeRoot">
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
@@ -228,6 +228,15 @@ function route(ziel) {
 }
 
 // ================= EINSTELLUNGEN =================
+function syncText() {
+  const st = C.syncStatus;
+  if (!C.syncAktiv()) return "⏸ Sync aus — ohne Code bleibt der Stand nur auf diesem Gerät.";
+  if (st.laeuft) return "⏳ synchronisiert …";
+  if (st.fehler) return `⚠️ Letzter Versuch hat nicht geklappt (${esc(st.fehler)}). Wird automatisch nachgeholt.`;
+  if (!st.ts) return "Noch nicht synchronisiert.";
+  const min = Math.round((Date.now() - st.ts) / 60000);
+  return `✅ Zuletzt synchronisiert ${min < 1 ? "gerade eben" : `vor ${min} Min.`}`;
+}
 function einstellungen() {
   const s = C.state();
   h(`<div class="fade-in">
@@ -244,7 +253,15 @@ function einstellungen() {
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
-      <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ nicht konfiguriert"} · ${s.pending.length} Events in Warteschlange</p>
+    </div>
+    <div class="card">
+      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Geräte-Sync</span>
+      <p class="muted" style="margin-top:0">Dein Lernstand liegt online. Alle Geräte mit demselben Sync-Code zeigen denselben Fortschritt — Handy, Laptop, egal.</p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="syncCode" class="pw-input" value="${esc(C.syncCode())}" placeholder="Sync-Code" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1">
+        <button class="btn small" id="syncNow">Jetzt syncen</button>
+      </div>
+      <p class="muted mt" id="syncInfo">${syncText()}</p>
     </div>
     <div class="card">
       <p class="muted" style="margin-top:0">Hier passiert etwas, aber erst zu einem bestimmten Anlass. 🔮</p>
@@ -256,7 +273,18 @@ function einstellungen() {
     document.querySelectorAll("#themeSeg button").forEach((x) => x.classList.toggle("on", x === b));
   });
   document.getElementById("exportBtn").onclick = C.exportState;
-  document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
+  document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); await C.syncLernstand(); home(); } };
+
+  // Status-Zeile lebt nur solange dieser Screen sichtbar ist — danach meldet sie sich ab
+  const ab = C.onSync(() => {
+    const el = document.getElementById("syncInfo");
+    if (el) el.innerHTML = syncText(); else ab();
+  });
+  document.getElementById("syncCode").onchange = (e) => {
+    C.state().settings.syncCode = e.target.value.trim().toLowerCase();
+    C.save(); C.syncLernstand();
+  };
+  document.getElementById("syncNow").onclick = () => C.syncLernstand();
   // Kein prompt()/alert() hier — die werden in manchen Kontexten (iframe, Embed)
   // stumm blockiert und es "passiert nichts". Inline-Eingabe ist überall robust.
   document.getElementById("testBestandenBtn").onclick = () => {
@@ -458,7 +486,7 @@ function beende(status = "fertig") {
   const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
   const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status, cfg: R.cfg };
   const rundeKopie = R.runde;
-  C.verwerfeOffene(R.id);
+  C.verwerfeOffene(R.id, false); // kein Grabstein: gleich kommt die gewertete Session mit derselben Id
   const session = C.werteAus(rundeKopie, meta);
   R = null;
   ergebnis(session, rundeKopie);
@@ -891,6 +919,13 @@ function verlauf() {
     await C.ladeFragen();
     C.flushSync();
     home();
+    // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen
+    C.syncLernstand().then((neu) => { if (neu && !R && document.getElementById("homeRoot")) home(); });
+    // Beim Zurueckkommen auf den Tab: nachziehen, was auf dem anderen Geraet passiert ist
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible" || R) return;
+      C.syncLernstand().then((neu) => { if (neu && !R && document.getElementById("homeRoot")) home(); });
+    });
   } catch (e) {
     h(`<div class="card center mt"><h2>Ups.</h2><p class="muted">Fragen konnten nicht geladen werden: ${esc(e.message)}</p></div>`);
   }

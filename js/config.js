@@ -7,5 +7,8 @@ window.ST_CONFIG = {
   // Scoring: "streng" = +1 je richtigem, -0,5 je falschem Kreuz (offizieller Text)
   // "milde"  = Punktzahl - 0,5 je falschem Kreuz, wenn mind. 1 richtig (Roses Erinnerung)
   scoringVariante: "streng",
+  // Lernstand-Sync: gleicher Code = gleicher Lernstand auf allen Geraeten.
+  // Voreingestellt, damit niemand etwas eintippen muss; in den Einstellungen aenderbar.
+  syncCode: "rose",
   klausur: { fragen: 42, minutenNormal: 90, minutenNTA: 120, bestehen: 42 },
 };

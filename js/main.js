@@ -191,24 +191,40 @@ function einstellungen() {
     </div>
     <div class="card">
       <p class="muted" style="margin-top:0">Hier passiert etwas, aber erst zu einem bestimmten Anlass. 🔮</p>
-      <button class="btn secondary small" id="testBestandenBtn">✨ ???</button>
+      <div id="mystZone"><button class="btn secondary small" id="testBestandenBtn">✨ ???</button></div>
     </div></div>`);
   document.getElementById("back").onclick = home;
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
+  // Kein prompt()/alert() hier — die werden in manchen Kontexten (iframe, Embed)
+  // stumm blockiert und es "passiert nichts". Inline-Eingabe ist überall robust.
   document.getElementById("testBestandenBtn").onclick = () => {
-    const pw = prompt("Passwort:");
-    if (pw == null) return;
-    if (pw.trim().toLowerCase() !== "bestanden") { alert("Falsches Passwort."); return; }
-    const st = parseInt(prompt("Welche Stufe? (1–5, 5 = großes Finale)", "5"), 10);
-    if (isNaN(st)) return;
-    // Fake-Session nur für die Anzeige — wird nirgends gespeichert oder gewertet
-    ergebnis({
-      id: "test-bestanden", modus: "klausur", status: "fertig", bestanden: true,
-      punkte: 61, max: 84, bestehenBei: 42, beantwortet: 42, anzahl: 42,
-      dauerSek: 4920, proFrage: [],
-    }, [], { zurueck: einstellungen, testStufe: Math.max(1, Math.min(5, st)) });
+    const zone = document.getElementById("mystZone");
+    zone.innerHTML = `<div style="display:flex;gap:8px">
+        <input type="password" id="mystPw" class="pw-input" placeholder="Passwort" autocomplete="off" autocapitalize="off">
+        <button class="btn small" id="mystGo">›</button></div>
+      <p class="muted" id="mystFb" style="margin:6px 0 0"></p>`;
+    const check = () => {
+      if (document.getElementById("mystPw").value.trim().toLowerCase() !== "bestanden") {
+        document.getElementById("mystFb").textContent = "Hm, das ist es nicht. 🤫"; return;
+      }
+      zone.innerHTML = `<p class="muted" style="margin:0 0 8px">Jubel-Vorschau — Stufe wählen (zählt nicht, verändert nichts):</p>
+        <div class="seg" id="mystStufen">${[1, 2, 3, 4, 5].map((n) => `<button data-s="${n}">${n === 5 ? "5 👑" : n}</button>`).join("")}</div>`;
+      zone.querySelectorAll("#mystStufen button").forEach((b) => b.onclick = () => testBestanden(+b.dataset.s));
+    };
+    document.getElementById("mystGo").onclick = check;
+    document.getElementById("mystPw").onkeydown = (e) => { if (e.key === "Enter") check(); };
+    document.getElementById("mystPw").focus();
   };
+}
+
+// Fake-Session nur für die Jubel-Vorschau — wird nirgends gespeichert oder gewertet
+function testBestanden(stufe) {
+  ergebnis({
+    id: "test-bestanden", modus: "klausur", status: "fertig", bestanden: true,
+    punkte: 61, max: 84, bestehenBei: 42, beantwortet: 42, anzahl: 42,
+    dauerSek: 4920, proFrage: [],
+  }, [], { zurueck: einstellungen, testStufe: stufe });
 }
 
 // ================= BUILDER =================

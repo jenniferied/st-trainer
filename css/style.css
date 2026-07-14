@@ -347,3 +347,8 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   animation: fadein .7s 2s ease both, text-puls .9s 2.7s ease-in-out infinite alternate;
 }
 @keyframes text-puls { to { transform: scale(1.09); } }
+.pw-input {
+  flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px;
+  padding: 10px 14px; font: inherit; background: var(--card); color: var(--ink);
+}
+.pw-input:focus { outline: none; border-color: var(--accent); }

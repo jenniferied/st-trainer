@@ -11,7 +11,7 @@ const fmtMN = (f) => f.ki.n
   : `${f.og.m}/${f.og.n}`;
 
 // Sticker-Feedback: Meme-Bilder aus assets/stickers, je nach Ergebnis zufällig gewählt.
-// Nur im Trainer-Look — der Moodle-Klausurmodus bleibt bewusst nüchtern.
+// Nur im Trainer-Look — der Exam.UP-Klausurmodus bleibt bewusst nüchtern.
 const STICKER = {
   good: ["happy_cat", "lovey_hedgehog", "verylovey_duck"],
   part: ["sceptical_creature", "sweet_hamster", "sadsmiling_cat"],
@@ -96,7 +96,7 @@ function home() {
 
     <h2 class="${offene.length || letzte ? "mt" : ""}">Neue Session</h2>
     <div class="mode-grid">
-      <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Moodle-Look · echtes Scoring · 90/120 min</span></button>
+      <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
       <button class="mode-card" data-go="fehler"><b>🔁 Fehler-Training</b><span>Nur Fragen, die noch wackeln</span></button>
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
@@ -249,7 +249,7 @@ function builder({ preset }) {
 
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>${P.titel}</h1></div>
-    ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im <b>Moodle-Look</b> wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall.</p></div>` : ""}
+    ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall.</p></div>` : ""}
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
     ${!istKlausur ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
@@ -394,6 +394,8 @@ function zeigFrage() {
   if (R.cfg.modus === "klausur") return zeigMoodle();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
+  // Antworten bei jedem Anzeigen frisch mischen (nur solange unbeantwortet)
+  if (!r.gewaehlt?.length) C.shuffle(r.optOrder);
   h(`<div class="fade-in">
     <div class="q-progress">
       <button class="back" id="abbruch">‹</button>
@@ -486,15 +488,19 @@ function bereit() {
   document.getElementById("los").onclick = zeigFrage;
 }
 
-// ================= MOODLE-KLAUSURMODUS =================
+// ================= EXAM.UP-KLAUSURMODUS =================
+// (Exam.UP = Moodle-basierte Prüfungsplattform der Uni Potsdam — Look bewusst nah dran)
 function zeigMoodle() {
   stopTimer();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
+  // Antworten bei jedem Anzeigen frisch mischen — aber nur solange unbeantwortet,
+  // sonst springen gespeicherte Kreuze beim Vor/Zurück-Blättern herum
+  if (!r.gewaehlt?.length) C.shuffle(r.optOrder);
   const single = q.optionen.filter((o) => o.richtig).length === 1;
   h(`<div class="fade-in">
     <div class="moodle">
-      <div class="moodle-bar"><span>Testversuch</span>
+      <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span>
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
@@ -686,7 +692,7 @@ function tryInline(qid, btn) {
   const q = C.frage(qid);
   const item = btn.closest(".q-item");
   const wrap = item.querySelector(".try-zone");
-  const order = C.shuffle([...q.optionen.keys()]);
+  const order = [...q.optionen.keys()]; // im Stöbern: Original-Reihenfolge behalten (gemischt wird nur in Sessions)
   wrap.innerHTML = `<div class="answers mt" id="try-${qid}">
     ${order.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
     </div><button class="btn small mt" id="chk-${qid}">Prüfen (${q.maxPunkte} P.)</button><div class="fbz"></div>`;

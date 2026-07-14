@@ -1,7 +1,7 @@
 /* ============ ST-Trainer Design System ============
    Zwei Gesichter:
    1. Trainer: warmes Papier, Fraunces + Karla, 6 Themenfarben
-   2. Klausurmodus (.moodle): nüchternes Moodle-Look-and-Feel
+   2. Klausurmodus (.moodle): nüchterner Exam.UP-Look (Moodle-basierte Prüfungsplattform der Uni Potsdam)
 */
 
 :root {
@@ -32,6 +32,7 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+button, label { touch-action: manipulation; } /* kein Doppeltipp-Zoom auf dem Handy */
 body {
   margin: 0;
   font-family: "Karla", "Avenir Next", sans-serif;
@@ -43,7 +44,10 @@ body {
     var(--paper);
   min-height: 100dvh;
 }
-#app { max-width: 760px; margin: 0 auto; padding: 16px 16px 90px; }
+#app {
+  max-width: 760px; margin: 0 auto;
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
 
 h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.15; margin: 0 0 .4em; }
 h1 { font-size: 2rem; font-weight: 900; letter-spacing: -.01em; }
@@ -76,8 +80,8 @@ button { font: inherit; cursor: pointer; }
 .btn.ghost { background: transparent; box-shadow: none; color: var(--ink-soft); border: none; }
 .btn.small { width: auto; padding: 8px 14px; font-size: .92rem; }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn-row { display: flex; gap: 10px; }
-.btn-row .btn { flex: 1; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1 1 130px; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -165,16 +169,28 @@ label.ans {
 }
 label.ans input { width: 21px; height: 21px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; }
 label.ans:has(input:checked) { border-color: var(--ink); background: #f6efe2; }
-/* Feedback-Zustände */
-label.ans.correct   { border-color: var(--ok);  background: var(--ok-bg); }
-label.ans.wrong     { border-color: var(--bad); background: var(--bad-bg); }
-label.ans.missed    { border-color: var(--ok);  border-style: dashed; }
-.explain {
-  margin: 6px 0 0 33px; font-size: .88rem; color: var(--ink-soft);
-  border-left: 3px solid var(--line); padding: 2px 0 2px 10px;
+/* Feedback-Zustände — kräftig markiert: Farbe, Kantenstreifen + Pill rechts */
+label.ans.correct   { border: 2px solid var(--ok);  background: var(--ok-bg);  box-shadow: inset 4px 0 0 var(--ok); }
+label.ans.wrong     { border: 2px solid var(--bad); background: var(--bad-bg); box-shadow: inset 4px 0 0 var(--bad); }
+label.ans.missed    { border: 2px dashed var(--ok); background: #f3faf5; }
+label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after {
+  margin-left: auto; flex-shrink: 0; white-space: nowrap; align-self: flex-start;
+  font-size: .68rem; font-weight: 800; letter-spacing: .02em;
+  padding: 3px 9px; border-radius: 999px; margin-top: 2px;
 }
-.explain.good { border-color: var(--ok); }
-.explain.bad  { border-color: var(--bad); }
+label.ans.correct::after { content: "✓ richtig"; background: var(--ok); color: #fff; }
+label.ans.wrong::after   { content: "✗ falsch";  background: var(--bad); color: #fff; }
+label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var(--ok); color: var(--ok); background: #fff; }
+/* Erklärungen/Tipps: als eigene Hinweis-Box, nicht nur dünner Strich */
+.explain {
+  display: flex; gap: 8px;
+  margin: 6px 0 0 24px; font-size: .9rem; color: var(--ink);
+  background: var(--paper-2); border-left: 4px solid var(--line);
+  border-radius: 0 10px 10px 0; padding: 8px 12px 8px 10px;
+}
+.explain::before { content: "💡"; flex-shrink: 0; }
+.explain.good { border-color: var(--ok); background: color-mix(in srgb, var(--ok-bg) 65%, white); }
+.explain.bad  { border-color: var(--bad); background: color-mix(in srgb, var(--bad-bg) 65%, white); }
 .q-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .q-progress .bar { flex: 1; }
 .timer { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -182,9 +198,9 @@ label.ans.missed    { border-color: var(--ok);  border-style: dashed; }
 .q-zeit { font-size: .78rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @keyframes pulse { 50% { opacity: .55; } }
 .fb-banner { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 12px 14px; font-weight: 700; margin: 12px 0; }
-.fb-banner.good { background: var(--ok-bg); color: var(--ok); }
-.fb-banner.bad { background: var(--bad-bg); color: var(--bad); }
-.fb-banner.part { background: var(--warn-bg); color: #8a6d1a; }
+.fb-banner.good { background: var(--ok-bg); color: var(--ok); border: 1.5px solid var(--ok); }
+.fb-banner.bad { background: var(--bad-bg); color: var(--bad); border: 1.5px solid var(--bad); }
+.fb-banner.part { background: var(--warn-bg); color: #8a6d1a; border: 1.5px solid #d9b64a; }
 
 /* Sticker (Meme-Feedback) */
 .sticker {
@@ -224,7 +240,8 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .lvl-dots i.neg { background: var(--bad); border-color: transparent; }
 
 /* ---------- Verlauf ---------- */
-.hist-item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+.hist-item { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+.hist-item > div:first-child { flex: 1 1 60%; min-width: 0; }
 .hist-item .when { font-size: .8rem; color: var(--ink-soft); }
 .hist-item .sc { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hist-item.click { cursor: pointer; border-radius: 8px; }
@@ -246,13 +263,16 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .q-stats .stat-row { display: flex; gap: 10px; justify-content: space-between; padding: 3px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .q-stats .stat-row span { white-space: nowrap; }
 
-/* ---------- Moodle-Klausurmodus ---------- */
+/* ---------- Exam.UP-Klausurmodus (Moodle-basiert, UP-Blau) ---------- */
 .moodle {
+  --up-dark: #00305e;   /* UP-Dunkelblau (Kopfleiste) */
+  --up-blue: #0f6cbf;   /* Moodle-Blau (Buttons, Akzente) */
   font-family: "Open Sans", "Segoe UI", Helvetica, Arial, sans-serif;
   color: #333; background: #f7f7f7; font-size: 15px;
   border-radius: 8px; overflow: hidden; border: 1px solid #ddd;
 }
-.moodle-bar { background: #37424e; color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: .95rem; }
+.moodle-bar { background: var(--up-dark); color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: .95rem; }
+.moodle-bar .brand { font-weight: 700; letter-spacing: .01em; padding-right: 10px; border-right: 1px solid rgba(255, 255, 255, .3); }
 .moodle-bar .timer { margin-left: auto; background: #fff; color: #333; border-radius: 4px; padding: 3px 10px; }
 .moodle-body { background: #fff; padding: 16px 14px; }
 .moodle .qinfo {
@@ -263,18 +283,18 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .moodle .qtext { font-weight: 400; font-size: 1rem; margin-bottom: 12px; }
 .moodle .prompt { color: #555; font-size: .9rem; margin: 8px 0 6px; }
 .moodle label.mans { display: flex; gap: 9px; align-items: flex-start; padding: 7px 4px; border: none; background: none; font-size: .96rem; }
-.moodle label.mans input { accent-color: #0f6cbf; width: 17px; height: 17px; margin-top: 2px; }
+.moodle label.mans input { accent-color: var(--up-blue); width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; }
 .moodle-nav { display: flex; gap: 8px; padding: 12px 14px; background: #f7f7f7; border-top: 1px solid #ddd; }
 .moodle-nav button {
-  background: #0f6cbf; color: #fff; border: none; border-radius: 4px; padding: 9px 16px; font-size: .92rem;
+  background: var(--up-blue); color: #fff; border: none; border-radius: 4px; padding: 10px 16px; font-size: .92rem;
 }
-.moodle-nav button.linkish { background: transparent; color: #0f6cbf; text-decoration: underline; }
+.moodle-nav button.linkish { background: transparent; color: var(--up-blue); text-decoration: underline; }
 .moodle-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 12px 14px; background: #fff; border-top: 1px solid #ddd; }
 .moodle-grid button {
-  width: 34px; height: 30px; border: 1px solid #bbb; background: #fff; font-size: .8rem; border-radius: 3px;
+  width: 36px; height: 34px; border: 1px solid #bbb; background: #fff; font-size: .8rem; border-radius: 3px;
 }
-.moodle-grid button.answered { background: #dee9f5; border-color: #0f6cbf; border-bottom: 3px solid #0f6cbf; }
-.moodle-grid button.now { outline: 2px solid #0f6cbf; }
+.moodle-grid button.answered { background: #dee9f5; border-color: var(--up-blue); border-bottom: 3px solid var(--up-blue); }
+.moodle-grid button.now { outline: 2px solid var(--up-dark); }
 
 /* ---------- Utility ---------- */
 .muted { color: var(--ink-soft); font-size: .9rem; }
@@ -284,6 +304,26 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .fade-in { animation: fadein .35s ease both; }
 @keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
 @media (min-width: 640px) { #app { padding-top: 32px; } h1 { font-size: 2.3rem; } }
+
+/* ---------- Kleine Handys (Rose übt am Handy!) ---------- */
+@media (max-width: 460px) {
+  .card { padding: 14px 12px; }
+  h1 { font-size: 1.6rem; }
+  .topbar h1 { font-size: 1.25rem; }
+  .seg button { padding: 11px 3px; font-size: .8rem; }
+  .q-progress { gap: 7px; font-size: .9rem; }
+  .explain { margin-left: 10px; font-size: .87rem; }
+  label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after { font-size: .62rem; padding: 2px 7px; }
+  /* Exam.UP: Info-Block nicht floaten, volle Breite; größere Tap-Ziele */
+  .moodle .qinfo { float: none; margin: 0 0 10px; }
+  .moodle-nav { flex-wrap: wrap; }
+  .moodle-nav button { flex: 1 1 auto; padding: 12px 14px; }
+  .moodle-grid button { width: 40px; height: 38px; font-size: .85rem; }
+  .moodle label.mans { padding: 9px 4px; }
+  .stat-grid { gap: 8px; }
+  .stat-tile b { font-size: 1.15rem; }
+  .jubel-text { font-size: 1.7rem; text-align: center; padding: 0 12px; }
+}
 
 /* ---------- Klausur-Jubel (Bestanden-Overlay) ---------- */
 .jubel {

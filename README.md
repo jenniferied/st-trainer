@@ -1,0 +1,3 @@
+# st-trainer
+
+Persönlicher Übungstrainer.

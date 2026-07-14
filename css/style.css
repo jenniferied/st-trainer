@@ -49,29 +49,30 @@
    Der Exam.UP-Klausurmodus (.moodle) bleibt bewusst immer hell —
    die echte Prüfungsplattform ist hell, und die Vertrautheit ist der Punkt. */
 :root[data-theme="dunkel"] {
-  --paper: #1f1a12;
-  --paper-2: #2b2417;
-  --card: #282217;
-  --ink: #ece3cf;
-  --ink-soft: #a89a7f;
-  --line: #443b28;
+  /* Blauviolette Nacht-Palette (Indigo statt Warmbraun — Jennifers Wunsch) */
+  --paper: #171425;
+  --paper-2: #221e36;
+  --card: #201c31;
+  --ink: #e9e5f6;
+  --ink-soft: #a29bc2;
+  --line: #3a3457;
   --accent: #d0703d;
-  --ok: #66b98a;
-  --ok-bg: #21352a;
-  --bad: #e07a6b;
-  --bad-bg: #3e2622;
-  --warn-bg: #3a2f15;
-  --warn-ink: #dfc26a;
-  --warn-border: #8f7429;
-  --sel-bg: #35301f;
-  --sel-accent-bg: #3b2b1c;
-  --missed-bg: #232e26;
-  --badge-gen-bg: #37305a;
-  --badge-gen-ink: #c3b8f5;
-  --glow: #2c2315;
-  --mix-hell: #efe6d2;
-  --mix-dunkel: #8d8168;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px -8px rgba(0,0,0,.55);
+  --ok: #6cc194;
+  --ok-bg: #1d3430;
+  --bad: #e77f74;
+  --bad-bg: #402334;
+  --warn-bg: #3a3222;
+  --warn-ink: #e2c66e;
+  --warn-border: #937830;
+  --sel-bg: #2c2745;
+  --sel-accent-bg: #362a42;
+  --missed-bg: #20322f;
+  --badge-gen-bg: #3d3567;
+  --badge-gen-ink: #c9bff7;
+  --glow: #2b2347;
+  --mix-hell: #e7e2f3;
+  --mix-dunkel: #8d86ab;
+  --shadow: 0 1px 2px rgba(5,0,20,.4), 0 6px 20px -8px rgba(5,0,20,.6);
   color-scheme: dark;
 
   /* Themenfarben leicht aufgehellt, damit Chips & Balken auf Dunkel tragen */

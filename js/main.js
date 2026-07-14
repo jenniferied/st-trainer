@@ -14,7 +14,7 @@ function applyTheme() {
   if (t === "auto") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dunkel" : "hell";
   document.documentElement.dataset.theme = t;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = t === "dunkel" ? "#1f1a12" : "#faf5ec";
+  if (meta) meta.content = t === "dunkel" ? "#171425" : "#faf5ec";
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if ((C.state().settings.theme || "auto") === "auto") applyTheme();

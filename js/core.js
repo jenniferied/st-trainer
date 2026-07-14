@@ -59,10 +59,13 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, active: null, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
-  if (!S) { try { S = { ...defState(), ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { S = defState(); } }
+  if (!S) {
+    try { S = { ...defState(), ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { S = defState(); }
+    if (S.active) { S.offen = [...(S.offen || []), S.active]; delete S.active; } // Migration
+  }
   return S;
 }
 export function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -158,6 +161,20 @@ export function timerMinuten(anzahl, modus) {
 }
 
 // ---------- Session-Abschluss + Auswertung ----------
+// Eine Session entsteht beim Erstellen (Preset/Baukasten) und lebt in state().offen,
+// bis sie fertig gewertet oder verworfen/abgebrochen wird.
+export function erstelleSession(cfg) {
+  const runde = baueRunde(cfg);
+  if (!runde.length) return null;
+  const sess = {
+    id: "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+    erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0,
+  };
+  state().offen.push(sess); save();
+  return sess;
+}
+export function verwerfeOffene(id) { const st = state(); st.offen = st.offen.filter((s) => s.id !== id); save(); }
+
 export function werteAus(runde, meta) {
   const proFrage = runde.filter((r) => r.gewaehlt).map((r) => {
     const q = frage(r.qid);
@@ -168,10 +185,11 @@ export function werteAus(runde, meta) {
   const max = runde.map((r) => frage(r.qid).maxPunkte).reduce((a, b) => a + b, 0);
   const bestehenBei = meta.modus === "klausur" ? window.ST_CONFIG.klausur.bestehen : Math.ceil(max * 0.5);
   const session = {
-    id: "s-" + Date.now(), ts: Date.now(), fertig: true,
+    id: meta.sessionId || "s-" + Date.now(), ts: Date.now(), erstellt: meta.erstellt || Date.now(),
+    fertig: true, status: meta.status || "fertig",
     modus: meta.modus, timerModus: meta.timerModus, dauerSek: meta.dauerSek, sprache: meta.sprache || "schwer",
     anzahl: runde.length, beantwortet: proFrage.length,
-    punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: punkte >= bestehenBei,
+    punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: meta.status !== "abgebrochen" && punkte >= bestehenBei,
     proFrage,
   };
   state().sessions.push(session);
@@ -212,7 +230,7 @@ export function syncSession(s) {
     session_id: s.id, ts: new Date(s.ts).toISOString(), modus: s.modus, timer_modus: s.timerModus,
     dauer_sek: s.dauerSek, anzahl: s.anzahl, punkte: s.punkte, max_punkte: s.max, bestanden: s.bestanden,
     sprache: s.sprache, device_id: state().deviceId, nutzer: state().settings.name || "anon",
-    detail: s.proFrage,
+    detail: { status: s.status, proFrage: s.proFrage },
   } });
   save(); flushSync();
 }

@@ -1,73 +1,102 @@
 import * as C from "./core.js";
 
 const app = document.getElementById("app");
-const h = (html) => { app.innerHTML = html; app.scrollTop = 0; window.scrollTo(0, 0); };
+const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
+const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
-let R = null;      // aktive Runde
+let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
 
 // ================= HOME =================
 function home() {
-  stopTimer();
+  stopTimer(); R = null;
   const s = C.state();
-  const score = C.lernscore();
-  const streak = C.pruefungsStreak();
-  const aktiv = s.active;
-  const ring = ringSVG(score);
-  const themenRows = Object.entries(C.THEMEN).map(([slug, t]) => {
-    const f = C.themaFortschritt(slug);
-    return `<div class="progress-row" style="--tc:${t.color}">
-      <span class="lbl">${t.name}</span>
-      <span class="bar"><i style="width:${f.pct}%"></i></span>
-      <span class="val">${f.m}/${f.n}</span></div>`;
+  const offene = s.offen || [];
+
+  const offenCards = offene.map((o) => {
+    const done = o.runde.filter((r) => r.gewaehlt).length;
+    const timed = o.cfg.timerModus && o.cfg.timerModus !== "aus";
+    return `<div class="card" style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <b>${MODUS_LBL[o.cfg.modus] || o.cfg.modus}</b>
+        <div class="muted">erstellt ${datum(o.erstellt)} · ${done}/${o.runde.length} beantwortet${timed ? ` · ⏱ ${o.restSek != null ? Math.ceil(o.restSek / 60) + " min übrig" : C.timerMinuten(o.runde.length, o.cfg.timerModus) + " min"}` : ""}</div>
+        <div class="bar thin mt"><i style="width:${(100 * done) / o.runde.length}%"></i></div>
+      </div>
+      <button class="btn small" data-resume="${o.id}">Weiter</button>
+      <button class="btn ghost small" data-discard="${o.id}" title="Verwerfen">✕</button>
+    </div>`;
   }).join("");
 
+  const score = C.lernscore();
+  const streak = C.pruefungsStreak();
+  const themenDetail = Object.entries(C.THEMEN).map(([slug, t]) => {
+    const f = C.themaFortschritt(slug);
+    const subs = C.unterthemen(slug).map(([u], ui) => {
+      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar);
+      if (!qs.length) return "";
+      const m = qs.filter((q) => C.gemeistert(q.id)).length;
+      return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}">
+        <span class="lbl" style="font-weight:500;font-size:.87rem">${esc(labelU(u))}</span>
+        <span class="bar thin"><i style="width:${Math.round((100 * m) / qs.length)}%"></i></span>
+        <span class="val">${m}/${qs.length}</span></div>`;
+    }).join("");
+    return `<details style="--tc:${t.color}">
+      <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}">
+        <span class="lbl">${t.name}</span><span class="bar"><i style="width:${f.pct}%"></i></span><span class="val">${f.m}/${f.n}</span></div></summary>
+      <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
+  }).join("");
+
+  const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
+
   h(`<div class="fade-in">
-    <div class="card hero">
-      <h1>Hey${s.settings.name ? ", " + esc(s.settings.name) : ""}! ✏️</h1>
-      <div class="score-ring">${ring}<div class="num">${score}%</div></div>
-      <div class="muted">Lernscore — wächst mit jeder Runde</div>
-      <div class="streak">${[0,1,2,3,4].map(i => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</div>
-      <div class="muted">Prüfungsreife: ${streak}/5 Simulationen in Folge bestanden</div>
-    </div>
-    ${aktiv ? `<button class="btn mt" id="resume">▶︎ Pausierte Runde fortsetzen (${aktiv.runde.filter(r=>r.gewaehlt).length}/${aktiv.runde.length})</button>` : ""}
-    <div class="mode-grid mt">
-      <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Moodle-Look · echtes Scoring</span></button>
+    <div class="topbar"><h1>ST‑Trainer ✏️</h1><button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+
+    ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
+
+    <h2 class="${offene.length ? "mt" : ""}">Neue Session</h2>
+    <div class="mode-grid">
+      <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Moodle-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
       <button class="mode-card" data-go="fehler"><b>🔁 Fehler-Training</b><span>Nur Fragen, die noch wackeln</span></button>
-      <button class="mode-card" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen frei zusammenstellen</span></button>
-      <button class="mode-card" data-go="explore"><b>🗂 Explore</b><span>Alle Fragen browsen & üben</span></button>
-      <button class="mode-card wide" data-go="verlauf"><b>📊 Verlauf</b><span>${s.sessions.length} abgeschlossene Runden</span></button>
+      <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
     </div>
-    <div class="card">${themenRows}</div>
-    <details class="card"><summary style="font-weight:700;cursor:pointer">⚙️ Einstellungen</summary>
-      <div class="field mt"><label class="flabel">Dein Name</label>
-        <input id="set-name" value="${esc(s.settings.name)}" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font:inherit" placeholder="z.B. Rose"></div>
-      <div class="field"><label class="flabel">Scoring-Variante</label>
-        <div class="seg" id="set-scoring">
-          <button data-v="streng" class="${s.settings.scoring !== "milde" ? "on" : ""}">Streng (offiziell)</button>
-          <button data-v="milde" class="${s.settings.scoring === "milde" ? "on" : ""}">Milde (Roses Version)</button>
-        </div></div>
-      <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
-      <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
-      <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ noch nicht konfiguriert"} · ${C.state().pending.length} Events in Warteschlange</p>
-    </details>
+
+    <h2 class="mt">Stöbern</h2>
+    <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
+
+    <h2 class="mt">Dein Fortschritt</h2>
+    <div class="card">
+      <div class="progress-row" style="--tc:var(--accent)">
+        <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
+      </div>
+      <div class="progress-row" style="--tc:var(--ok)">
+        <span class="lbl">Prüfungsreife</span>
+        <span class="streak" style="flex:2;justify-content:flex-start">${[0,1,2,3,4].map((i) => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</span>
+        <span class="val">${streak}/5</span>
+      </div>
+      <p class="muted" style="margin:4px 0 12px">5 bestandene Klausur-Simulationen in Folge = bereit. Du schaffst das.</p>
+      ${themenDetail}
+    </div>
+
+    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card">${letzte}
+      <button class="btn ghost small mt" data-go="verlauf">Alle ${s.sessions.length} Sessions ansehen ›</button></div>` : ""}
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
-  const rs = document.getElementById("resume"); if (rs) rs.onclick = resumeActive;
-  document.getElementById("set-name").onchange = (e) => { C.state().settings.name = e.target.value.trim(); C.save(); };
-  document.getElementById("set-scoring").querySelectorAll("button").forEach((b) => b.onclick = () => { C.state().settings.scoring = b.dataset.v; C.save(); home(); });
-  document.getElementById("exportBtn").onclick = C.exportState;
-  document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
+  app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
+  app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = () => {
+    if (confirm("Diese offene Session verwerfen? (wird nicht gewertet)")) { C.verwerfeOffene(b.dataset.discard); home(); }
+  });
+  document.getElementById("gear").onclick = einstellungen;
 }
 
-function ringSVG(pct) {
-  const r = 58, c = 2 * Math.PI * r;
-  return `<svg width="132" height="132"><circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--paper-2)" stroke-width="12"/>
-  <circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"
-   stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct / 100)}"/></svg>`;
+function histRow(s) {
+  const status = s.status === "abgebrochen" ? `<span class="badge-src badge-unsicher">abgebrochen</span>` : s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">fertig</span>`;
+  return `<div class="hist-item"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${status}
+    <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
+    <span class="sc">${s.punkte}/${s.max}</span></div>`;
 }
 
 function route(ziel) {
@@ -77,6 +106,33 @@ function route(ziel) {
   else if (ziel === "eigene") builder({ preset: "eigene" });
   else if (ziel === "explore") explore();
   else if (ziel === "verlauf") verlauf();
+}
+
+// ================= EINSTELLUNGEN =================
+function einstellungen() {
+  const s = C.state();
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Einstellungen</h1></div>
+    <div class="card">
+      <div class="field"><label class="flabel">Name (für die Auswertung)</label>
+        <input id="set-name" value="${esc(s.settings.name)}" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font:inherit" placeholder="z.B. Rose"></div>
+      <div class="field"><label class="flabel">Scoring-Variante</label>
+        <div class="seg" id="set-scoring">
+          <button data-v="streng" class="${s.settings.scoring !== "milde" ? "on" : ""}">Streng (offiziell)</button>
+          <button data-v="milde" class="${s.settings.scoring === "milde" ? "on" : ""}">Milde</button>
+        </div>
+        <p class="muted">Streng: +1 je richtigem, −0,5 je falschem Kreuz. Lieber streng trainieren.</p></div>
+      <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
+      <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
+      <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ nicht konfiguriert"} · ${s.pending.length} Events in Warteschlange</p>
+    </div></div>`);
+  document.getElementById("back").onclick = home;
+  document.getElementById("set-name").onchange = (e) => { C.state().settings.name = e.target.value.trim(); C.save(); };
+  document.getElementById("set-scoring").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    C.state().settings.scoring = b.dataset.v; C.save(); einstellungen();
+  });
+  document.getElementById("exportBtn").onclick = C.exportState;
+  document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
 }
 
 // ================= BUILDER =================
@@ -106,14 +162,13 @@ function builder({ preset }) {
     ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="on">Sofort je Frage</button><button data-v="ende" class="">Erst am Ende</button></div></div>` : ""}
     <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list">${themenBoxen}</div></div>
-    <button class="btn" id="los">Los geht's</button>
+    <button class="btn" id="los">Session erstellen & starten</button>
   </div>`);
 
   document.getElementById("back").onclick = home;
   app.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
     seg.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on"); updateHint();
   }));
-  // Oberthema-Checkbox togglet Unterthemen
   app.querySelectorAll(".th").forEach((cb) => cb.onchange = () => {
     app.querySelectorAll(`.uth[data-th="${cb.value}"]`).forEach((u) => { u.checked = cb.checked; u.disabled = !cb.checked; });
   });
@@ -139,21 +194,35 @@ const labelU = (u) => u.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase
 
 // ================= RUNDE =================
 function starte(cfg) {
-  const runde = C.baueRunde(cfg);
-  if (runde.length < Math.min(cfg.anzahl, 5)) { alert(`Zu wenig passende Fragen gefunden (${runde.length}). Wähle mehr Themen.`); return; }
-  R = { cfg, runde, idx: 0, startTs: Date.now(), pausiertSek: 0, deadline: null };
-  const min = C.timerMinuten(runde.length, cfg.timerModus);
+  const sess = C.erstelleSession(cfg);
+  if (!sess || sess.runde.length < Math.min(cfg.anzahl, 5)) {
+    if (sess) C.verwerfeOffene(sess.id);
+    alert("Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
+  }
+  R = sess;
+  R.startTs = Date.now();
+  const min = C.timerMinuten(R.runde.length, cfg.timerModus);
   if (min) R.deadline = Date.now() + min * 60000;
+  C.save();
   zeigFrage();
 }
-function resumeActive() {
-  R = C.state().active; C.state().active = null; C.save();
-  if (R.restSek && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
+function resumeSession(id) {
+  R = C.state().offen.find((o) => o.id === id);
+  if (!R) return home();
+  R.startTs = Date.now();
+  if (R.restSek != null && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
   zeigFrage();
 }
 function pausiere() {
   if (R.deadline) R.restSek = Math.max(0, Math.round((R.deadline - Date.now()) / 1000));
-  C.state().active = R; C.save(); R = null; home();
+  R.dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - R.startTs) / 1000);
+  delete R.deadline; C.save(); home();
+}
+function abbrechen() {
+  const timed = R.cfg.timerModus && R.cfg.timerModus !== "aus";
+  if (timed && !R.cfg.pausierbar) {
+    if (confirm("Zeitbegrenzte Session abbrechen? Sie wird als „abgebrochen" gewertet.")) beende("abgebrochen");
+  } else if (confirm("Session beenden und bisherige Antworten werten?")) beende("fertig");
 }
 function stopTimer() { if (timerInt) { clearInterval(timerInt); timerInt = null; } }
 function tickTimer() {
@@ -162,7 +231,17 @@ function tickTimer() {
   const rest = Math.max(0, Math.round((R.deadline - Date.now()) / 1000));
   el.textContent = `${String(Math.floor(rest / 60)).padStart(2, "0")}:${String(rest % 60).padStart(2, "0")}`;
   el.classList.toggle("low", rest < 300);
-  if (rest <= 0) { stopTimer(); beende(); }
+  if (rest <= 0) { stopTimer(); beende("fertig"); }
+}
+function beende(status = "fertig") {
+  stopTimer();
+  const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
+  const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status };
+  const rundeKopie = R.runde;
+  C.verwerfeOffene(R.id);
+  const session = C.werteAus(rundeKopie, meta);
+  R = null;
+  ergebnis(session, rundeKopie);
 }
 
 function zeigFrage() {
@@ -196,19 +275,18 @@ function zeigFrage() {
       </div>
     </div></div>`);
   if (R.deadline) { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
-  document.getElementById("abbruch").onclick = () => { if (confirm("Runde wirklich abbrechen? Beantwortete Fragen werden gewertet.")) beende(); };
+  document.getElementById("abbruch").onclick = abbrechen;
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
   const gewaehlt = () => [...app.querySelectorAll("#answers input:checked")].map((x) => +x.dataset.oi);
   const pruefen = document.getElementById("pruefen");
   if (pruefen) pruefen.onclick = () => {
-    r.gewaehlt = gewaehlt();
+    r.gewaehlt = gewaehlt(); C.save();
     zeigeFeedback(q, r);
     pruefen.classList.add("hidden");
     document.getElementById("weiter").classList.remove("hidden");
   };
   document.getElementById("weiter").onclick = () => {
-    if (R.cfg.feedback !== "sofort") r.gewaehlt = gewaehlt();
-    if (!r.gewaehlt) r.gewaehlt = gewaehlt();
+    if (!r.gewaehlt) { r.gewaehlt = gewaehlt(); C.save(); }
     naechste();
   };
 }
@@ -217,12 +295,12 @@ function zeigeFeedback(q, r) {
   C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
   app.querySelectorAll("#answers label.ans").forEach((el) => {
     const oi = +el.querySelector("input").dataset.oi;
-    const o = q.optionen[oi]; const gewaehlt = r.gewaehlt.includes(oi);
+    const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
     el.querySelector("input").disabled = true;
-    if (gewaehlt && o.richtig) el.classList.add("correct");
-    else if (gewaehlt && !o.richtig) el.classList.add("wrong");
-    else if (!gewaehlt && o.richtig) el.classList.add("missed");
-    if (o.erklaerung && (gewaehlt || o.richtig)) {
+    if (gw && o.richtig) el.classList.add("correct");
+    else if (gw && !o.richtig) el.classList.add("wrong");
+    else if (!gw && o.richtig) el.classList.add("missed");
+    if (o.erklaerung && (gw || o.richtig)) {
       el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${esc(o.erklaerung)}</div>`);
     }
   });
@@ -231,14 +309,7 @@ function zeigeFeedback(q, r) {
   document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${txt}</div>`;
 }
 function naechste() {
-  if (R.idx + 1 < R.runde.length) { R.idx++; zeigFrage(); } else beende();
-}
-function beende() {
-  stopTimer();
-  const dauerSek = Math.round((Date.now() - R.startTs) / 1000);
-  const session = C.werteAus(R.runde, { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache });
-  const rundeKopie = R.runde; R = null;
-  ergebnis(session, rundeKopie);
+  if (R.idx + 1 < R.runde.length) { R.idx++; C.save(); zeigFrage(); } else beende("fertig");
 }
 
 // ================= MOODLE-KLAUSURMODUS =================
@@ -249,7 +320,7 @@ function zeigMoodle() {
   const single = q.optionen.filter((o) => o.richtig).length === 1;
   h(`<div class="fade-in">
     <div class="moodle">
-      <div class="moodle-bar"><span>Testversuch — ${esc((C.state().settings.name || "Teilnehmer/in"))}</span>
+      <div class="moodle-bar"><span>Testversuch — ${esc(C.state().settings.name || "Teilnehmer/in")}</span>
         ${R.deadline ? `<span class="timer" id="t-anzeige"></span>` : ""}</div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}</div>
@@ -271,24 +342,24 @@ function zeigMoodle() {
       <button class="btn ghost" id="abbruch">Abbrechen</button>
     </div></div>`);
   if (R.deadline) { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
-  const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); };
+  const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
-  const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { merke(); R.idx--; zeigMoodle(); };
+  const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { R.idx--; zeigMoodle(); };
   document.getElementById("next").onclick = () => {
-    merke();
     if (R.idx + 1 === R.runde.length) {
       const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
-      if (confirm(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?")) beende();
-    } else { R.idx++; zeigMoodle(); }
+      if (confirm(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?")) beende("fertig");
+    } else { R.idx++; C.save(); zeigMoodle(); }
   };
-  document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { merke(); R.idx = +b.dataset.i; zeigMoodle(); });
+  document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { R.idx = +b.dataset.i; zeigMoodle(); });
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
-  document.getElementById("abbruch").onclick = () => { if (confirm("Klausur abbrechen? Beantwortete Fragen werden gewertet.")) beende(); };
+  document.getElementById("abbruch").onclick = abbrechen;
 }
 
 // ================= ERGEBNIS =================
 function ergebnis(session, runde) {
   const pass = session.bestanden;
+  const abgebrochen = session.status === "abgebrochen";
   const insights = C.insights(session);
   const themen = C.gruppiere(session.proFrage, (x) => x.thema);
   const themenRows = Object.entries(themen).map(([slug, arr]) => {
@@ -313,18 +384,18 @@ function ergebnis(session, runde) {
 
   h(`<div class="fade-in">
     <div class="card result-big">
-      <h2>${pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
+      <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
       <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min · Scoring: ${C.state().settings.scoring === "milde" ? "milde" : "streng"}</p>
     </div>
     ${insights.length ? `<div class="card"><h3>💡 Insights</h3>${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}
     <div class="card"><h3>Nach Thema</h3>${themenRows}</div>
-    <div class="btn-row"><button class="btn" id="nochmal">Neue Runde</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>
+    <div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>
     <div class="card mt"><h3>Alle Fragen im Detail</h3>${review || "<p class='muted'>Keine beantworteten Fragen.</p>"}</div>
   </div>`);
   document.getElementById("homeBtn").onclick = home;
-  document.getElementById("nochmal").onclick = () => route(session.modus === "klausur" ? "klausur" : session.modus === "fehler" ? "fehler" : "schnell");
+  document.getElementById("nochmal").onclick = home;
 }
 
 // ================= EXPLORE =================
@@ -381,15 +452,9 @@ function tryInline(qid, btn) {
 
 // ================= VERLAUF =================
 function verlauf() {
-  const items = [...C.state().sessions].reverse().map((s) => {
-    const d = new Date(s.ts);
-    const modusLbl = { klausur: "🎓 Klausur", schnell: "⚡ 10er", fehler: "🔁 Fehler", eigene: "🧩 Eigene" }[s.modus] || s.modus;
-    return `<div class="hist-item"><div><b>${modusLbl}</b> <span class="${s.bestanden ? "" : ""}">${s.bestanden ? "✅" : "—"}</span>
-      <div class="when">${d.toLocaleDateString("de-DE")} ${d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
-      <span class="sc">${s.punkte}/${s.max}</span></div>`;
-  }).join("");
+  const items = [...C.state().sessions].reverse().map(histRow).join("");
   h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Verlauf</h1></div>
-    <div class="card">${items || "<p class='muted'>Noch keine abgeschlossenen Runden — die erste ist die wichtigste! 💪</p>"}</div></div>`);
+    <div class="card">${items || "<p class='muted'>Noch keine abgeschlossenen Sessions — die erste ist die wichtigste! 💪</p>"}</div></div>`);
   document.getElementById("back").onclick = home;
 }
 

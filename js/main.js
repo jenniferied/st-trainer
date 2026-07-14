@@ -221,7 +221,7 @@ function pausiere() {
 function abbrechen() {
   const timed = R.cfg.timerModus && R.cfg.timerModus !== "aus";
   if (timed && !R.cfg.pausierbar) {
-    if (confirm("Zeitbegrenzte Session abbrechen? Sie wird als „abgebrochen" gewertet.")) beende("abgebrochen");
+    if (confirm("Zeitbegrenzte Session abbrechen? Sie wird als ‚abgebrochen' gewertet.")) beende("abgebrochen");
   } else if (confirm("Session beenden und bisherige Antworten werten?")) beende("fertig");
 }
 function stopTimer() { if (timerInt) { clearInterval(timerInt); timerInt = null; } }

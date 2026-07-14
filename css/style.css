@@ -110,6 +110,10 @@ h2 { font-size: 1.35rem; font-weight: 700; }
 h3 { font-size: 1.1rem; font-weight: 700; }
 p { margin: .3em 0 .8em; }
 a { color: var(--accent); }
+/* iOS-Datendetektor (Daten, Zahlen, Paragraphen im Fragetext) nicht blau unterstreichen */
+a[x-apple-data-detectors], a[href^="tel:"], a[href^="mailto:"] {
+  color: inherit !important; text-decoration: none !important; pointer-events: none;
+}
 button { font: inherit; cursor: pointer; }
 
 /* ---------- Bausteine ---------- */
@@ -160,10 +164,14 @@ button { font: inherit; cursor: pointer; }
 .bar { height: 12px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
 .bar > i { display: block; height: 100%; border-radius: 999px; background: var(--tc, var(--accent)); transition: width .5s ease; }
 .bar.thin { height: 7px; }
-.progress-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-.progress-row .lbl { flex: 1; min-width: 0; font-weight: 700; font-size: .95rem; }
-.progress-row .bar { flex: 2; }
+/* Label | Balken | Wert — der Balken sitzt in einer eigenen Spalte mit Luft nach
+   beiden Seiten, damit er auf schmalen Screens nicht am Text klebt */
+.progress-row { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-2) 0; }
+.progress-row .lbl { flex: 1 1 38%; min-width: 0; font-weight: 700; font-size: .95rem; }
+.progress-row .bar { flex: 2 1 40%; }
 .progress-row .val { min-width: 48px; text-align: right; font-size: .85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; line-height: 1.25; }
+/* Prüfungsreife: die 5 Häkchen stehen in der Balken-Spalte, mittig statt links am Text */
+.progress-row .streak.inline { flex: 2 1 40%; justify-content: center; margin: 0; }
 .progress-row .val small { font-size: .72rem; }
 
 /* Hero / Lernscore */
@@ -393,6 +401,12 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   .topbar h1 { font-size: 1.25rem; }
   .seg button { padding: 11px 3px; font-size: .8rem; }
   .q-progress { gap: 7px; font-size: .9rem; }
+  /* Fortschritts-Zeilen: schmalere Häkchen, aber Abstand Text ↔ Balken bleibt */
+  .progress-row { gap: var(--sp-3); }
+  .progress-row .lbl { flex: 1 1 42%; font-size: .9rem; }
+  .progress-row .bar { flex: 1 1 32%; }
+  .progress-row .streak.inline { flex: 1 1 32%; gap: 5px; }
+  .streak i { width: 22px; height: 22px; font-size: .8rem; }
   .q-text { font-size: 1.08rem; }
   label.ans { padding: 12px; font-size: .95rem; }
   .explain { margin-left: var(--sp-2); font-size: .87rem; }

@@ -19,6 +19,14 @@ function applyTheme() {
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if ((C.state().settings.theme || "auto") === "auto") applyTheme();
 });
+const themeIstDunkel = () => document.documentElement.dataset.theme === "dunkel";
+// Schnell-Umschalter in der Topbar: setzt explizit hell/dunkel (verlaesst damit "auto")
+function toggleTheme(btn) {
+  C.state().settings.theme = themeIstDunkel() ? "hell" : "dunkel";
+  C.save(); applyTheme();
+  btn.textContent = themeIstDunkel() ? "☀️" : "🌙";
+}
+const themeBtnHtml = () => `<button class="btn ghost small" id="themeBtn" title="Hell / Dunkel umschalten">${themeIstDunkel() ? "☀️" : "🌙"}</button>`;
 
 // confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
 // blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.
@@ -122,7 +130,7 @@ function home() {
   const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
 
   h(`<div class="fade-in">
-    <div class="topbar"><h1>ST‑Trainer ✏️</h1><button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+    <div class="topbar"><h1>ST‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
 
@@ -151,7 +159,7 @@ function home() {
       <p class="muted" style="margin:0 0 6px">Gemeistert: ${(() => { const g = C.gesamtFortschritt(); return `${g.og.m}/${g.og.n} Originalfragen` + (g.ki.n ? ` · ${g.ki.m}/${g.ki.n} KI-Fragen` : ""); })()}</p>
       <div class="progress-row" style="--tc:var(--ok)">
         <span class="lbl">Prüfungsreife</span>
-        <span class="streak" style="flex:2;justify-content:flex-start">${[0,1,2,3,4].map((i) => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</span>
+        <span class="streak inline">${[0,1,2,3,4].map((i) => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</span>
         <span class="val">${streak}/5</span>
       </div>
       <p class="muted" style="margin:4px 0 12px">5 bestandene Klausur-Simulationen in Folge = bereit. Du schaffst das.</p>
@@ -165,6 +173,8 @@ function home() {
     if (await frag("Diese offene Session verwerfen? (wird nicht gewertet)", { ja: "Verwerfen", nein: "Behalten" })) { C.verwerfeOffene(b.dataset.discard); home(); }
   });
   bindHist(home);
+  const tb = document.getElementById("themeBtn");
+  tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
 }
 

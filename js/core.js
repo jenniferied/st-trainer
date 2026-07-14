@@ -519,16 +519,26 @@ export async function loeseKonflikt(wahl) {
   await syncLernstand();
 }
 
-let syncLauft = false, syncNochmal = false;
 export let syncStatus = { ts: 0, fehler: null, laeuft: false };
 const horcher = new Set();
 export function onSync(fn) { horcher.add(fn); return () => horcher.delete(fn); }
 const melde = () => horcher.forEach((f) => { try { f(syncStatus); } catch { /* egal */ } });
 
-export async function syncLernstand() {
+// Laeuft immer nur ein Sync zur Zeit, und hoechstens einer wartet — der nimmt alles
+// mit, was inzwischen dazugekommen ist. Wichtig: das zurueckgegebene Promise ist
+// erst erfuellt, wenn wirklich gepusht wurde (sonst warten Aufrufer ins Leere).
+let kette = Promise.resolve(false), wartend = 0;
+export function syncLernstand() {
+  if (!syncAktiv()) return Promise.resolve(false);
+  if (wartend) return kette; // es steht schon einer an, der macht unsere Aenderung mit
+  wartend++;
+  kette = kette.then(() => { wartend--; return einSync(); }, () => { wartend--; return einSync(); });
+  return kette;
+}
+
+async function einSync() {
   if (!syncAktiv()) return false;
-  if (syncLauft) { syncNochmal = true; return false; } // waehrend eines Laufs kam neue Aenderung
-  syncLauft = true; syncStatus = { ...syncStatus, laeuft: true, fehler: null }; melde();
+  syncStatus = { ...syncStatus, laeuft: true, fehler: null }; melde();
   let geaendert = false;
   try {
     const url = window.ST_CONFIG.supabaseUrl + "/rest/v1/lernstand";
@@ -542,8 +552,7 @@ export async function syncLernstand() {
     if (!st.settings.syncOk) {
       if (hatDaten(remote) && hatDaten(snapshot()) && signatur(remote) !== signatur(snapshot())) {
         konflikt = remote; // Entscheidung liegt bei der Nutzerin — nichts anfassen
-        syncStatus = { ...syncStatus, laeuft: false, fehler: null };
-        syncLauft = false; melde();
+        syncStatus = { ...syncStatus, laeuft: false, fehler: null }; melde();
         return false;
       }
       st.settings.syncOk = true; save(); // leere Seite auf einer der beiden Seiten = gefahrlos
@@ -564,8 +573,7 @@ export async function syncLernstand() {
   } catch (e) {
     syncStatus = { ...syncStatus, laeuft: false, fehler: e.message || "offline" };
   }
-  syncLauft = false; melde();
-  if (syncNochmal) { syncNochmal = false; return (await syncLernstand()) || geaendert; }
+  melde();
   return geaendert;
 }
 

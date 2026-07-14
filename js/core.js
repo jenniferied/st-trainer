@@ -233,14 +233,16 @@ export function splitFortschritt(qs) {
     og: { m: mo, n: og.length }, ki: { m: mk, n: ki.length },
   };
 }
+// Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original)
+const zaehlt = (q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach";
 export function themaFortschritt(thema) {
-  return splitFortschritt(POOL.filter((q) => q.oberthema === thema && q.quizbar && q.relevanz !== "laut-rose-nicht-relevant"));
+  return splitFortschritt(POOL.filter((q) => q.oberthema === thema && zaehlt(q)));
 }
 export function gesamtFortschritt() {
-  return splitFortschritt(POOL.filter((q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant"));
+  return splitFortschritt(POOL.filter(zaehlt));
 }
 export function lernscore() {
-  const qs = POOL.filter((q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant");
+  const qs = POOL.filter(zaehlt);
   if (!qs.length) return 0;
   const sum = qs.reduce((a, q) => a + Math.max(0, Math.min(lvl(q.id), 3)) / 3, 0);
   return Math.round((100 * sum) / qs.length);
@@ -256,7 +258,14 @@ export function pruefungsStreak() {
 export function baueRunde(cfg) {
   let qs = POOL.filter((q) => q.quizbar);
   if (!cfg.inklNichtRelevant) qs = qs.filter((q) => q.relevanz !== "laut-rose-nicht-relevant");
-  if (cfg.sprache) qs = qs.filter((q) => (q.sprache || "schwer") === cfg.sprache || !q.sprachVarianteVon);
+  // Sprache: bei "einfach" ersetzt die einfache Variante ihr schweres Original (Fallback: Original,
+  // wenn keine Variante existiert); Standard "schwer" blendet einfache Varianten aus
+  if (cfg.sprache === "einfach") {
+    const hatEinfach = new Set(POOL.filter((q) => q.sprache === "einfach" && q.sprachVarianteVon).map((q) => q.sprachVarianteVon));
+    qs = qs.filter((q) => q.sprache === "einfach" || !hatEinfach.has(q.id));
+  } else {
+    qs = qs.filter((q) => (q.sprache || "schwer") !== "einfach");
+  }
   if (cfg.themen?.length) qs = qs.filter((q) => cfg.themen.includes(q.oberthema));
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
@@ -268,8 +277,16 @@ export function baueRunde(cfg) {
   };
   const gew = qs.map((q) => ({ q, w: gewicht(q) * (0.5 + Math.random()) }));
   gew.sort((a, b) => b.w - a.w);
+  // Keine zwei Varianten derselben Frage in einer Runde (variantenVon/sprachVarianteVon-Gruppe)
+  const gruppe = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
   const n = Math.min(cfg.anzahl || 10, gew.length);
-  const auswahl = gew.slice(0, n).map((x) => x.q);
+  const auswahl = []; const belegt = new Set();
+  for (const { q } of gew) {
+    if (auswahl.length >= n) break;
+    const g = gruppe(q);
+    if (belegt.has(g)) continue;
+    belegt.add(g); auswahl.push(q);
+  }
   // Reihenfolge mischen + Optionsreihenfolge fixieren (gemischt)
   shuffle(auswahl);
   return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));

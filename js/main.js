@@ -3,6 +3,8 @@ import * as C from "./core.js";
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Grafik-Fragen: Bild unter dem Fragetext (Tippen/Klicken = Vollbild-Zoom via CSS :target-frei per Klasse)
+const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
 const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
 const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 // „gemeistert"-Anzeige: Originalfragen und KI-Fragen getrennt ausweisen
@@ -71,7 +73,7 @@ function home() {
   const themenDetail = Object.entries(C.THEMEN).map(([slug, t]) => {
     const f = C.themaFortschritt(slug);
     const subs = C.unterthemen(slug).map(([u], ui) => {
-      const sf = C.splitFortschritt(C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar));
+      const sf = C.splitFortschritt(C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar && (q.sprache || "schwer") !== "einfach"));
       if (!sf.n) return "";
       return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}">
         <span class="lbl" style="font-weight:500;font-size:.87rem">${esc(labelU(u))}</span>
@@ -262,6 +264,9 @@ function builder({ preset }) {
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
     ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende</button></div></div>` : ""}
+    ${C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
+      <button data-v="schwer" class="on">Original (Klausur)</button><button data-v="einfach">Einfache Sprache</button></div>
+      <p class="muted">Einfache Varianten, wo vorhanden — sonst die Original-Frage. Zum Schluss am besten mit Original üben.</p></div>` : ""}
     <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list">${themenBoxen}</div></div>
     <button class="btn" id="los">Session erstellen & starten</button>
   </div>`);
@@ -288,6 +293,7 @@ function builder({ preset }) {
       anzahl: istKlausur ? 42 : +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
       feedback: istKlausur ? "ende" : segVal("fb"), unterthemen,
+      sprache: segVal("sprache") || "schwer",
     });
   };
 }
@@ -409,6 +415,7 @@ function zeigFrage() {
         <span class="q-zeit" id="q-zeit" style="margin-left:auto"></span>
         <span class="q-pts">${q.maxPunkte} P.</span></div>
       <div class="q-text">${esc(q.frage)}</div>
+      ${bildHtml(q)}
       <div class="answers" id="answers">
         ${r.optOrder.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
       </div>
@@ -506,6 +513,7 @@ function zeigMoodle() {
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
         <div class="qtext">${esc(q.frage)}</div>
         <div style="clear:both"></div>
+        ${bildHtml(q)}
         <div class="prompt">${single ? "Wählen Sie eine Antwort:" : "Wählen Sie eine oder mehrere Antworten:"}</div>
         ${r.optOrder.map((oi, i) => `<label class="mans"><input type="checkbox" data-oi="${oi}" ${r.gewaehlt?.includes(oi) ? "checked" : ""}><span>${"abcdefghijkl"[i]}. ${esc(q.optionen[oi].text)}</span></label>`).join("")}
       </div>
@@ -601,6 +609,7 @@ function ergebnis(session, runde, opts = {}) {
         ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
         <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
       <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
+      ${bildHtml(q)}
       <div class="answers">${r.optOrder.map((oi) => {
         const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
         const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
@@ -652,7 +661,7 @@ function explore() {
   const bloecke = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
     const inner = subs.map(([u], ui) => {
-      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u)
+      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach")
         .sort((a, b) => C.quelleRank(a.quelle) - C.quelleRank(b.quelle));
       const items = qs.map((q) => `<div class="q-item" data-qid="${q.id}">
         <div class="qq">${esc(q.frage)}</div>
@@ -693,7 +702,7 @@ function tryInline(qid, btn) {
   const item = btn.closest(".q-item");
   const wrap = item.querySelector(".try-zone");
   const order = [...q.optionen.keys()]; // im Stöbern: Original-Reihenfolge behalten (gemischt wird nur in Sessions)
-  wrap.innerHTML = `<div class="answers mt" id="try-${qid}">
+  wrap.innerHTML = `${bildHtml(q)}<div class="answers mt" id="try-${qid}">
     ${order.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
     </div><button class="btn small mt" id="chk-${qid}">Prüfen (${q.maxPunkte} P.)</button><div class="fbz"></div>`;
   btn.classList.add("hidden");

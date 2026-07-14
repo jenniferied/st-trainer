@@ -392,3 +392,16 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   padding: 10px 14px; font: inherit; background: var(--card); color: var(--ink);
 }
 .pw-input:focus { outline: none; border-color: var(--accent); }
+
+/* ===== Grafik-Fragen (bild-Feld) ===== */
+.q-bild { margin: 10px 0; }
+.q-bild img {
+  max-width: 100%; height: auto; display: block;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; cursor: zoom-in;
+}
+.q-bild img.zoom {
+  position: fixed; inset: 0; z-index: 1000; margin: auto;
+  max-width: 98vw; max-height: 96vh; width: auto;
+  cursor: zoom-out; box-shadow: 0 0 0 100vmax rgba(0,0,0,.65);
+}

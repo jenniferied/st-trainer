@@ -188,10 +188,25 @@ function einstellungen() {
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
       <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ nicht konfiguriert"} · ${s.pending.length} Events in Warteschlange</p>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-top:0">Nur zum Ausprobieren: zeigt die Auswertung einer bestandenen Klausur-Simulation (zählt nicht, verändert nichts).</p>
+      <button class="btn secondary small" id="testBestandenBtn">🎉 Bestanden-Test</button>
     </div></div>`);
   document.getElementById("back").onclick = home;
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
+  document.getElementById("testBestandenBtn").onclick = () => {
+    const pw = prompt("Passwort:");
+    if (pw == null) return;
+    if (pw.trim().toLowerCase() !== "bestanden") { alert("Falsches Passwort."); return; }
+    // Fake-Session nur für die Anzeige — wird nirgends gespeichert oder gewertet
+    ergebnis({
+      id: "test-bestanden", modus: "klausur", status: "fertig", bestanden: true,
+      punkte: 61, max: 84, bestehenBei: 42, beantwortet: 42, anzahl: 42,
+      dauerSek: 4920, proFrage: [],
+    }, [], { zurueck: einstellungen });
+  };
 }
 
 // ================= BUILDER =================
@@ -499,6 +514,22 @@ function zeigMoodle() {
 }
 
 // ================= ERGEBNIS =================
+// Große Feier bei bestandener Klausur-Simulation: Flork dreht sich rein,
+// zoomt ran, dann Herzregen. Tippen schließt das Overlay (Ergebnis liegt darunter).
+function klausurJubel() {
+  const ov = document.createElement("div");
+  ov.className = "jubel";
+  const herzen = Array.from({ length: 40 }, () => {
+    const sym = ["💗", "💖", "💕", "💘", "❤️"][Math.floor(Math.random() * 5)];
+    return `<span class="herz" style="left:${Math.random() * 100}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;animation-duration:${(2.6 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(2.4 + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
+  }).join("");
+  ov.innerHTML = `${herzen}<img class="jubel-figur" src="assets/stickers/happylovey_figure.png" alt="">
+    <div class="jubel-text">BESTANDEN! 🎉</div>
+    <div class="jubel-hint">tippen zum Schließen</div>`;
+  document.body.appendChild(ov);
+  ov.onclick = () => ov.remove();
+}
+
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
@@ -559,6 +590,8 @@ function ergebnis(session, runde, opts = {}) {
     document.getElementById("homeBtn").onclick = home;
     document.getElementById("nochmal").onclick = home;
   }
+  // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf
+  if (pass && !abgebrochen && session.modus === "klausur" && !opts.ausVerlauf) klausurJubel();
 }
 
 // ================= EXPLORE =================

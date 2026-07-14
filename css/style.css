@@ -284,3 +284,41 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .fade-in { animation: fadein .35s ease both; }
 @keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
 @media (min-width: 640px) { #app { padding-top: 32px; } h1 { font-size: 2.3rem; } }
+
+/* ---------- Klausur-Jubel (Bestanden-Overlay) ---------- */
+.jubel {
+  position: fixed; inset: 0; z-index: 99; overflow: hidden; cursor: pointer;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(80, 40, 60, .55), rgba(30, 22, 30, .88));
+  animation: fadein .4s ease both;
+}
+.jubel-figur {
+  width: min(68vw, 330px); border-radius: 26px;
+  box-shadow: 0 12px 70px rgba(0, 0, 0, .55), 0 0 0 6px rgba(255, 255, 255, .12);
+  animation: jubel-drama 2.6s cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes jubel-drama {
+  0%   { opacity: 0; transform: scale(.04) rotate(0turn); }
+  60%  { opacity: 1; transform: scale(1.28) rotate(2.5turn); }
+  78%  { transform: scale(.94) rotate(3turn); }
+  100% { transform: scale(1.08) rotate(3turn); }
+}
+.jubel .herz {
+  position: absolute; top: -10vh; opacity: 0;
+  animation-name: herzregen; animation-timing-function: linear; animation-iteration-count: infinite;
+}
+@keyframes herzregen {
+  0%   { opacity: 0; transform: translateY(0) rotate(-12deg); }
+  6%   { opacity: 1; }
+  100% { opacity: 1; transform: translateY(120vh) rotate(24deg); }
+}
+.jubel-text {
+  position: absolute; bottom: 16vh;
+  font-family: "Fraunces", serif; font-size: 2.2rem; font-weight: 900; color: #fff;
+  text-shadow: 0 3px 24px rgba(0, 0, 0, .6);
+  animation: fadein .7s 2.3s ease both;
+}
+.jubel-hint {
+  position: absolute; bottom: 9vh; color: rgba(255, 255, 255, .65); font-size: .85rem;
+  animation: fadein .7s 3.2s ease both;
+}

@@ -60,12 +60,21 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], einzeln: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
     try { S = { ...defState(), ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { S = defState(); }
     if (S.active) { S.offen = [...(S.offen || []), S.active]; delete S.active; } // Migration
+    // Migration: zentrales Antwort-Log aus Alt-Daten (Sessions + Explore-Einzelantworten) aufbauen
+    if (!S.antwortLog.length && (S.sessions.length || S.einzeln?.length)) {
+      for (const s of S.sessions) (s.proFrage || []).forEach((x, i) =>
+        S.antwortLog.push({ ts: (s.ts || 0) + i, qid: x.qid, sid: s.id, modus: s.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit ?? null }));
+      for (const e of S.einzeln || [])
+        S.antwortLog.push({ ts: e.ts, qid: e.qid, sid: null, modus: "explore", gewaehlt: null, punkte: e.punkte, max: null, voll: e.voll, zeit: null });
+      S.antwortLog.sort((a, b) => a.ts - b.ts);
+    }
+    delete S.einzeln;
   }
   return S;
 }
@@ -110,30 +119,78 @@ export function leitnerUpdate(qid, ergebnis) { leitnerApply(state().leitner, qid
 export const lvl = (qid) => (state().leitner[qid] || {}).lvl || 0;
 export const gemeistert = (qid) => lvl(qid) >= 3;
 
-// Einzelantworten (Explore) lokal mitloggen, damit rebuildLeitner sie kennt
-export function logEinzeln(qid, erg) {
+// Zentrales Antwort-Log: JEDE beantwortete Frage landet hier —
+// { ts, qid, sid (Session-Id oder null), modus, gewaehlt, punkte, max, voll, zeit }
+export function logAntwort(a) {
   const st = state();
-  (st.einzeln = st.einzeln || []).push({ qid, punkte: erg.punkte, voll: erg.voll, ts: Date.now() });
+  st.antwortLog.push({ sid: null, gewaehlt: null, max: null, zeit: null, ...a, ts: a.ts ?? Date.now() });
   save();
 }
 
-// Lernstand komplett neu aus allen Sessions + Einzelantworten aufbauen
-// (chronologisch abgespielt) — nötig, wenn eine Session gelöscht wird.
+// Lernstand komplett neu aus dem Antwort-Log aufbauen (chronologisch
+// abgespielt) — nötig, wenn eine Session gelöscht wird.
 export function rebuildLeitner() {
   const st = state();
-  const antworten = [];
-  for (const s of st.sessions) (s.proFrage || []).forEach((x, i) => antworten.push({ ts: s.ts, i, qid: x.qid, erg: x }));
-  for (const e of st.einzeln || []) antworten.push({ ts: e.ts, i: 0, qid: e.qid, erg: e });
-  antworten.sort((a, b) => a.ts - b.ts || a.i - b.i);
   st.leitner = {};
-  for (const a of antworten) leitnerApply(st.leitner, a.qid, a.erg, a.ts);
+  for (const a of [...st.antwortLog].sort((x, y) => x.ts - y.ts)) leitnerApply(st.leitner, a.qid, a, a.ts);
   save();
 }
 
 export function loescheSession(id) {
   const st = state();
   st.sessions = st.sessions.filter((s) => s.id !== id);
+  st.antwortLog = st.antwortLog.filter((a) => a.sid !== id);
   rebuildLeitner();
+}
+
+// ---------- Statistiken ----------
+const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+export function frageStats(qid) {
+  const log = state().antwortLog.filter((a) => a.qid === qid);
+  if (!log.length) return null;
+  const quoten = log.filter((a) => a.max).map((a) => a.punkte / a.max);
+  const zeit = avg(log.map((a) => a.zeit).filter((z) => z != null));
+  return {
+    n: log.length,
+    voll: log.filter((a) => a.voll).length,
+    quote: quoten.length ? Math.round(100 * avg(quoten)) : null,
+    zeit: zeit != null ? Math.round(zeit) : null,
+    letzte: log.slice(-5).reverse(),
+  };
+}
+export function statistik() {
+  const st = state();
+  const log = st.antwortLog;
+  const mitMax = log.filter((a) => a.max);
+  const zeit = avg(log.map((a) => a.zeit).filter((z) => z != null));
+  const themen = {};
+  for (const a of log) {
+    const q = frage(a.qid); if (!q) continue;
+    const t = (themen[q.oberthema] = themen[q.oberthema] || { n: 0, quoten: [], zeiten: [] });
+    t.n++;
+    if (a.max) t.quoten.push(a.punkte / a.max);
+    if (a.zeit != null) t.zeiten.push(a.zeit);
+  }
+  const proThema = Object.entries(themen).map(([slug, t]) => ({
+    slug, n: t.n,
+    quote: t.quoten.length ? Math.round(100 * avg(t.quoten)) : null,
+    zeit: t.zeiten.length ? Math.round(avg(t.zeiten)) : null,
+  })).sort((a, b) => b.n - a.n);
+  const tage14 = [];
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  for (let i = 13; i >= 0; i--) {
+    const von = heute.getTime() - i * 86400000;
+    tage14.push({ ts: von, n: log.filter((a) => a.ts >= von && a.ts < von + 86400000).length });
+  }
+  return {
+    beantwortet: log.length,
+    punkteQuote: mitMax.length ? Math.round(100 * avg(mitMax.map((a) => a.punkte / a.max))) : null,
+    vollQuote: log.length ? Math.round((100 * log.filter((a) => a.voll).length) / log.length) : null,
+    avgZeit: zeit != null ? Math.round(zeit) : null,
+    uebungsTage: new Set(log.map((a) => new Date(a.ts).toDateString())).size,
+    sessions: st.sessions.length,
+    proThema, tage14,
+  };
 }
 
 // Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten
@@ -232,6 +289,7 @@ export function werteAus(runde, meta) {
     proFrage,
   };
   state().sessions.push(session);
+  proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit }));
   for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();
   syncSession(session);

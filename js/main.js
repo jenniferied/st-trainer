@@ -10,6 +10,26 @@ const fmtMN = (f) => f.ki.n
   ? `<span title="Originalfragen">${f.og.m}/${f.og.n}</span><small style="display:block;opacity:.75">KI ${f.ki.m}/${f.ki.n}</small>`
   : `${f.og.m}/${f.og.n}`;
 
+// Sticker-Feedback: Meme-Bilder aus assets/stickers, je nach Ergebnis zufällig gewählt.
+// Nur im Trainer-Look — der Moodle-Klausurmodus bleibt bewusst nüchtern.
+const STICKER = {
+  good: ["happy_cat"],
+  part: ["sceptical_creature", "sweet_hamster"],
+  bad: ["sad_cat", "bonk"],
+};
+const sticker = (cls, big) => {
+  const arr = STICKER[cls] || [];
+  if (!arr.length) return "";
+  const name = arr[Math.floor(Math.random() * arr.length)];
+  return `<img class="sticker${big ? " big" : ""}" src="assets/stickers/${name}.png" alt="">`;
+};
+
+// Hinweis-Badges (unbestätigte Lösung, KI-generiert) — wie die Themen-Chips
+// erst NACH der Antwort zeigen, vorher wären sie ein Hinweis (Klausurnähe)
+const qBadges = (q) =>
+  (q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">Lösung unbestätigt</span>` : "") +
+  (q.quelle === "generiert" ? `<span class="badge-src badge-generiert">KI-generiert</span>` : "");
+
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
 let qStart = null; // Start-Timestamp der aktuell angezeigten Frage (Zeit pro Frage)
@@ -81,8 +101,9 @@ function home() {
     <h2 class="mt">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
 
-    <h2 class="mt">Dein Fortschritt</h2>
-    <div class="card">
+    <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Dein Fortschritt</h2>
+      <button class="btn ghost small" data-go="statistik" style="margin-left:auto">📊 Statistik ›</button></div>
+    <div class="card mt" style="margin-top:8px">
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
       </div>
@@ -135,12 +156,10 @@ function sessionDetail(id, zurueck = home) {
 const fmtSek = (sek) => sek >= 90 ? `${Math.round(sek / 60)} min` : `${sek} s`;
 
 function route(ziel) {
-  if (ziel === "klausur") builder({ preset: "klausur" });
-  else if (ziel === "schnell") starte({ modus: "schnell", anzahl: 10, feedback: "sofort", timerModus: "aus", pausierbar: true });
-  else if (ziel === "fehler") starte({ modus: "fehler", anzahl: 15, nurFehler: true, feedback: "sofort", timerModus: "aus", pausierbar: true });
-  else if (ziel === "eigene") builder({ preset: "eigene" });
-  else if (ziel === "explore") explore();
+  if (ziel === "explore") explore();
   else if (ziel === "verlauf") verlauf();
+  else if (ziel === "statistik") statistik();
+  else builder({ preset: ziel });
 }
 
 // ================= EINSTELLUNGEN =================
@@ -160,7 +179,15 @@ function einstellungen() {
 }
 
 // ================= BUILDER =================
+// Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
+const PRESETS = {
+  klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur" },
+  schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
+  fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
+  eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort" },
+};
 function builder({ preset }) {
+  const P = PRESETS[preset] || PRESETS.eigene;
   const istKlausur = preset === "klausur";
   const nta = C.state().settings.nta;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
@@ -172,10 +199,11 @@ function builder({ preset }) {
   }).join("");
 
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>${istKlausur ? "Klausur-Simulation" : "Eigene Runde"}</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>${P.titel}</h1></div>
     ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im <b>Moodle-Look</b> wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall.</p></div>` : ""}
+    ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
     ${!istKlausur ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
-      ${[10, 21, 30, 42].map((n, i) => `<button data-v="${n}" class="${i === 0 ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
+      ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
       <button data-v="aus" class="${istKlausur ? "" : "on"}">Ohne</button>
       <button data-v="normal" class="${istKlausur && !nta ? "on" : ""}">Normal</button>
@@ -184,7 +212,7 @@ function builder({ preset }) {
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
     ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
-      <button data-v="sofort" class="on">Sofort je Frage</button><button data-v="ende" class="">Erst am Ende</button></div></div>` : ""}
+      <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende</button></div></div>` : ""}
     <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list">${themenBoxen}</div></div>
     <button class="btn" id="los">Session erstellen & starten</button>
   </div>`);
@@ -207,14 +235,38 @@ function builder({ preset }) {
     const unterthemen = [...app.querySelectorAll(".uth:checked")].map((x) => x.value);
     if (!unterthemen.length) { alert("Mindestens ein Thema auswählen 🙂"); return; }
     starte({
-      modus: istKlausur ? "klausur" : "eigene",
+      modus: P.modus, nurFehler: P.nurFehler || false,
       anzahl: istKlausur ? 42 : +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
       feedback: istKlausur ? "ende" : segVal("fb"), unterthemen,
     });
   };
 }
-const labelU = (u) => u.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+// Unterthema-Slugs → richtige deutsche Labels (Umlaute, ß, Bindestriche).
+// Fallback: aus dem Slug generiert (für neue Unterthemen die Tabelle ergänzen).
+const U_LABELS = {
+  "allgemein": "Allgemein",
+  // Schultheorie I–III
+  "bildungsungleichheit": "Bildungsungleichheit", "bourdieu": "Bourdieu", "fend": "Fend",
+  "institution-schule": "Institution Schule", "parsons": "Parsons",
+  "foucault": "Foucault", "mead": "Mead", "theorienvergleich": "Theorienvergleich", "von-hentig": "von Hentig",
+  "comenius": "Comenius", "herbart": "Herbart", "humboldt": "Humboldt", "rousseau": "Rousseau",
+  // Schulqualität
+  "bildungsstandards-kmk": "Bildungsstandards & KMK", "effektive-schulen": "Effektive Schulen",
+  "evaluation": "Evaluation", "five-factor-model": "Five-Factor-Modell", "helmke": "Helmke",
+  "kompositionseffekte": "Kompositionseffekte", "lehrerprofessionalitaet": "Lehrerprofessionalität",
+  "outputorientierung": "Outputorientierung", "qualitaetsbereiche": "Qualitätsbereiche",
+  "schulentwicklung": "Schulentwicklung", "schulleistungsstudien": "Schulleistungsstudien",
+  // Schulrecht
+  "erziehungs-ordnungsmassnahmen": "Erziehungs- & Ordnungsmaßnahmen", "fortbildungspflicht": "Fortbildungspflicht",
+  "grundgesetz": "Grundgesetz", "mitwirkung": "Mitwirkung",
+  "rechte-pflichten-lehrkraefte": "Rechte & Pflichten der Lehrkräfte", "rechte-pflichten-sus": "Rechte & Pflichten der SuS",
+  "schulaufsicht": "Schulaufsicht", "schulpflicht": "Schulpflicht", "selbststaendigkeit": "Selbstständigkeit der Schule",
+  // Motivation
+  "attribution": "Attribution", "motivationsfoerderliche-merkmale": "Motivationsförderliche Merkmale",
+  "selbstbestimmungstheorie": "Selbstbestimmungstheorie", "zieltheorien": "Zieltheorien",
+};
+const labelU = (u) => U_LABELS[u] || u.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 // ================= RUNDE =================
 function starte(cfg) {
@@ -277,20 +329,16 @@ function zeigFrage() {
   if (R.cfg.modus === "klausur") return zeigMoodle();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
-  const t = C.THEMEN[q.oberthema] || {};
   h(`<div class="fade-in">
     <div class="q-progress">
       <button class="back" id="abbruch">‹</button>
-      <span class="bar thin" style="--tc:${t.color}"><i style="width:${(100 * R.idx) / R.runde.length}%"></i></span>
+      <span class="bar thin"><i style="width:${(100 * R.idx) / R.runde.length}%"></i></span>
       <span>${R.idx + 1}/${R.runde.length}</span>
       ${R.deadline ? `<span class="timer" id="t-anzeige"></span>` : ""}
       ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn ghost small" id="pauseBtn" title="Pausieren">⏸</button>` : ""}
     </div>
     <div class="card">
-      <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
-        <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>
-        ${q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">Lösung unbestätigt</span>` : ""}
-        ${q.quelle === "generiert" ? `<span class="badge-src badge-generiert">KI-generiert</span>` : ""}
+      <div class="q-head"><span id="qmeta" style="display:contents"></span>
         <span class="q-pts" style="margin-left:auto">${q.maxPunkte} P.</span></div>
       <div class="q-text">${esc(q.frage)}</div>
       <div class="answers" id="answers">
@@ -323,6 +371,11 @@ function zeigFrage() {
 function zeigeFeedback(q, r) {
   const erg = C.scoreFrage(q, r.gewaehlt);
   C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
+  // Thema erst JETZT verraten — während der Beantwortung wäre es ein Hinweis (Klausurnähe)
+  const t = C.THEMEN[q.oberthema] || {};
+  const qmeta = document.getElementById("qmeta");
+  if (qmeta) qmeta.innerHTML = `<span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+    <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}`;
   app.querySelectorAll("#answers label.ans").forEach((el) => {
     const oi = +el.querySelector("input").dataset.oi;
     const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
@@ -336,7 +389,7 @@ function zeigeFeedback(q, r) {
   });
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
   const txt = erg.voll ? `Voll richtig! +${erg.punkte} P. 🎉` : erg.punkte > 0 ? `Teilweise: ${erg.punkte} von ${q.maxPunkte} P.` : `Diesmal 0 Punkte — die Erklärungen unten helfen.`;
-  document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${txt}</div>`;
+  document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${txt}</span></div>`;
 }
 function naechste() {
   if (R.idx + 1 < R.runde.length) {
@@ -413,10 +466,12 @@ function zeigMoodle() {
 }
 
 // ================= ERGEBNIS =================
-function ergebnis(session, runde) {
+function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
   const insights = C.insights(session);
+  const zeiten = (session.proFrage || []).map((x) => x.zeit).filter((z) => z != null);
+  const avgZeit = zeiten.length ? Math.round(zeiten.reduce((a, b) => a + b, 0) / zeiten.length) : null;
   const themen = C.gruppiere(session.proFrage, (x) => x.thema);
   const themenRows = Object.entries(themen).map(([slug, arr]) => {
     const t = C.THEMEN[slug] || { name: slug };
@@ -425,10 +480,16 @@ function ergebnis(session, runde) {
       <span class="bar"><i style="width:${Math.round((100 * p) / m)}%"></i></span><span class="val">${p}/${m}</span></div>`;
   }).join("");
   const review = (runde || []).filter((r) => r.gewaehlt).map((r) => {
-    const q = C.frage(r.qid); const t = C.THEMEN[q.oberthema] || {};
+    const q = C.frage(r.qid); if (!q) return "";
+    const t = C.THEMEN[q.oberthema] || {};
     const erg = session.proFrage.find((x) => x.qid === r.qid);
+    if (!erg) return "";
     return `<div class="review-q">
-      <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span><span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
+      <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+        <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>
+        ${qBadges(q)}
+        ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
+        <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
       <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
       <div class="answers">${r.optOrder.map((oi) => {
         const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
@@ -439,19 +500,30 @@ function ergebnis(session, runde) {
   }).join("");
 
   h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Auswertung</h1>
+      ${opts.ausVerlauf ? `<button class="btn ghost small" id="delBtn" title="Session löschen" style="margin-left:auto">🗑</button>` : ""}</div>
     <div class="card result-big">
+      <img class="sticker big" src="assets/stickers/${abgebrochen ? "sceptical_creature" : pass ? "happy_cat" : "sweet_hamster"}.png" alt="">
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
-      <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min</p>
+      <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
     </div>
     ${insights.length ? `<div class="card"><h3>💡 Insights</h3>${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}
     <div class="card"><h3>Nach Thema</h3>${themenRows}</div>
-    <div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>
+    ${opts.ausVerlauf ? "" : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
     <div class="card mt"><h3>Alle Fragen im Detail</h3>${review || "<p class='muted'>Keine beantworteten Fragen.</p>"}</div>
   </div>`);
-  document.getElementById("homeBtn").onclick = home;
-  document.getElementById("nochmal").onclick = home;
+  const zurueck = opts.zurueck || home;
+  document.getElementById("back").onclick = zurueck;
+  if (opts.ausVerlauf) {
+    document.getElementById("delBtn").onclick = () => {
+      if (confirm("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.")) { C.loescheSession(session.id); zurueck(); }
+    };
+  } else {
+    document.getElementById("homeBtn").onclick = home;
+    document.getElementById("nochmal").onclick = home;
+  }
 }
 
 // ================= EXPLORE =================
@@ -475,8 +547,9 @@ function explore() {
           ${q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">unbestätigt</span>` : ""}
           ${q.relevanz === "laut-rose-nicht-relevant" ? `<span class="badge-src">lt. Rose nicht relevant</span>` : ""}
           <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span>
-          ${q.quizbar ? `<button class="btn ghost small" style="margin-left:auto" data-try="${q.id}">Üben ›</button>` : `<span class="muted" style="margin-left:auto;font-size:.75rem">keine Lösung</span>`}
-        </div><div class="try-zone"></div></div>`).join("");
+          <button class="btn ghost small" style="margin-left:auto" data-info="${q.id}" title="Statistik zu dieser Frage">ℹ️</button>
+          ${q.quizbar ? `<button class="btn ghost small" data-try="${q.id}">Üben ›</button>` : `<span class="muted" style="font-size:.75rem">keine Lösung</span>`}
+        </div><div class="info-zone"></div><div class="try-zone"></div></div>`).join("");
       return `<details class="sub"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}</summary>${items}</details>`;
     }).join("");
     const f = C.themaFortschritt(slug);
@@ -485,6 +558,19 @@ function explore() {
   h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${bloecke}</div>`);
   document.getElementById("back").onclick = home;
   app.querySelectorAll("[data-try]").forEach((b) => b.onclick = () => tryInline(b.dataset.try, b));
+  app.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => toggleInfo(b.dataset.info, b));
+}
+// ℹ️ je Frage: Versuche, Punktequote, Ø Zeit + die letzten Antworten im Detail
+function toggleInfo(qid, btn) {
+  const zone = btn.closest(".q-item").querySelector(".info-zone");
+  if (zone.innerHTML) { zone.innerHTML = ""; return; }
+  const st = C.frageStats(qid);
+  if (!st) { zone.innerHTML = `<div class="q-stats muted">Noch nie geübt — gute Gelegenheit 🙂</div>`; return; }
+  const zeile = (a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
+    <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`;
+  zone.innerHTML = `<div class="q-stats">
+    <b>${st.n}× geübt</b> · ${st.voll}× voll richtig${st.quote != null ? ` · Ø ${st.quote} % der Punkte` : ""}${st.zeit != null ? ` · Ø ${fmtSek(st.zeit)} pro Versuch` : ""}
+    <div class="stat-head">Letzte Versuche:</div>${st.letzte.map(zeile).join("")}</div>`;
 }
 function tryInline(qid, btn) {
   const q = C.frage(qid);
@@ -495,10 +581,13 @@ function tryInline(qid, btn) {
     ${order.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
     </div><button class="btn small mt" id="chk-${qid}">Prüfen (${q.maxPunkte} P.)</button><div class="fbz"></div>`;
   btn.classList.add("hidden");
+  const t0 = Date.now();
   document.getElementById(`chk-${qid}`).onclick = () => {
     const gewaehlt = [...wrap.querySelectorAll("input:checked")].map((x) => +x.dataset.oi);
     const erg = C.scoreFrage(q, gewaehlt);
+    const zeit = Math.round((Date.now() - t0) / 1000);
     C.leitnerUpdate(q.id, erg);
+    C.logAntwort({ qid: q.id, modus: "explore", gewaehlt, punkte: erg.punkte, max: q.maxPunkte, voll: erg.voll, zeit });
     C.syncEvent({ frage_id: q.id, gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: "explore", ts: new Date().toISOString() });
     wrap.querySelectorAll("label.ans").forEach((el) => {
       const oi = +el.querySelector("input").dataset.oi; const o = q.optionen[oi]; const gw = gewaehlt.includes(oi);
@@ -507,10 +596,41 @@ function tryInline(qid, btn) {
       if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${esc(o.erklaerung)}</div>`);
     });
     const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
-    wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</div>`;
+    wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>`;
     const dots = item.querySelector(".lvl-dots"); if (dots) dots.innerHTML = lvlDots(q.id);
     document.getElementById(`chk-${qid}`).classList.add("hidden");
   };
+}
+
+// ================= STATISTIK =================
+function statistik() {
+  const st = C.statistik();
+  const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
+  const themenRows = st.proThema.map(({ slug, n, quote, zeit }) => {
+    const t = C.THEMEN[slug] || { name: slug };
+    return `<div class="progress-row" style="--tc:${t.color}"><span class="lbl">${t.name}</span>
+      <span class="bar"><i style="width:${quote ?? 0}%"></i></span>
+      <span class="val">${quote != null ? quote + " %" : "–"}<small style="display:block;opacity:.75">${n}×${zeit != null ? " · Ø " + fmtSek(zeit) : ""}</small></span></div>`;
+  }).join("");
+  const maxTag = Math.max(1, ...st.tage14.map((d) => d.n));
+  const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Antworten">
+    <i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
+    ${st.beantwortet ? `
+    <div class="card"><div class="stat-grid">
+      ${kachel(st.beantwortet, "Antworten gesamt")}
+      ${kachel(st.punkteQuote != null ? st.punkteQuote + " %" : "–", "Ø Punktequote")}
+      ${kachel(st.vollQuote != null ? st.vollQuote + " %" : "–", "voll richtig")}
+      ${kachel(st.avgZeit != null ? fmtSek(st.avgZeit) : "–", "Ø Zeit pro Frage")}
+      ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
+      ${kachel(st.sessions, "Sessions")}
+    </div></div>
+    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Ø erreichte Punkte, Anzahl Antworten, Ø Zeit</p>${themenRows}</div>
+    <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div></div>`
+    : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
+  </div>`);
+  document.getElementById("back").onclick = home;
 }
 
 // ================= VERLAUF =================
@@ -519,6 +639,7 @@ function verlauf() {
   h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Verlauf</h1></div>
     <div class="card">${items || "<p class='muted'>Noch keine abgeschlossenen Sessions — die erste ist die wichtigste! 💪</p>"}</div></div>`);
   document.getElementById("back").onclick = home;
+  bindHist(verlauf);
 }
 
 // ================= BOOT =================

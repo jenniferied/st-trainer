@@ -180,10 +180,19 @@ label.ans.missed    { border-color: var(--ok);  border-style: dashed; }
 .timer { font-weight: 700; font-variant-numeric: tabular-nums; }
 .timer.low { color: var(--bad); animation: pulse 1s infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
-.fb-banner { border-radius: 12px; padding: 12px 14px; font-weight: 700; margin: 12px 0; }
+.fb-banner { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 12px 14px; font-weight: 700; margin: 12px 0; }
 .fb-banner.good { background: var(--ok-bg); color: var(--ok); }
 .fb-banner.bad { background: var(--bad-bg); color: var(--bad); }
 .fb-banner.part { background: var(--warn-bg); color: #8a6d1a; }
+
+/* Sticker (Meme-Feedback) */
+.sticker {
+  width: 54px; height: 54px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+  box-shadow: var(--shadow);
+  animation: sticker-pop .35s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.sticker.big { width: 96px; height: 96px; border-radius: 18px; margin-bottom: 10px; transform: rotate(-3deg); }
+@keyframes sticker-pop { from { opacity: 0; transform: scale(.4) rotate(-14deg); } }
 
 /* ---------- Ergebnis ---------- */
 .result-big { text-align: center; padding: 26px 16px; }
@@ -217,6 +226,24 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .hist-item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
 .hist-item .when { font-size: .8rem; color: var(--ink-soft); }
 .hist-item .sc { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hist-item.click { cursor: pointer; border-radius: 8px; }
+.hist-item.click:hover { background: var(--paper-2); }
+
+/* ---------- Statistik ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat-tile { background: var(--paper-2); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.stat-tile b { display: block; font-family: "Fraunces", serif; font-size: 1.35rem; font-weight: 800; }
+.stat-tile span { font-size: .72rem; color: var(--ink-soft); }
+.akt-chart { display: flex; gap: 4px; align-items: flex-end; height: 90px; }
+.akt-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
+.akt-col i { display: block; width: 100%; max-width: 22px; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--accent); opacity: .85; }
+.akt-col span { font-size: .62rem; color: var(--ink-soft); }
+
+/* Fragen-Statistik im Explore (ℹ️) */
+.q-stats { background: var(--paper-2); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: .85rem; }
+.q-stats .stat-head { font-weight: 700; font-size: .78rem; color: var(--ink-soft); margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+.q-stats .stat-row { display: flex; gap: 10px; justify-content: space-between; padding: 3px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.q-stats .stat-row span { white-space: nowrap; }
 
 /* ---------- Moodle-Klausurmodus ---------- */
 .moodle {

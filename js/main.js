@@ -12,6 +12,15 @@ const fmtMN = (f) => f.ki.n
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
+let qStart = null; // Start-Timestamp der aktuell angezeigten Frage (Zeit pro Frage)
+
+// Angesammelte Zeit auf der aktuellen Frage verbuchen (idempotent: qStart wird genullt)
+function bankZeit() {
+  if (!R || qStart == null) return;
+  const r = R.runde[R.idx];
+  if (r) r.zeitSek = (r.zeitSek || 0) + Math.round((Date.now() - qStart) / 1000);
+  qStart = null; C.save();
+}
 
 // ================= HOME =================
 function home() {
@@ -58,7 +67,10 @@ function home() {
 
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
 
-    <h2 class="${offene.length ? "mt" : ""}">Neue Session</h2>
+    ${letzte ? `<h2 class="${offene.length ? "mt" : ""}">Zuletzt</h2><div class="card">${letzte}
+      <button class="btn ghost small mt" data-go="verlauf">Alle ${s.sessions.length} Sessions ansehen ›</button></div>` : ""}
+
+    <h2 class="${offene.length || letzte ? "mt" : ""}">Neue Session</h2>
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Moodle-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
@@ -83,9 +95,6 @@ function home() {
       <p class="muted" style="margin:4px 0 12px">5 bestandene Klausur-Simulationen in Folge = bereit. Du schaffst das.</p>
       ${themenDetail}
     </div>
-
-    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card">${letzte}
-      <button class="btn ghost small mt" data-go="verlauf">Alle ${s.sessions.length} Sessions ansehen ›</button></div>` : ""}
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
@@ -93,15 +102,37 @@ function home() {
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = () => {
     if (confirm("Diese offene Session verwerfen? (wird nicht gewertet)")) { C.verwerfeOffene(b.dataset.discard); home(); }
   });
+  bindHist(home);
   document.getElementById("gear").onclick = einstellungen;
 }
 
 function histRow(s) {
   const status = s.status === "abgebrochen" ? `<span class="badge-src badge-unsicher">abgebrochen</span>` : s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">fertig</span>`;
-  return `<div class="hist-item"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${status}
+  return `<div class="hist-item click" data-open="${s.id}"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${status}
     <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
-    <span class="sc">${s.punkte}/${s.max}</span></div>`;
+    <span class="sc">${s.punkte}/${s.max}</span>
+    <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
+// Verlaufs-Zeilen: antippen öffnet die Detail-Auswertung, 🗑 löscht (mit Neuberechnung)
+function bindHist(rerender) {
+  app.querySelectorAll("[data-open]").forEach((el) => el.onclick = (ev) => {
+    if (ev.target.closest("[data-del]")) return;
+    sessionDetail(el.dataset.open, rerender);
+  });
+  app.querySelectorAll("[data-del]").forEach((b) => b.onclick = (ev) => {
+    ev.stopPropagation();
+    if (confirm("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.")) {
+      C.loescheSession(b.dataset.del); rerender();
+    }
+  });
+}
+function sessionDetail(id, zurueck = home) {
+  const s = C.state().sessions.find((x) => x.id === id);
+  if (!s) return home();
+  const pseudo = (s.proFrage || []).filter((x) => C.frage(x.qid)).map((x) => ({ qid: x.qid, optOrder: [...C.frage(x.qid).optionen.keys()], gewaehlt: x.gewaehlt }));
+  ergebnis(s, pseudo, { ausVerlauf: true, zurueck });
+}
+const fmtSek = (sek) => sek >= 90 ? `${Math.round(sek / 60)} min` : `${sek} s`;
 
 function route(ziel) {
   if (ziel === "klausur") builder({ preset: "klausur" });
@@ -204,9 +235,12 @@ function resumeSession(id) {
   if (!R) return home();
   R.startTs = Date.now();
   if (R.restSek != null && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
-  zeigFrage();
+  // Ohne Timer: erst fragen, ob's losgehen soll — die Fragezeit läuft sonst sofort
+  if (R.cfg.timerModus === "aus" && R.cfg.modus !== "klausur") bereit();
+  else zeigFrage();
 }
 function pausiere() {
+  bankZeit();
   if (R.deadline) R.restSek = Math.max(0, Math.round((R.deadline - Date.now()) / 1000));
   R.dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - R.startTs) / 1000);
   delete R.deadline; C.save(); home();
@@ -228,6 +262,7 @@ function tickTimer() {
 }
 function beende(status = "fertig") {
   stopTimer();
+  bankZeit();
   const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
   const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status };
   const rundeKopie = R.runde;
@@ -249,7 +284,7 @@ function zeigFrage() {
       <span class="bar thin" style="--tc:${t.color}"><i style="width:${(100 * R.idx) / R.runde.length}%"></i></span>
       <span>${R.idx + 1}/${R.runde.length}</span>
       ${R.deadline ? `<span class="timer" id="t-anzeige"></span>` : ""}
-      ${R.cfg.pausierbar ? `<button class="btn ghost small" id="pauseBtn">⏸</button>` : ""}
+      ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn ghost small" id="pauseBtn" title="Pausieren">⏸</button>` : ""}
     </div>
     <div class="card">
       <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
@@ -268,18 +303,20 @@ function zeigFrage() {
       </div>
     </div></div>`);
   if (R.deadline) { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
+  qStart = Date.now();
   document.getElementById("abbruch").onclick = abbrechen;
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
   const gewaehlt = () => [...app.querySelectorAll("#answers input:checked")].map((x) => +x.dataset.oi);
   const pruefen = document.getElementById("pruefen");
   if (pruefen) pruefen.onclick = () => {
-    r.gewaehlt = gewaehlt(); C.save();
+    r.gewaehlt = gewaehlt(); bankZeit();
     zeigeFeedback(q, r);
     pruefen.classList.add("hidden");
     document.getElementById("weiter").classList.remove("hidden");
   };
   document.getElementById("weiter").onclick = () => {
-    if (!r.gewaehlt) { r.gewaehlt = gewaehlt(); C.save(); }
+    if (!r.gewaehlt) r.gewaehlt = gewaehlt();
+    bankZeit();
     naechste();
   };
 }
@@ -302,7 +339,32 @@ function zeigeFeedback(q, r) {
   document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${txt}</div>`;
 }
 function naechste() {
-  if (R.idx + 1 < R.runde.length) { R.idx++; C.save(); zeigFrage(); } else beende("fertig");
+  if (R.idx + 1 < R.runde.length) {
+    R.idx++; C.save();
+    // Ohne Timer & ohne Sofort-Feedback: kurz fragen, ob's weitergehen soll —
+    // so misst die Zeit pro Frage nur echtes Nachdenken. (Bei Sofort-Feedback
+    // ist der Weiter-Klick nach dem Lesen der Erklärungen schon dieses Gate.)
+    if (R.cfg.timerModus === "aus" && R.cfg.feedback !== "sofort") bereit();
+    else zeigFrage();
+  } else beende("fertig");
+}
+function bereit() {
+  stopTimer();
+  h(`<div class="fade-in">
+    <div class="q-progress">
+      <button class="back" id="abbruch">‹</button>
+      <span class="bar thin"><i style="width:${(100 * R.idx) / R.runde.length}%"></i></span>
+      <span>${R.idx + 1}/${R.runde.length}</span>
+      <button class="btn ghost small" id="pauseBtn" title="Pausieren">⏸</button>
+    </div>
+    <div class="card center">
+      <h2>Kurz durchatmen 🍃</h2>
+      <p class="muted">Die Zeit pro Frage läuft erst, wenn du bereit bist.</p>
+      <button class="btn" id="los">Bereit — Frage ${R.idx + 1} ›</button>
+    </div></div>`);
+  document.getElementById("abbruch").onclick = abbrechen;
+  document.getElementById("pauseBtn").onclick = pausiere;
+  document.getElementById("los").onclick = zeigFrage;
 }
 
 // ================= MOODLE-KLAUSURMODUS =================
@@ -335,16 +397,17 @@ function zeigMoodle() {
       <button class="btn ghost" id="abbruch">Abbrechen</button>
     </div></div>`);
   if (R.deadline) { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
+  qStart = Date.now();
   const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
-  const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { R.idx--; zeigMoodle(); };
+  const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };
   document.getElementById("next").onclick = () => {
     if (R.idx + 1 === R.runde.length) {
       const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
       if (confirm(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?")) beende("fertig");
-    } else { R.idx++; C.save(); zeigMoodle(); }
+    } else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
   };
-  document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { R.idx = +b.dataset.i; zeigMoodle(); });
+  document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { bankZeit(); R.idx = +b.dataset.i; zeigMoodle(); });
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
   document.getElementById("abbruch").onclick = abbrechen;
 }

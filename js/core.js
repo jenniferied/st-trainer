@@ -60,7 +60,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], einzeln: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
@@ -97,18 +97,44 @@ export function scoreFrage(q, gewaehlt) {
 // ---------- Leitner ----------
 // Level-Skala: −3 … +5. Voll richtig +1; teilweise −1; komplett falsch −2
 // (positives Level fällt dabei direkt auf 0, darunter geht's ins Minus).
-export function leitnerUpdate(qid, ergebnis) {
-  const L = state().leitner;
+function leitnerApply(L, qid, ergebnis, ts) {
   const e = L[qid] || { lvl: 0, seen: 0, ok: 0, teils: 0, falsch: 0 };
   e.seen++;
   if (ergebnis.voll) { e.lvl = Math.min(5, e.lvl + 1); e.ok++; }
   else if (ergebnis.punkte > 0) { e.lvl = Math.max(-3, e.lvl - 1); e.teils++; }
   else { e.lvl = Math.max(-3, Math.min(e.lvl - 2, 0)); e.falsch++; }
-  e.ts = Date.now();
-  L[qid] = e; save();
+  e.ts = ts;
+  L[qid] = e;
 }
+export function leitnerUpdate(qid, ergebnis) { leitnerApply(state().leitner, qid, ergebnis, Date.now()); save(); }
 export const lvl = (qid) => (state().leitner[qid] || {}).lvl || 0;
 export const gemeistert = (qid) => lvl(qid) >= 3;
+
+// Einzelantworten (Explore) lokal mitloggen, damit rebuildLeitner sie kennt
+export function logEinzeln(qid, erg) {
+  const st = state();
+  (st.einzeln = st.einzeln || []).push({ qid, punkte: erg.punkte, voll: erg.voll, ts: Date.now() });
+  save();
+}
+
+// Lernstand komplett neu aus allen Sessions + Einzelantworten aufbauen
+// (chronologisch abgespielt) — nötig, wenn eine Session gelöscht wird.
+export function rebuildLeitner() {
+  const st = state();
+  const antworten = [];
+  for (const s of st.sessions) (s.proFrage || []).forEach((x, i) => antworten.push({ ts: s.ts, i, qid: x.qid, erg: x }));
+  for (const e of st.einzeln || []) antworten.push({ ts: e.ts, i: 0, qid: e.qid, erg: e });
+  antworten.sort((a, b) => a.ts - b.ts || a.i - b.i);
+  st.leitner = {};
+  for (const a of antworten) leitnerApply(st.leitner, a.qid, a.erg, a.ts);
+  save();
+}
+
+export function loescheSession(id) {
+  const st = state();
+  st.sessions = st.sessions.filter((s) => s.id !== id);
+  rebuildLeitner();
+}
 
 // Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten
 export function splitFortschritt(qs) {
@@ -192,7 +218,7 @@ export function werteAus(runde, meta) {
   const proFrage = runde.filter((r) => r.gewaehlt).map((r) => {
     const q = frage(r.qid);
     const erg = scoreFrage(q, r.gewaehlt);
-    return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar };
+    return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, zeit: r.zeitSek ?? null, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar };
   });
   const punkte = proFrage.reduce((a, x) => a + x.punkte, 0);
   const max = runde.map((r) => frage(r.qid).maxPunkte).reduce((a, b) => a + b, 0);

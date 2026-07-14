@@ -190,8 +190,8 @@ function einstellungen() {
       <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ nicht konfiguriert"} · ${s.pending.length} Events in Warteschlange</p>
     </div>
     <div class="card">
-      <p class="muted" style="margin-top:0">Nur zum Ausprobieren: zeigt die Auswertung einer bestandenen Klausur-Simulation (zählt nicht, verändert nichts).</p>
-      <button class="btn secondary small" id="testBestandenBtn">🎉 Bestanden-Test</button>
+      <p class="muted" style="margin-top:0">Hier passiert etwas, aber erst zu einem bestimmten Anlass. 🔮</p>
+      <button class="btn secondary small" id="testBestandenBtn">✨ ???</button>
     </div></div>`);
   document.getElementById("back").onclick = home;
   document.getElementById("exportBtn").onclick = C.exportState;

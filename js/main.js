@@ -200,12 +200,14 @@ function einstellungen() {
     const pw = prompt("Passwort:");
     if (pw == null) return;
     if (pw.trim().toLowerCase() !== "bestanden") { alert("Falsches Passwort."); return; }
+    const st = parseInt(prompt("Welche Stufe? (1–5, 5 = großes Finale)", "5"), 10);
+    if (isNaN(st)) return;
     // Fake-Session nur für die Anzeige — wird nirgends gespeichert oder gewertet
     ergebnis({
       id: "test-bestanden", modus: "klausur", status: "fertig", bestanden: true,
       punkte: 61, max: 84, bestehenBei: 42, beantwortet: 42, anzahl: 42,
       dauerSek: 4920, proFrage: [],
-    }, [], { zurueck: einstellungen });
+    }, [], { zurueck: einstellungen, testStufe: Math.max(1, Math.min(5, st)) });
   };
 }
 
@@ -514,17 +516,39 @@ function zeigMoodle() {
 }
 
 // ================= ERGEBNIS =================
-// Große Feier bei bestandener Klausur-Simulation: Flork dreht sich rein,
-// zoomt ran, dann Herzregen. Tippen schließt das Overlay (Ergebnis liegt darunter).
-function klausurJubel() {
-  const ov = document.createElement("div");
-  ov.className = "jubel";
-  const herzen = Array.from({ length: 40 }, () => {
-    const sym = ["💗", "💖", "💕", "💘", "❤️"][Math.floor(Math.random() * 5)];
-    return `<span class="herz" style="left:${Math.random() * 100}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;animation-duration:${(2.6 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(2.4 + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
+// Große Feier bei bestandener Klausur-Simulation: Flork dreht sich rein, zoomt
+// ran, dann Regen aus Herzen & Co. Eskaliert mit der Bestanden-Serie (Stufe 1–5):
+// jede Stufe mehr Regen, neue Symbole, mehr tanzende Sticker. Stufe 5 = Finale
+// (prüfungsreif): alle Happy-Sticker tanzen, goldener Glow, größter Regen.
+// Tippen schließt das Overlay (Ergebnis liegt darunter).
+const JUBEL_TAENZER = ["happy_cat", "lovey_hedgehog", "verylovey_duck", "sweet_hamster"];
+const JUBEL_PLAETZE = [
+  "left:4%;top:10%", "right:4%;top:16%", "left:6%;bottom:16%", "right:6%;bottom:12%",
+  "left:36%;top:4%", "right:32%;bottom:5%", "left:2%;top:44%", "right:2%;top:40%",
+];
+const JUBEL_TEXT = ["BESTANDEN! 🎉", "2 IN FOLGE! 🎉🎉", "3 IN FOLGE! 🔥", "4 IN FOLGE — FAST DA! 🔥🔥", "ALLE FÜNF — PRÜFUNGSREIF! 👑"];
+function klausurJubel(stufe = 1) {
+  stufe = Math.max(1, Math.min(5, Math.round(stufe) || 1));
+  const symbole = [
+    ["💗", "💖", "💕", "💘", "❤️"],
+    ["🏆", "⭐"],
+    ["🎉", "🎊"],
+    ["👑", "💎"],
+    ["🌟", "🥇", "🎓"],
+  ].slice(0, stufe).flat();
+  const regenStart = stufe === 5 ? 1.4 : 2.4; // im Finale geht's früher los
+  const regen = Array.from({ length: 28 + stufe * 22 }, () => {
+    const sym = symbole[Math.floor(Math.random() * symbole.length)];
+    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;animation-duration:${(2.4 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(regenStart + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
   }).join("");
-  ov.innerHTML = `${herzen}<img class="jubel-figur" src="assets/stickers/happylovey_figure.png" alt="">
-    <div class="jubel-text">BESTANDEN! 🎉</div>
+  const nTaenzer = stufe === 5 ? 8 : stufe - 1;
+  const taenzer = Array.from({ length: nTaenzer }, (_, i) =>
+    `<img class="jubel-taenzer" src="assets/stickers/${JUBEL_TAENZER[i % JUBEL_TAENZER.length]}.png" style="${JUBEL_PLAETZE[i % JUBEL_PLAETZE.length]};--dl:${(1.6 + i * 0.2).toFixed(2)}s;--d:${(1.3 + Math.random() * 0.8).toFixed(2)}s" alt="">`
+  ).join("");
+  const ov = document.createElement("div");
+  ov.className = "jubel" + (stufe === 5 ? " s5" : "");
+  ov.innerHTML = `${regen}${taenzer}<img class="jubel-figur" src="assets/stickers/happylovey_figure.png" alt="">
+    <div class="jubel-text">${JUBEL_TEXT[stufe - 1]}</div>
     <div class="jubel-hint">tippen zum Schließen</div>`;
   document.body.appendChild(ov);
   ov.onclick = () => ov.remove();
@@ -590,8 +614,10 @@ function ergebnis(session, runde, opts = {}) {
     document.getElementById("homeBtn").onclick = home;
     document.getElementById("nochmal").onclick = home;
   }
-  // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf
-  if (pass && !abgebrochen && session.modus === "klausur" && !opts.ausVerlauf) klausurJubel();
+  // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf.
+  // Stufe = aktuelle Bestanden-Serie (die frische Session zählt schon mit).
+  if (pass && !abgebrochen && session.modus === "klausur" && !opts.ausVerlauf)
+    klausurJubel(opts.testStufe || C.pruefungsStreak());
 }
 
 // ================= EXPLORE =================

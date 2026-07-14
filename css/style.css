@@ -322,3 +322,28 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   position: absolute; bottom: 9vh; color: rgba(255, 255, 255, .65); font-size: .85rem;
   animation: fadein .7s 3.2s ease both;
 }
+
+/* Tanzende Sticker (ab Stufe 2, Stufe 5 = alle) */
+.jubel-taenzer {
+  position: absolute; width: clamp(60px, 17vw, 105px); border-radius: 16px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, .45);
+  animation: fadein .5s ease both var(--dl, 1.6s), taenzeln var(--d, 1.6s) ease-in-out infinite var(--dl, 1.6s);
+}
+@keyframes taenzeln {
+  0%   { transform: translateY(0) rotate(-8deg) scale(1); }
+  25%  { transform: translateY(-16px) rotate(8deg) scale(1.07); }
+  50%  { transform: translateY(5px) rotate(-9deg) scale(.95); }
+  75%  { transform: translateY(-11px) rotate(7deg) scale(1.06); }
+  100% { transform: translateY(0) rotate(-8deg) scale(1); }
+}
+
+/* Stufe 5: das große Finale */
+.jubel.s5 { background: radial-gradient(circle at 50% 45%, rgba(120, 60, 90, .6), rgba(30, 22, 30, .9)); }
+.jubel.s5 .jubel-figur {
+  box-shadow: 0 0 0 8px rgba(255, 214, 90, .4), 0 0 70px 18px rgba(255, 170, 210, .45), 0 12px 70px rgba(0, 0, 0, .55);
+}
+.jubel.s5 .jubel-text {
+  font-size: 2.5rem; text-align: center; padding: 0 16px;
+  animation: fadein .7s 2s ease both, text-puls .9s 2.7s ease-in-out infinite alternate;
+}
+@keyframes text-puls { to { transform: scale(1.09); } }

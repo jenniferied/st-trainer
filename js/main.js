@@ -5,7 +5,27 @@ const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // Grafik-Fragen: Bild unter dem Fragetext (Tippen/Klicken = Vollbild-Zoom via CSS :target-frei per Klasse)
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
-const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
+const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
+
+// confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
+// blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.
+// frag(text) => Promise<boolean>, sag(text) => Hinweis mit nur einem Ok-Knopf.
+function frag(text, opts = {}) {
+  return new Promise((res) => {
+    const ov = document.createElement("div");
+    ov.className = "dlg-overlay";
+    ov.innerHTML = `<div class="dlg"><p>${esc(text)}</p><div class="btn-row">
+      ${opts.nurOk ? "" : `<button class="btn secondary" data-x="0">${esc(opts.nein || "Abbrechen")}</button>`}
+      <button class="btn" data-x="1">${esc(opts.ja || "Ja")}</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-x]");
+      if (b) { ov.remove(); res(b.dataset.x === "1"); }
+      else if (e.target === ov) { ov.remove(); res(false); }
+    });
+  });
+}
+const sag = (text) => frag(text, { nurOk: true, ja: "Ok" });
 const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 // „gemeistert"-Anzeige: Originalfragen und KI-Fragen getrennt ausweisen
 const fmtMN = (f) => f.ki.n
@@ -99,6 +119,8 @@ function home() {
     <h2 class="${offene.length || letzte ? "mt" : ""}">Neue Session</h2>
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
+      <button class="mode-card" data-go="halbe"><b>🕧 Halbe Klausur</b><span>21 Fragen · Exam.UP-Look · pausierbar</span></button>
+      <button class="mode-card" data-go="spaced"><b>🧠 Schlaues Wiederholen</b><span>Spaced Repetition: Fälliges zuerst + Neues</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
       <button class="mode-card" data-go="fehler"><b>🔁 Fehler-Training</b><span>Nur Fragen, die noch wackeln</span></button>
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
@@ -126,8 +148,8 @@ function home() {
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
   app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
-  app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = () => {
-    if (confirm("Diese offene Session verwerfen? (wird nicht gewertet)")) { C.verwerfeOffene(b.dataset.discard); home(); }
+  app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = async () => {
+    if (await frag("Diese offene Session verwerfen? (wird nicht gewertet)", { ja: "Verwerfen", nein: "Behalten" })) { C.verwerfeOffene(b.dataset.discard); home(); }
   });
   bindHist(home);
   document.getElementById("gear").onclick = einstellungen;
@@ -148,9 +170,9 @@ function bindHist(rerender) {
     if (ev.target.closest("[data-del],[data-reopen]")) return;
     sessionDetail(el.dataset.open, rerender);
   });
-  app.querySelectorAll("[data-del]").forEach((b) => b.onclick = (ev) => {
+  app.querySelectorAll("[data-del]").forEach((b) => b.onclick = async (ev) => {
     ev.stopPropagation();
-    if (confirm("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.")) {
+    if (await frag("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.", { ja: "Löschen", nein: "Behalten" })) {
       C.loescheSession(b.dataset.del); rerender();
     }
   });
@@ -159,11 +181,11 @@ function bindHist(rerender) {
     reopenSession(b.dataset.reopen);
   });
 }
-function reopenSession(id) {
-  if (!confirm("Session fortsetzen? Sie wandert zurück zu den offenen Sessions, die bisherige Wertung wird zurückgerechnet und beim Abschluss neu gemacht.")) return;
+async function reopenSession(id) {
+  if (!await frag("Session fortsetzen? Sie wandert zurück zu den offenen Sessions, die bisherige Wertung wird zurückgerechnet und beim Abschluss neu gemacht.", { ja: "Fortsetzen", nein: "Lieber nicht" })) return;
   const sess = C.reaktiviereSession(id);
   if (sess) resumeSession(sess.id);
-  else alert("Diese Session ist aus einer älteren Version und hat keinen Fragen-Snapshot — Fortsetzen geht hier leider nicht.");
+  else sag("Diese Session ist aus einer älteren Version und hat keinen Fragen-Snapshot — Fortsetzen geht hier leider nicht.");
 }
 function sessionDetail(id, zurueck = home) {
   const s = C.state().sessions.find((x) => x.id === id);
@@ -233,6 +255,8 @@ function testBestanden(stufe) {
 // Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
 const PRESETS = {
   klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur" },
+  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
+  spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
   schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
   fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
   eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort" },
@@ -240,6 +264,8 @@ const PRESETS = {
 function builder({ preset }) {
   const P = PRESETS[preset] || PRESETS.eigene;
   const istKlausur = preset === "klausur";
+  const istExam = istKlausur || preset === "halbe";   // Exam.UP-Look, Feedback erst am Ende
+  const fixAnzahl = istKlausur ? 42 : preset === "halbe" ? 21 : null;
   const nta = C.state().settings.nta;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
@@ -253,20 +279,21 @@ function builder({ preset }) {
     <div class="topbar"><button class="back" id="back">‹</button><h1>${P.titel}</h1></div>
     ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall.</p></div>` : ""}
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
-    ${!istKlausur ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
+    ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
-      <button data-v="aus" class="${istKlausur ? "" : "on"}">Ohne</button>
-      <button data-v="normal" class="${istKlausur && !nta ? "on" : ""}">Normal</button>
-      <button data-v="nta" class="${istKlausur && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
+      <button data-v="aus" class="${istExam ? "" : "on"}">Ohne</button>
+      <button data-v="normal" class="${istExam && !nta ? "on" : ""}">Normal</button>
+      <button data-v="nta" class="${istExam && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
       <p class="muted" id="timerHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
-    ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
+    ${!istExam ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende</button></div></div>` : ""}
-    ${C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
-      <button data-v="schwer" class="on">Original (Klausur)</button><button data-v="einfach">Einfache Sprache</button></div>
-      <p class="muted">Einfache Varianten, wo vorhanden — sonst die Original-Frage. Zum Schluss am besten mit Original üben.</p></div>` : ""}
+    ${!istExam && C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
+      <button data-v="schwer" class="${(C.state().settings.sprache || "schwer") === "schwer" ? "on" : ""}">Original (Klausur)</button>
+      <button data-v="einfach" class="${C.state().settings.sprache === "einfach" ? "on" : ""}">Einfache Sprache</button></div>
+      <p class="muted">Einfache Varianten, wo vorhanden — sonst die Original-Frage. Deine Wahl wird gemerkt. Klausur-Simulationen laufen immer mit Original-Sprache (wie im Ernstfall).</p></div>` : ""}
     <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list">${themenBoxen}</div></div>
     <button class="btn" id="los">Session erstellen & starten</button>
   </div>`);
@@ -280,20 +307,23 @@ function builder({ preset }) {
   });
   const segVal = (id) => app.querySelector(`#${id} button.on`)?.dataset.v;
   const updateHint = () => {
-    const n = istKlausur ? 42 : +(segVal("anz") || 10);
+    const n = fixAnzahl || +(segVal("anz") || 10);
     const t = segVal("timer");
     document.getElementById("timerHint").textContent = t === "aus" ? "Ohne Zeitdruck üben." : `≈ ${C.timerMinuten(n, t)} Minuten für ${n} Fragen (${t === "nta" ? "mit" : "ohne"} Nachteilsausgleich, relativ zur echten Klausur).`;
   };
   updateHint();
   document.getElementById("los").onclick = () => {
     const unterthemen = [...app.querySelectorAll(".uth:checked")].map((x) => x.value);
-    if (!unterthemen.length) { alert("Mindestens ein Thema auswählen 🙂"); return; }
+    if (!unterthemen.length) { sag("Mindestens ein Thema auswählen 🙂"); return; }
+    // Klausur-/Exam-Modi immer in Original-Sprache (wie im Ernstfall); Übungswahl wird gemerkt
+    const sprache = istExam ? "schwer" : (segVal("sprache") || C.state().settings.sprache || "schwer");
+    if (!istExam && segVal("sprache")) { C.state().settings.sprache = segVal("sprache"); C.save(); }
     starte({
-      modus: P.modus, nurFehler: P.nurFehler || false,
-      anzahl: istKlausur ? 42 : +(segVal("anz") || 10),
+      modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
+      anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
-      feedback: istKlausur ? "ende" : segVal("fb"), unterthemen,
-      sprache: segVal("sprache") || "schwer",
+      feedback: istExam ? "ende" : segVal("fb"), examLook: istExam, unterthemen,
+      sprache,
     });
   };
 }
@@ -329,7 +359,7 @@ function starte(cfg) {
   const sess = C.erstelleSession(cfg);
   if (!sess || sess.runde.length < Math.min(cfg.anzahl, 5)) {
     if (sess) C.verwerfeOffene(sess.id);
-    alert("Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
+    sag("Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
   }
   R = sess;
   R.startTs = Date.now();
@@ -344,7 +374,7 @@ function resumeSession(id) {
   R.startTs = Date.now();
   if (R.restSek != null && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
   // Ohne Timer: erst fragen, ob's losgehen soll — die Fragezeit läuft sonst sofort
-  if (R.cfg.timerModus === "aus" && R.cfg.modus !== "klausur") bereit();
+  if (R.cfg.timerModus === "aus" && R.cfg.modus !== "klausur" && !R.cfg.examLook) bereit();
   else zeigFrage();
 }
 function pausiere() {
@@ -353,11 +383,11 @@ function pausiere() {
   R.dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - R.startTs) / 1000);
   delete R.deadline; C.save(); home();
 }
-function abbrechen() {
+async function abbrechen() {
   const timed = R.cfg.timerModus && R.cfg.timerModus !== "aus";
   if (timed && !R.cfg.pausierbar) {
-    if (confirm("Zeitbegrenzte Session abbrechen? Sie wird als ‚abgebrochen' gewertet.")) beende("abgebrochen");
-  } else if (confirm("Session beenden und bisherige Antworten werten?")) beende("fertig");
+    if (await frag("Zeitbegrenzte Session abbrechen? Sie wird als 'abgebrochen' gewertet.", { ja: "Abbrechen & werten", nein: "Weitermachen" })) beende("abgebrochen");
+  } else if (await frag("Session beenden und bisherige Antworten werten?", { ja: "Beenden & werten", nein: "Weitermachen" })) beende("fertig");
 }
 function stopTimer() { if (timerInt) { clearInterval(timerInt); timerInt = null; } }
 const fmtUhr = (sek) => `${String(Math.floor(sek / 60)).padStart(2, "0")}:${String(sek % 60).padStart(2, "0")}`;
@@ -385,6 +415,7 @@ function tickTimer() {
 }
 function startTick() { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
 function beende(status = "fertig") {
+  if (!R) return; // z.B. Timer lief ab, während der Abbrechen-Dialog noch offen war
   stopTimer();
   bankZeit();
   const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
@@ -398,7 +429,7 @@ function beende(status = "fertig") {
 
 function zeigFrage() {
   stopTimer();
-  if (R.cfg.modus === "klausur") return zeigMoodle();
+  if (R.cfg.modus === "klausur" || R.cfg.examLook) return zeigMoodle();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
   // Antworten bei jedem Anzeigen frisch mischen (nur solange unbeantwortet)
@@ -535,10 +566,10 @@ function zeigMoodle() {
   const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
   const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };
-  document.getElementById("next").onclick = () => {
+  document.getElementById("next").onclick = async () => {
     if (R.idx + 1 === R.runde.length) {
       const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
-      if (confirm(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?")) beende("fertig");
+      if (await frag(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?", { ja: "Abgeben", nein: "Zurück" })) beende("fertig");
     } else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
   };
   document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { bankZeit(); R.idx = +b.dataset.i; zeigMoodle(); });
@@ -638,8 +669,8 @@ function ergebnis(session, runde, opts = {}) {
   </div>`);
   const zurueck = opts.zurueck || home;
   document.getElementById("back").onclick = zurueck;
-  document.getElementById("delBtn").onclick = () => {
-    if (confirm("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.")) { C.loescheSession(session.id); zurueck(); }
+  document.getElementById("delBtn").onclick = async () => {
+    if (await frag("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.", { ja: "Löschen", nein: "Behalten" })) { C.loescheSession(session.id); zurueck(); }
   };
   const rb = document.getElementById("reopenBtn"); if (rb) rb.onclick = () => reopenSession(session.id);
   if (!opts.ausVerlauf) {

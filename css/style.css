@@ -296,6 +296,18 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .moodle-grid button.answered { background: #dee9f5; border-color: var(--up-blue); border-bottom: 3px solid var(--up-blue); }
 .moodle-grid button.now { outline: 2px solid var(--up-dark); }
 
+/* ---------- Eigener Dialog (confirm/alert werden in Embeds stumm blockiert) ---------- */
+.dlg-overlay {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center;
+  background: rgba(41, 36, 27, .45); padding: 20px; animation: fadein .15s ease both;
+}
+.dlg {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(40, 30, 15, .3);
+  padding: 18px; max-width: 420px; width: 100%;
+}
+.dlg p { margin: 0 0 14px; font-weight: 500; }
+
 /* ---------- Utility ---------- */
 .muted { color: var(--ink-soft); font-size: .9rem; }
 .center { text-align: center; }

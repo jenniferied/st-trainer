@@ -159,7 +159,7 @@ export function reaktiviereSession(id) {
     gewaehlt: r.gewaehlt || null,
     zeitSek: r.zeitSek ?? null,
   }));
-  const cfg = { pausierbar: true, feedback: s.modus === "klausur" ? "ende" : "sofort", modus: s.modus, timerModus: s.timerModus, ...(s.cfg || {}) };
+  const cfg = { pausierbar: true, feedback: ["klausur", "halbe"].includes(s.modus) ? "ende" : "sofort", modus: s.modus, timerModus: s.timerModus, ...(s.cfg || {}) };
   let restSek = null;
   if (cfg.timerModus && cfg.timerModus !== "aus") {
     restSek = Math.max(0, timerMinuten(runde.length, cfg.timerModus) * 60 - (s.dauerSek || 0));
@@ -270,6 +270,39 @@ export function baueRunde(cfg) {
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
   if (cfg.quellen?.length) qs = qs.filter((q) => cfg.quellen.includes(q.quelle));
+  // Spaced Repetition: fällige Wiederholungen zuerst (wackligste und am längsten
+  // überfällige vorn), dann neue Fragen, zuletzt Bald-Fälliges als Auffüller
+  if (cfg.spaced) {
+    const SR_TAGE = [0, 1, 2, 4, 6, 9]; // Soll-Abstand in Tagen je Level 0-5; Level < 0 = sofort fällig
+    const L = state().leitner;
+    const jetzt = Date.now();
+    const neu = [], faellig = [], bald = [];
+    for (const q of qs) {
+      const e = L[q.id];
+      if (!e || !e.seen) { neu.push({ q }); continue; }
+      const ueber = (jetzt - (e.ts || 0)) / 86400000 - SR_TAGE[Math.max(0, Math.min(5, e.lvl))];
+      (ueber >= 0 ? faellig : bald).push({ q, ueber, lvl: e.lvl });
+    }
+    faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
+    bald.sort((a, b) => b.ueber - a.ueber); // am nächsten an der Fälligkeit zuerst
+    shuffle(neu);
+    const grp = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
+    const nMax = Math.min(cfg.anzahl || 15, qs.length);
+    const auswahl = []; const belegt = new Set();
+    const nimm = (arr, limit) => {
+      for (const x of arr) {
+        if (auswahl.length >= limit) return;
+        const g = grp(x.q);
+        if (!belegt.has(g)) { belegt.add(g); auswahl.push(x.q); }
+      }
+    };
+    nimm(faellig, Math.ceil(nMax * 0.7)); // max ~70% Wiederholung, damit immer Neues dabei ist
+    nimm(neu, nMax);
+    nimm(faellig, nMax);
+    nimm(bald, nMax);
+    shuffle(auswahl);
+    return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));
+  }
   // Gewichtung: niedrige Leitner-Level zuerst wahrscheinlicher, negative am stärksten
   const gewicht = (q) => {
     const l = lvl(q.id);

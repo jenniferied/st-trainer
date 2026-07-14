@@ -13,9 +13,10 @@ const fmtMN = (f) => f.ki.n
 // Sticker-Feedback: Meme-Bilder aus assets/stickers, je nach Ergebnis zufällig gewählt.
 // Nur im Trainer-Look — der Moodle-Klausurmodus bleibt bewusst nüchtern.
 const STICKER = {
-  good: ["happy_cat"],
-  part: ["sceptical_creature", "sweet_hamster"],
-  bad: ["sad_cat", "bonk"],
+  good: ["happy_cat", "lovey_hedgehog", "verylovey_duck"],
+  part: ["sceptical_creature", "sweet_hamster", "sadsmiling_cat"],
+  bad: ["sad_cat", "bonk", "chained_cat"],
+  sanft: ["sweet_hamster", "sadsmiling_cat"], // fürs Nicht-Bestehen: tröstend, nie Bonk
 };
 const sticker = (cls, big) => {
   const arr = STICKER[cls] || [];
@@ -503,7 +504,7 @@ function ergebnis(session, runde, opts = {}) {
     <div class="topbar"><button class="back" id="back">‹</button><h1>Auswertung</h1>
       ${opts.ausVerlauf ? `<button class="btn ghost small" id="delBtn" title="Session löschen" style="margin-left:auto">🗑</button>` : ""}</div>
     <div class="card result-big">
-      <img class="sticker big" src="assets/stickers/${abgebrochen ? "sceptical_creature" : pass ? "happy_cat" : "sweet_hamster"}.png" alt="">
+      ${abgebrochen ? `<img class="sticker big" src="assets/stickers/sceptical_creature.png" alt="">` : sticker(pass ? "good" : "sanft", true)}
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>

@@ -315,6 +315,7 @@ const U_LABELS = {
   // Schulrecht
   "erziehungs-ordnungsmassnahmen": "Erziehungs- & Ordnungsmaßnahmen", "fortbildungspflicht": "Fortbildungspflicht",
   "grundgesetz": "Grundgesetz", "mitwirkung": "Mitwirkung",
+  "informations-beteiligungsrechte": "Informations- & Beteiligungsrechte",
   "rechte-pflichten-lehrkraefte": "Rechte & Pflichten der Lehrkräfte", "rechte-pflichten-sus": "Rechte & Pflichten der SuS",
   "schulaufsicht": "Schulaufsicht", "schulpflicht": "Schulpflicht", "selbststaendigkeit": "Selbstständigkeit der Schule",
   // Motivation
@@ -657,12 +658,36 @@ const lvlDots = (qid) => {
   const l = C.lvl(qid);
   return [0, 1, 2].map((i) => `<i class="${l > i ? "on" : -l > i ? "neg" : ""}"></i>`).join("");
 };
+// Explore-Filter (bleibt beim Hin- und Herwechseln erhalten)
+const EXF = { quelle: "alle", typ: "alle", status: "alle" };
+const exFilter = (q) => {
+  if (EXF.quelle === "og" && q.quelle === "generiert") return false;
+  if (EXF.quelle === "ki" && q.quelle !== "generiert") return false;
+  if (EXF.quelle === "unsicher" && q.loesungSicherheit !== "unsicher") return false;
+  if (EXF.typ !== "alle" && q.fragetyp !== EXF.typ) return false;
+  if (EXF.status !== "alle") {
+    const l = C.lvl(q.id);
+    const seen = C.frageStats(q.id);
+    if (EXF.status === "neu" && seen) return false;
+    if (EXF.status === "wackelt" && !(seen && l < 3)) return false;
+    if (EXF.status === "sitzt" && l < 3) return false;
+  }
+  return true;
+};
 function explore() {
+  const seg = (id, opts) => `<div class="seg" data-exf="${id}">${opts.map(([v, l]) =>
+    `<button data-v="${v}" class="${EXF[id] === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  const filterRow = `<div class="card" style="padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    ${seg("quelle", [["alle", "Alle"], ["og", "Original"], ["ki", "KI"], ["unsicher", "unbestätigt"]])}
+    ${seg("typ", [["alle", "Alle Typen"], ["negation", "NICHT"], ["anwendung", "Anwendung"]])}
+    ${seg("status", [["alle", "Jeder Stand"], ["neu", "Neu"], ["wackelt", "Wackelt"], ["sitzt", "Sitzt"]])}
+  </div>`;
   const bloecke = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
     const inner = subs.map(([u], ui) => {
-      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach")
+      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach" && exFilter(q))
         .sort((a, b) => C.quelleRank(a.quelle) - C.quelleRank(b.quelle));
+      if (!qs.length) return "";
       const items = qs.map((q) => `<div class="q-item" data-qid="${q.id}">
         <div class="qq">${esc(q.frage)}</div>
         <div class="meta">
@@ -677,11 +702,15 @@ function explore() {
         </div><div class="info-zone"></div><div class="try-zone"></div></div>`).join("");
       return `<details class="sub"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}</summary>${items}</details>`;
     }).join("");
+    if (!inner) return "";
     const f = C.themaFortschritt(slug);
     return `<details class="topic" style="--tc:${t.color}"><summary>${t.name} <span class="muted" style="font-family:Karla;font-size:.85rem">· OG ${f.og.m}/${f.og.n}${f.ki.n ? ` · KI ${f.ki.m}/${f.ki.n}` : ""} gemeistert</span></summary>${inner}</details>`;
   }).join("");
-  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${bloecke}</div>`);
+  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${filterRow}${bloecke || `<p class="muted" style="text-align:center">Kein Treffer mit diesen Filtern.</p>`}</div>`);
   document.getElementById("back").onclick = home;
+  app.querySelectorAll("[data-exf]").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
+    EXF[seg.dataset.exf] = b.dataset.v; explore();
+  }));
   app.querySelectorAll("[data-try]").forEach((b) => b.onclick = () => tryInline(b.dataset.try, b));
   app.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => toggleInfo(b.dataset.info, b));
 }

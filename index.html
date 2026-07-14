@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#2c5f8a">
 </head>
 <body>
 <div id="app" aria-live="polite"><noscript>Bitte JavaScript aktivieren.</noscript></div>
@@ -28,5 +31,9 @@ window.addEventListener("unhandledrejection", function (e) {
 </script>
 <script src="js/config.js"></script>
 <script type="module" src="js/main.js"></script>
+<script>
+// PWA: offline weiterüben (network-first, Cache nur als Fallback)
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
+</script>
 </body>
 </html>

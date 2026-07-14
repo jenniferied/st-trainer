@@ -359,14 +359,18 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   position: absolute; top: -10vh; opacity: 0;
   animation-name: herzregen; animation-timing-function: linear; animation-iteration-count: infinite;
 }
+/* Fallen mit Pendeln (--sw) und Eigendrehung (--spin) — beides wächst mit der Stufe */
 @keyframes herzregen {
-  0%   { opacity: 0; transform: translateY(0) rotate(-12deg); }
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0deg); }
   6%   { opacity: 1; }
-  100% { opacity: 1; transform: translateY(120vh) rotate(24deg); }
+  25%  { transform: translate(var(--sw, 16px), 28vh) rotate(calc(var(--spin, 180deg) * .25)); }
+  50%  { transform: translate(calc(var(--sw, 16px) * -1), 56vh) rotate(calc(var(--spin, 180deg) * .5)); }
+  75%  { transform: translate(var(--sw, 16px), 86vh) rotate(calc(var(--spin, 180deg) * .75)); }
+  100% { opacity: 1; transform: translate(0, 120vh) rotate(var(--spin, 180deg)); }
 }
 .jubel-text {
-  position: absolute; bottom: 16vh;
-  font-family: "Fraunces", serif; font-size: 2.2rem; font-weight: 900; color: #fff;
+  position: absolute; bottom: 16vh; max-width: 92vw;
+  font-family: "Fraunces", serif; font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 900; color: #fff;
   text-shadow: 0 3px 24px rgba(0, 0, 0, .6);
   animation: fadein .7s 2.3s ease both;
 }
@@ -381,24 +385,48 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   box-shadow: 0 6px 30px rgba(0, 0, 0, .45);
   animation: fadein .5s ease both var(--dl, 1.6s), taenzeln var(--d, 1.6s) ease-in-out infinite var(--dl, 1.6s);
 }
+/* Sprunghöhe & Kippwinkel skalieren mit --amp (wächst je Stufe) */
 @keyframes taenzeln {
-  0%   { transform: translateY(0) rotate(-8deg) scale(1); }
-  25%  { transform: translateY(-16px) rotate(8deg) scale(1.07); }
-  50%  { transform: translateY(5px) rotate(-9deg) scale(.95); }
-  75%  { transform: translateY(-11px) rotate(7deg) scale(1.06); }
-  100% { transform: translateY(0) rotate(-8deg) scale(1); }
+  0%   { transform: translateY(0) rotate(calc(-8deg * var(--amp, 1))) scale(1); }
+  25%  { transform: translateY(calc(-16px * var(--amp, 1))) rotate(calc(8deg * var(--amp, 1))) scale(1.07); }
+  50%  { transform: translateY(calc(5px * var(--amp, 1))) rotate(calc(-9deg * var(--amp, 1))) scale(.95); }
+  75%  { transform: translateY(calc(-11px * var(--amp, 1))) rotate(calc(7deg * var(--amp, 1))) scale(1.06); }
+  100% { transform: translateY(0) rotate(calc(-8deg * var(--amp, 1))) scale(1); }
+}
+/* Ab Stufe 3: einzelne Tänzer drehen sich komplett um sich selbst */
+.jubel-taenzer.dreht {
+  animation: fadein .5s ease both var(--dl, 1.6s), kreiseln calc(var(--d, 1.6s) * 1.5) linear infinite var(--dl, 1.6s);
+}
+@keyframes kreiseln {
+  0%   { transform: rotate(0deg) scale(1) translateY(0); }
+  25%  { transform: rotate(90deg) scale(1.1) translateY(calc(-10px * var(--amp, 1))); }
+  50%  { transform: rotate(180deg) scale(.94) translateY(0); }
+  75%  { transform: rotate(270deg) scale(1.1) translateY(calc(8px * var(--amp, 1))); }
+  100% { transform: rotate(360deg) scale(1) translateY(0); }
 }
 
 /* Stufe 5: das große Finale */
 .jubel.s5 { background: radial-gradient(circle at 50% 45%, rgba(120, 60, 90, .6), rgba(30, 22, 30, .9)); }
 .jubel.s5 .jubel-figur {
   box-shadow: 0 0 0 8px rgba(255, 214, 90, .4), 0 0 70px 18px rgba(255, 170, 210, .45), 0 12px 70px rgba(0, 0, 0, .55);
+  /* Nach dem großen Auftritt tanzt der Flork einfach weiter (nahtlos ab Drama-Endzustand) */
+  animation: jubel-drama 2.6s cubic-bezier(.16, 1, .3, 1) both, figur-wackeln 1.5s 2.6s ease-in-out infinite alternate;
+}
+@keyframes figur-wackeln {
+  0%   { transform: scale(1.08) rotate(1080deg); }
+  100% { transform: scale(1.16) rotate(1084deg); }
 }
 .jubel.s5 .jubel-text {
-  font-size: 2.5rem; text-align: center; padding: 0 16px;
+  font-size: clamp(1.7rem, 8vw, 2.5rem); text-align: center; padding: 0 16px;
   animation: fadein .7s 2s ease both, text-puls .9s 2.7s ease-in-out infinite alternate;
 }
 @keyframes text-puls { to { transform: scale(1.09); } }
+
+/* Weniger Trubel für alle, die reduzierte Bewegung eingestellt haben */
+@media (prefers-reduced-motion: reduce) {
+  .jubel .herz, .jubel-taenzer.dreht { display: none; }
+  .jubel-figur, .jubel.s5 .jubel-figur, .jubel-taenzer, .jubel.s5 .jubel-text { animation: fadein .4s ease both; }
+}
 .pw-input {
   flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px;
   padding: 10px 14px; font: inherit; background: var(--card); color: var(--ink);

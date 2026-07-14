@@ -599,14 +599,21 @@ function klausurJubel(stufe = 1) {
     ["🌟", "🥇", "🎓"],
   ].slice(0, stufe).flat();
   const regenStart = stufe === 5 ? 1.4 : 2.4; // im Finale geht's früher los
+  // Mehr Bewegung je Stufe: stärkeres Pendeln (--sw) und mehr Eigendrehung (--spin)
   const regen = Array.from({ length: 28 + stufe * 22 }, () => {
     const sym = symbole[Math.floor(Math.random() * symbole.length)];
-    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;animation-duration:${(2.4 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(regenStart + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
+    const sw = (6 + stufe * 5 + Math.random() * 12).toFixed(0);
+    const spin = (stufe * 110 + Math.random() * 140).toFixed(0);
+    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(regenStart + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
   }).join("");
+  // Tänzer: Sprunghöhe (--amp) wächst mit der Stufe, ab Stufe 3 drehen sich
+  // einzelne komplett um sich selbst, im Finale die Hälfte — und alle schneller
   const nTaenzer = stufe === 5 ? 8 : stufe - 1;
-  const taenzer = Array.from({ length: nTaenzer }, (_, i) =>
-    `<img class="jubel-taenzer" src="assets/stickers/${JUBEL_TAENZER[i % JUBEL_TAENZER.length]}.png" style="${JUBEL_PLAETZE[i % JUBEL_PLAETZE.length]};--dl:${(1.6 + i * 0.2).toFixed(2)}s;--d:${(1.3 + Math.random() * 0.8).toFixed(2)}s" alt="">`
-  ).join("");
+  const amp = (1 + Math.max(0, stufe - 2) * 0.22).toFixed(2);
+  const taenzer = Array.from({ length: nTaenzer }, (_, i) => {
+    const dreht = stufe >= 3 && i % 2 === 1;
+    return `<img class="jubel-taenzer${dreht ? " dreht" : ""}" src="assets/stickers/${JUBEL_TAENZER[i % JUBEL_TAENZER.length]}.png" style="${JUBEL_PLAETZE[i % JUBEL_PLAETZE.length]};--amp:${amp};--dl:${(1.6 + i * 0.2).toFixed(2)}s;--d:${(1.3 + Math.random() * 0.8 - stufe * 0.08).toFixed(2)}s" alt="">`;
+  }).join("");
   const ov = document.createElement("div");
   ov.className = "jubel" + (stufe === 5 ? " s5" : "");
   ov.innerHTML = `${regen}${taenzer}<img class="jubel-figur" src="assets/stickers/happylovey_figure.png" alt="">

@@ -211,6 +211,7 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .lvl-dots { display: inline-flex; gap: 3px; }
 .lvl-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--paper-2); border: 1px solid var(--line); }
 .lvl-dots i.on { background: var(--tc, var(--ok)); border-color: transparent; }
+.lvl-dots i.neg { background: var(--bad); border-color: transparent; }
 
 /* ---------- Verlauf ---------- */
 .hist-item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }

@@ -118,23 +118,12 @@ function einstellungen() {
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Einstellungen</h1></div>
     <div class="card">
-      <div class="field"><label class="flabel">Name (für die Auswertung)</label>
-        <input id="set-name" value="${esc(s.settings.name)}" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font:inherit" placeholder="z.B. Rose"></div>
-      <div class="field"><label class="flabel">Scoring-Variante</label>
-        <div class="seg" id="set-scoring">
-          <button data-v="streng" class="${s.settings.scoring !== "milde" ? "on" : ""}">Streng (offiziell)</button>
-          <button data-v="milde" class="${s.settings.scoring === "milde" ? "on" : ""}">Milde</button>
-        </div>
-        <p class="muted">Streng: +1 je richtigem, −0,5 je falschem Kreuz. Lieber streng trainieren.</p></div>
+      <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
       <p class="muted mt">Sync: ${C.supaAktiv() ? "✅ aktiv" : "⏸ nicht konfiguriert"} · ${s.pending.length} Events in Warteschlange</p>
     </div></div>`);
   document.getElementById("back").onclick = home;
-  document.getElementById("set-name").onchange = (e) => { C.state().settings.name = e.target.value.trim(); C.save(); };
-  document.getElementById("set-scoring").querySelectorAll("button").forEach((b) => b.onclick = () => {
-    C.state().settings.scoring = b.dataset.v; C.save(); einstellungen();
-  });
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
 }
@@ -324,7 +313,7 @@ function zeigMoodle() {
   const single = q.optionen.filter((o) => o.richtig).length === 1;
   h(`<div class="fade-in">
     <div class="moodle">
-      <div class="moodle-bar"><span>Testversuch — ${esc(C.state().settings.name || "Teilnehmer/in")}</span>
+      <div class="moodle-bar"><span>Testversuch</span>
         ${R.deadline ? `<span class="timer" id="t-anzeige"></span>` : ""}</div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}</div>
@@ -391,7 +380,7 @@ function ergebnis(session, runde) {
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
-      <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min · Scoring: ${C.state().settings.scoring === "milde" ? "milde" : "streng"}</p>
+      <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min</p>
     </div>
     ${insights.length ? `<div class="card"><h3>💡 Insights</h3>${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}
     <div class="card"><h3>Nach Thema</h3>${themenRows}</div>
@@ -403,6 +392,11 @@ function ergebnis(session, runde) {
 }
 
 // ================= EXPLORE =================
+// 3 Dots je Frage: grün gefüllt bei positivem Level, rot bei negativem
+const lvlDots = (qid) => {
+  const l = C.lvl(qid);
+  return [0, 1, 2].map((i) => `<i class="${l > i ? "on" : -l > i ? "neg" : ""}"></i>`).join("");
+};
 function explore() {
   const bloecke = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
@@ -417,7 +411,7 @@ function explore() {
           ${q.fragetyp === "anwendung" ? `<span class="badge-src">Anwendung</span>` : ""}
           ${q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">unbestätigt</span>` : ""}
           ${q.relevanz === "laut-rose-nicht-relevant" ? `<span class="badge-src">lt. Rose nicht relevant</span>` : ""}
-          <span class="lvl-dots" style="--tc:${t.color}">${[0,1,2].map((i) => `<i class="${C.lvl(q.id) > i ? "on" : ""}"></i>`).join("")}</span>
+          <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span>
           ${q.quizbar ? `<button class="btn ghost small" style="margin-left:auto" data-try="${q.id}">Üben ›</button>` : `<span class="muted" style="margin-left:auto;font-size:.75rem">keine Lösung</span>`}
         </div><div class="try-zone"></div></div>`).join("");
       return `<details class="sub"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}</summary>${items}</details>`;
@@ -431,7 +425,8 @@ function explore() {
 }
 function tryInline(qid, btn) {
   const q = C.frage(qid);
-  const wrap = btn.closest(".q-item").querySelector(".try-zone");
+  const item = btn.closest(".q-item");
+  const wrap = item.querySelector(".try-zone");
   const order = C.shuffle([...q.optionen.keys()]);
   wrap.innerHTML = `<div class="answers mt" id="try-${qid}">
     ${order.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}"><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
@@ -450,6 +445,7 @@ function tryInline(qid, btn) {
     });
     const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
     wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</div>`;
+    const dots = item.querySelector(".lvl-dots"); if (dots) dots.innerHTML = lvlDots(q.id);
     document.getElementById(`chk-${qid}`).classList.add("hidden");
   };
 }

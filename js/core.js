@@ -40,7 +40,8 @@ export async function ladeFragen() {
   const teile = await Promise.all(
     manifest.dateien.map((f) => fetch("data/" + f).then((r) => r.json()).catch(() => []))
   );
-  POOL = teile.flat().filter((q) => q && q.id && Array.isArray(q.optionen) && q.optionen.length > 1);
+  POOL = teile.flat().filter((q) => q && q.id && Array.isArray(q.optionen) && q.optionen.length > 1
+    && q.relevanz !== "ausgeschlossen"); // Kant & Schulgeschichte: laut Rose komplett raus
   // Nur Fragen mit bekannter Lösung sind quizbar
   for (const q of POOL) {
     q.quizbar = q.optionen.every((o) => o.richtig === true || o.richtig === false)
@@ -85,27 +86,24 @@ export async function importState(file) {
 
 // ---------- Scoring ----------
 export function scoreFrage(q, gewaehlt) {
+  // Fix: strenge Variante (offizieller Klausurtext): +1 je richtigem, −0,5 je falschem Kreuz, floor 0
   const richtigGesetzt = gewaehlt.filter((i) => q.optionen[i].richtig).length;
   const falschGesetzt = gewaehlt.length - richtigGesetzt;
-  let p;
-  if ((state().settings.scoring || "streng") === "milde") {
-    p = richtigGesetzt > 0 ? q.maxPunkte - 0.5 * falschGesetzt : 0;
-  } else {
-    p = richtigGesetzt * 1 - falschGesetzt * 0.5;
-  }
-  p = Math.max(0, Math.min(q.maxPunkte, p));
+  const p = Math.max(0, Math.min(q.maxPunkte, richtigGesetzt * 1 - falschGesetzt * 0.5));
   const voll = richtigGesetzt === q.optionen.filter((o) => o.richtig).length && falschGesetzt === 0;
   return { punkte: p, voll, richtigGesetzt, falschGesetzt };
 }
 
 // ---------- Leitner ----------
+// Level-Skala: −3 … +5. Voll richtig +1; teilweise −1; komplett falsch −2
+// (positives Level fällt dabei direkt auf 0, darunter geht's ins Minus).
 export function leitnerUpdate(qid, ergebnis) {
   const L = state().leitner;
   const e = L[qid] || { lvl: 0, seen: 0, ok: 0, teils: 0, falsch: 0 };
   e.seen++;
   if (ergebnis.voll) { e.lvl = Math.min(5, e.lvl + 1); e.ok++; }
-  else if (ergebnis.punkte > 0) { e.lvl = Math.max(0, e.lvl - 1); e.teils++; }
-  else { e.lvl = 0; e.falsch++; }
+  else if (ergebnis.punkte > 0) { e.lvl = Math.max(-3, e.lvl - 1); e.teils++; }
+  else { e.lvl = Math.max(-3, Math.min(e.lvl - 2, 0)); e.falsch++; }
   e.ts = Date.now();
   L[qid] = e; save();
 }
@@ -133,7 +131,7 @@ export function gesamtFortschritt() {
 export function lernscore() {
   const qs = POOL.filter((q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant");
   if (!qs.length) return 0;
-  const sum = qs.reduce((a, q) => a + Math.min(lvl(q.id), 3) / 3, 0);
+  const sum = qs.reduce((a, q) => a + Math.max(0, Math.min(lvl(q.id), 3)) / 3, 0);
   return Math.round((100 * sum) / qs.length);
 }
 export function pruefungsStreak() {
@@ -152,8 +150,11 @@ export function baueRunde(cfg) {
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
   if (cfg.quellen?.length) qs = qs.filter((q) => cfg.quellen.includes(q.quelle));
-  // Gewichtung: niedrige Leitner-Level zuerst wahrscheinlicher
-  const gewicht = (q) => [8, 5, 3, 2, 1, 1][lvl(q.id)] * (q.quelle?.startsWith("pingo") ? 1.4 : 1);
+  // Gewichtung: niedrige Leitner-Level zuerst wahrscheinlicher, negative am stärksten
+  const gewicht = (q) => {
+    const l = lvl(q.id);
+    return (l < 0 ? 10 : [8, 5, 3, 2, 1, 1][l]) * (q.quelle?.startsWith("pingo") ? 1.4 : 1);
+  };
   const gew = qs.map((q) => ({ q, w: gewicht(q) * (0.5 + Math.random()) }));
   gew.sort((a, b) => b.w - a.w);
   const n = Math.min(cfg.anzahl || 10, gew.length);

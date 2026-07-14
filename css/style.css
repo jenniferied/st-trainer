@@ -177,8 +177,9 @@ label.ans.missed    { border-color: var(--ok);  border-style: dashed; }
 .explain.bad  { border-color: var(--bad); }
 .q-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .q-progress .bar { flex: 1; }
-.timer { font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer.low { color: var(--bad); animation: pulse 1s infinite; }
+.q-zeit { font-size: .78rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @keyframes pulse { 50% { opacity: .55; } }
 .fb-banner { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 12px 14px; font-weight: 700; margin: 12px 0; }
 .fb-banner.good { background: var(--ok-bg); color: var(--ok); }

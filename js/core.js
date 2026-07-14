@@ -143,6 +143,34 @@ export function loescheSession(id) {
   rebuildLeitner();
 }
 
+// Fertige/abgebrochene Session aus dem Verlauf wieder öffnen: alte Wertung
+// zurückrechnen (wie beim Löschen), Session mit den bisherigen Antworten
+// zurück zu den offenen. Beim Abschluss wird alles neu gewertet & geloggt.
+export function reaktiviereSession(id) {
+  const st = state();
+  const s = st.sessions.find((x) => x.id === id);
+  if (!s?.runde) return null; // ältere Sessions ohne Fragen-Snapshot
+  st.sessions = st.sessions.filter((x) => x.id !== id);
+  st.antwortLog = st.antwortLog.filter((a) => a.sid !== id);
+  rebuildLeitner();
+  const runde = s.runde.filter((r) => frage(r.qid)).map((r) => ({
+    qid: r.qid,
+    optOrder: r.optOrder || shuffle([...frage(r.qid).optionen.keys()]),
+    gewaehlt: r.gewaehlt || null,
+    zeitSek: r.zeitSek ?? null,
+  }));
+  const cfg = { pausierbar: true, feedback: s.modus === "klausur" ? "ende" : "sofort", modus: s.modus, timerModus: s.timerModus, ...(s.cfg || {}) };
+  let restSek = null;
+  if (cfg.timerModus && cfg.timerModus !== "aus") {
+    restSek = Math.max(0, timerMinuten(runde.length, cfg.timerModus) * 60 - (s.dauerSek || 0));
+    if (restSek < 60) { cfg.timerModus = "aus"; restSek = null; } // Zeit war um → ohne Zeitdruck zu Ende
+  }
+  const erste = runde.findIndex((r) => !r.gewaehlt);
+  const sess = { id: s.id, erstellt: s.erstellt, cfg, runde, idx: erste < 0 ? 0 : erste, restSek, dauerSek: s.dauerSek || 0 };
+  st.offen.push(sess); save();
+  return sess;
+}
+
 // ---------- Statistiken ----------
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 export function frageStats(qid) {
@@ -287,6 +315,9 @@ export function werteAus(runde, meta) {
     anzahl: runde.length, beantwortet: proFrage.length,
     punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: meta.status !== "abgebrochen" && punkte >= bestehenBei,
     proFrage,
+    // Snapshot für "Fortsetzen" aus dem Verlauf (auch unbeantwortete Fragen)
+    cfg: meta.cfg || null,
+    runde: runde.map((r) => ({ qid: r.qid, optOrder: r.optOrder, gewaehlt: r.gewaehlt || null, zeitSek: r.zeitSek ?? null })),
   };
   state().sessions.push(session);
   proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit }));

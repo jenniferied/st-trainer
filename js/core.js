@@ -22,12 +22,13 @@ export const quelleLabel = (q) => (QUELLEN_ORDNUNG.find(([k]) => k === q) || [q,
 export const quelleRank = (q) => { const i = QUELLEN_ORDNUNG.findIndex(([k]) => k === q); return i < 0 ? 99 : i; };
 
 // Farbabstufung für Unterthemen: Basis-Hex Richtung hell/dunkel mischen
+// (Mix-Ziele als CSS-Variablen, damit Night Mode passende Ziele setzen kann)
 export function subColor(thema, idx) {
   const base = (THEMEN[thema] || {}).hex || "#777";
   const pct = [0, 18, 34, 48, 60, 26, 42][idx % 7];
   return idx % 2 === 0
-    ? `color-mix(in srgb, ${base} ${100 - pct}%, white)`
-    : `color-mix(in srgb, ${base} ${100 - pct}%, #29241b)`;
+    ? `color-mix(in srgb, ${base} ${100 - pct}%, var(--mix-hell, white))`
+    : `color-mix(in srgb, ${base} ${100 - pct}%, var(--mix-dunkel, #29241b))`;
 }
 
 // ---------- Daten laden ----------
@@ -60,7 +61,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], settings: { name: "", nta: true, scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {

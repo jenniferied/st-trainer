@@ -7,6 +7,19 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
 const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
 
+// Night Mode: settings.theme = "auto" | "hell" | "dunkel" — auto folgt dem System.
+// index.html setzt data-theme schon vor dem CSS (kein Aufblitzen beim Laden).
+function applyTheme() {
+  let t = C.state().settings.theme || "auto";
+  if (t === "auto") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dunkel" : "hell";
+  document.documentElement.dataset.theme = t;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === "dunkel" ? "#1f1a12" : "#faf5ec";
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if ((C.state().settings.theme || "auto") === "auto") applyTheme();
+});
+
 // confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
 // blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.
 // frag(text) => Promise<boolean>, sag(text) => Hinweis mit nur einem Ok-Knopf.
@@ -208,6 +221,14 @@ function einstellungen() {
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Einstellungen</h1></div>
     <div class="card">
+      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Aussehen</span>
+      <div class="seg" id="themeSeg">
+        ${[["auto", "Automatisch"], ["hell", "☀️ Hell"], ["dunkel", "🌙 Dunkel"]].map(([v, l]) =>
+          `<button data-v="${v}" class="${(s.settings.theme || "auto") === v ? "on" : ""}">${l}</button>`).join("")}
+      </div>
+      <p class="muted" style="margin:8px 0 0">Automatisch folgt der Einstellung deines Geräts.</p>
+    </div>
+    <div class="card">
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
@@ -218,6 +239,10 @@ function einstellungen() {
       <div id="mystZone"><button class="btn secondary small" id="testBestandenBtn">✨ ???</button></div>
     </div></div>`);
   document.getElementById("back").onclick = home;
+  document.querySelectorAll("#themeSeg button").forEach((b) => b.onclick = () => {
+    C.state().settings.theme = b.dataset.v; C.save(); applyTheme();
+    document.querySelectorAll("#themeSeg button").forEach((x) => x.classList.toggle("on", x === b));
+  });
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); home(); } };
   // Kein prompt()/alert() hier — die werden in manchen Kontexten (iframe, Embed)
@@ -495,7 +520,7 @@ function zeigeFeedback(q, r) {
     }
   });
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
-  const txt = erg.voll ? `Voll richtig! +${erg.punkte} P. 🎉` : erg.punkte > 0 ? `Teilweise: ${erg.punkte} von ${q.maxPunkte} P.` : `Diesmal 0 Punkte — die Erklärungen unten helfen.`;
+  const txt = erg.voll ? `Voll richtig! +${erg.punkte} P. 🎉` : erg.punkte > 0 ? `Teilweise: ${erg.punkte} von ${q.maxPunkte} P.` : `Diesmal 0 Punkte — die Erklärungen sollten helfen.`;
   document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${txt}</span></div>`;
 }
 function naechste() {
@@ -623,6 +648,15 @@ function klausurJubel(stufe = 1) {
   ov.onclick = () => ov.remove();
 }
 
+// Ergebnis-Review: dieselben Tags wie im Stöbern — Quelle samt Fundstelle
+// (z.B. Pingo, Folie/Frage-Nr.), Fragetyp, unbestätigt, KI-generiert + Lernstand-Dots
+const reviewTags = (q, t) =>
+  `<span class="badge-src${q.quelle === "generiert" ? " badge-generiert" : ""}">${esc(C.quelleLabel(q.quelle))}${q.quelleDetail ? " · " + esc(q.quelleDetail) : ""}</span>` +
+  (q.fragetyp === "negation" ? `<span class="badge-src">NICHT-Frage</span>` : "") +
+  (q.fragetyp === "anwendung" ? `<span class="badge-src">Anwendung</span>` : "") +
+  (q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">Lösung unbestätigt</span>` : "") +
+  `<span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span>`;
+
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
@@ -644,7 +678,7 @@ function ergebnis(session, runde, opts = {}) {
     return `<div class="review-q">
       <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
         <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>
-        ${qBadges(q)}
+        ${reviewTags(q, t)}
         ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
         <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
       <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
@@ -729,7 +763,7 @@ function explore() {
       const items = qs.map((q) => `<div class="q-item" data-qid="${q.id}">
         <div class="qq">${esc(q.frage)}</div>
         <div class="meta">
-          <span class="badge-src">${C.quelleLabel(q.quelle)}</span>
+          <span class="badge-src">${esc(C.quelleLabel(q.quelle))}${q.quelleDetail ? " · " + esc(q.quelleDetail) : ""}</span>
           ${q.fragetyp === "negation" ? `<span class="badge-src">NICHT-Frage</span>` : ""}
           ${q.fragetyp === "anwendung" ? `<span class="badge-src">Anwendung</span>` : ""}
           ${q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">unbestätigt</span>` : ""}
@@ -836,6 +870,7 @@ function verlauf() {
 
 // ================= BOOT =================
 (async function boot() {
+  applyTheme();
   h(`<div class="card center mt"><h2>Lade Fragen …</h2></div>`);
   try {
     await C.ladeFragen();

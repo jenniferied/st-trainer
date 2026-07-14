@@ -5,6 +5,9 @@
 */
 
 :root {
+  /* Abstands-Skala (4px-Basis) — Abstände aus der Skala wählen, keine ad-hoc-Pixel */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+
   --paper: #faf5ec;
   --paper-2: #f3ecdd;
   --card: #fffdf8;
@@ -18,8 +21,19 @@
   --bad: #b3362b;
   --bad-bg: #fbe7e4;
   --warn-bg: #fdf3d7;
+  --warn-ink: #8a6d1a;
+  --warn-border: #d9b64a;
+  --sel-bg: #f6efe2;        /* gewählte Antwort */
+  --sel-accent-bg: #fdf1e9; /* gewählte Checkbox im Builder */
+  --missed-bg: #f3faf5;
+  --badge-gen-bg: #e8e4f5;
+  --badge-gen-ink: #5b4a8f;
+  --glow: #f6e8d4;          /* Schimmer oben rechts im Seitenhintergrund */
+  --mix-hell: #fff;         /* Mix-Ziele für Unterthema-Abstufung (core.js subColor) */
+  --mix-dunkel: #29241b;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(60,50,30,.06), 0 6px 20px -8px rgba(60,50,30,.18);
+  color-scheme: light;
 
   /* Themenfarben (Basis) — Unterthemen via color-mix abgestuft */
   --c-st1: #2f5d9e;   /* Schultheorie I  — Blau */
@@ -30,6 +44,46 @@
   --c-um:  #4e7d2e;   /* Motivation — Grün */
 }
 
+/* ---------- Night Mode ----------
+   Gesteuert über data-theme auf <html> (main.js: Auto folgt dem System).
+   Der Exam.UP-Klausurmodus (.moodle) bleibt bewusst immer hell —
+   die echte Prüfungsplattform ist hell, und die Vertrautheit ist der Punkt. */
+:root[data-theme="dunkel"] {
+  --paper: #1f1a12;
+  --paper-2: #2b2417;
+  --card: #282217;
+  --ink: #ece3cf;
+  --ink-soft: #a89a7f;
+  --line: #443b28;
+  --accent: #d0703d;
+  --ok: #66b98a;
+  --ok-bg: #21352a;
+  --bad: #e07a6b;
+  --bad-bg: #3e2622;
+  --warn-bg: #3a2f15;
+  --warn-ink: #dfc26a;
+  --warn-border: #8f7429;
+  --sel-bg: #35301f;
+  --sel-accent-bg: #3b2b1c;
+  --missed-bg: #232e26;
+  --badge-gen-bg: #37305a;
+  --badge-gen-ink: #c3b8f5;
+  --glow: #2c2315;
+  --mix-hell: #efe6d2;
+  --mix-dunkel: #8d8168;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px -8px rgba(0,0,0,.55);
+  color-scheme: dark;
+
+  /* Themenfarben leicht aufgehellt, damit Chips & Balken auf Dunkel tragen */
+  --c-st1: #5f8cc9;
+  --c-st2: #9c74bf;
+  --c-st3: #3d9c92;
+  --c-sq:  #c69a37;
+  --c-sr:  #c25b70;
+  --c-um:  #6f9e4c;
+}
+:root[data-theme="dunkel"] .q-bild img { filter: brightness(.9); } /* Folien-Grafiken bleiben weiß, nur leicht gedimmt */
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 button, label { touch-action: manipulation; } /* kein Doppeltipp-Zoom auf dem Handy */
@@ -37,16 +91,16 @@ body {
   margin: 0;
   font-family: "Karla", "Avenir Next", sans-serif;
   font-size: 16.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--ink);
   background:
-    radial-gradient(1200px 500px at 80% -10%, #f6e8d4 0%, transparent 60%),
+    radial-gradient(1200px 500px at 80% -10%, var(--glow) 0%, transparent 60%),
     var(--paper);
   min-height: 100dvh;
 }
 #app {
   max-width: 760px; margin: 0 auto;
-  padding: 16px max(16px, env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(var(--sp-4), env(safe-area-inset-left));
 }
 
 h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.15; margin: 0 0 .4em; }
@@ -63,8 +117,8 @@ button { font: inherit; cursor: pointer; }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 18px;
-  margin-bottom: 14px;
+  padding: var(--sp-5) var(--sp-4);
+  margin-bottom: var(--sp-4);
 }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -80,7 +134,7 @@ button { font: inherit; cursor: pointer; }
 .btn.ghost { background: transparent; box-shadow: none; color: var(--ink-soft); border: none; }
 .btn.small { width: auto; padding: 8px 14px; font-size: .92rem; }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
 .btn-row .btn { flex: 1 1 130px; }
 
 .chip {
@@ -94,10 +148,10 @@ button { font: inherit; cursor: pointer; }
   font-size: .72rem; font-weight: 700; color: var(--ink-soft);
   background: var(--paper-2); border-radius: 6px; padding: 2px 7px;
 }
-.badge-unsicher { background: var(--warn-bg); color: #8a6d1a; }
-.badge-generiert { background: #e8e4f5; color: #5b4a8f; }
+.badge-unsicher { background: var(--warn-bg); color: var(--warn-ink); }
+.badge-generiert { background: var(--badge-gen-bg); color: var(--badge-gen-ink); }
 
-.topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.topbar { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .topbar h1 { flex: 1; margin: 0; font-size: 1.4rem; }
 .back { background: none; border: none; font-size: 1.5rem; padding: 4px 10px 4px 0; color: var(--ink); }
 
@@ -146,33 +200,33 @@ label.check {
   background: var(--card); padding: 13px 14px;
   transition: border-color .15s, background .15s;
 }
-label.check:has(input:checked) { border-color: var(--accent); background: #fdf1e9; }
+label.check:has(input:checked) { border-color: var(--accent); background: var(--sel-accent-bg); }
 label.check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
 label.check.sub { margin-left: 26px; padding: 9px 12px; font-size: .93rem; }
 label.check:has(input:disabled) { opacity: .55; }
 .seg { display: flex; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
 .seg button { flex: 1; border: none; background: transparent; padding: 11px 6px; font-weight: 700; font-size: .9rem; color: var(--ink-soft); }
-.seg button.on { background: var(--ink); color: #fff; }
+.seg button.on { background: var(--ink); color: var(--paper); }
 .field { margin-bottom: 16px; }
 .field > .flabel { font-weight: 700; font-size: .92rem; margin-bottom: 7px; display: block; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; }
 
 /* ---------- Quiz (Trainer-Look) ---------- */
 .q-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.q-text { font-size: 1.13rem; font-weight: 700; margin: 6px 0 14px; }
+.q-text { font-size: 1.13rem; font-weight: 700; line-height: 1.4; margin: var(--sp-2) 0 var(--sp-4); }
 .q-pts { color: var(--ink-soft); font-size: .9rem; font-weight: 700; white-space: nowrap; }
 .answers { display: flex; flex-direction: column; gap: 10px; }
 label.ans {
-  display: flex; gap: 12px; align-items: flex-start;
+  display: flex; gap: var(--sp-3); align-items: flex-start;
   border: 1.5px solid var(--line); border-radius: 12px;
-  background: var(--card); padding: 13px 14px; font-size: .98rem;
+  background: var(--card); padding: 13px 14px; font-size: .98rem; line-height: 1.45;
   transition: border-color .12s, background .12s;
 }
 label.ans input { width: 21px; height: 21px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; }
-label.ans:has(input:checked) { border-color: var(--ink); background: #f6efe2; }
+label.ans:has(input:checked) { border-color: var(--ink); background: var(--sel-bg); }
 /* Feedback-Zustände — kräftig markiert: Farbe, Kantenstreifen + Pill rechts */
 label.ans.correct   { border: 2px solid var(--ok);  background: var(--ok-bg);  box-shadow: inset 4px 0 0 var(--ok); }
 label.ans.wrong     { border: 2px solid var(--bad); background: var(--bad-bg); box-shadow: inset 4px 0 0 var(--bad); }
-label.ans.missed    { border: 2px dashed var(--ok); background: #f3faf5; }
+label.ans.missed    { border: 2px dashed var(--ok); background: var(--missed-bg); }
 label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after {
   margin-left: auto; flex-shrink: 0; white-space: nowrap; align-self: flex-start;
   font-size: .68rem; font-weight: 800; letter-spacing: .02em;
@@ -180,17 +234,19 @@ label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after {
 }
 label.ans.correct::after { content: "✓ richtig"; background: var(--ok); color: #fff; }
 label.ans.wrong::after   { content: "✗ falsch";  background: var(--bad); color: #fff; }
-label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var(--ok); color: var(--ok); background: #fff; }
-/* Erklärungen/Tipps: als eigene Hinweis-Box, nicht nur dünner Strich */
+label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var(--ok); color: var(--ok); background: var(--card); }
+/* Erklärungen/Tipps: Hinweis-Box, hängt direkt unter ihrer Antwort-Bubble
+   (negativer margin-top zieht sie gegen den .answers-gap an die Bubble ran,
+   der Kantenstreifen links fluchtet mit dem Streifen der Bubble) */
 .explain {
-  display: flex; gap: 8px;
-  margin: 6px 0 0 24px; font-size: .9rem; color: var(--ink);
+  display: flex; gap: var(--sp-2);
+  margin: -4px 0 var(--sp-1) var(--sp-3); font-size: .9rem; color: var(--ink);
   background: var(--paper-2); border-left: 4px solid var(--line);
-  border-radius: 0 10px 10px 0; padding: 8px 12px 8px 10px;
+  border-radius: 0 0 10px 10px; padding: 8px 12px 8px 10px;
 }
 .explain::before { content: "💡"; flex-shrink: 0; }
-.explain.good { border-color: var(--ok); background: color-mix(in srgb, var(--ok-bg) 65%, white); }
-.explain.bad  { border-color: var(--bad); background: color-mix(in srgb, var(--bad-bg) 65%, white); }
+.explain.good { border-color: var(--ok); background: color-mix(in srgb, var(--ok-bg) 65%, var(--card)); }
+.explain.bad  { border-color: var(--bad); background: color-mix(in srgb, var(--bad-bg) 65%, var(--card)); }
 .q-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .q-progress .bar { flex: 1; }
 .timer { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -200,7 +256,7 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .fb-banner { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 12px 14px; font-weight: 700; margin: 12px 0; }
 .fb-banner.good { background: var(--ok-bg); color: var(--ok); border: 1.5px solid var(--ok); }
 .fb-banner.bad { background: var(--bad-bg); color: var(--bad); border: 1.5px solid var(--bad); }
-.fb-banner.part { background: var(--warn-bg); color: #8a6d1a; border: 1.5px solid #d9b64a; }
+.fb-banner.part { background: var(--warn-bg); color: var(--warn-ink); border: 1.5px solid var(--warn-border); }
 
 /* Sticker (Meme-Feedback) */
 .sticker {
@@ -311,21 +367,37 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 /* ---------- Utility ---------- */
 .muted { color: var(--ink-soft); font-size: .9rem; }
 .center { text-align: center; }
-.mt { margin-top: 14px; }
+.mt { margin-top: var(--sp-4); }
 .hidden { display: none !important; }
 .fade-in { animation: fadein .35s ease both; }
 @keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
-@media (min-width: 640px) { #app { padding-top: 32px; } h1 { font-size: 2.3rem; } }
+
+/* ---------- Größere Screens: eine Stufe mehr Luft auf der Skala ---------- */
+@media (min-width: 640px) {
+  #app { padding-top: var(--sp-8); }
+  h1 { font-size: 2.3rem; }
+  .card { padding: var(--sp-6); margin-bottom: var(--sp-5); }
+  .mode-grid { gap: var(--sp-4); }
+  .mode-card { padding: var(--sp-5) var(--sp-4); }
+  .answers, .opt-list { gap: var(--sp-3); }
+  .topbar { margin-bottom: var(--sp-5); }
+  .q-text { font-size: 1.2rem; }
+}
 
 /* ---------- Kleine Handys (Rose übt am Handy!) ---------- */
 @media (max-width: 460px) {
-  .card { padding: 14px 12px; }
+  body { font-size: 16px; }
+  .card { padding: var(--sp-4) var(--sp-3); }
   h1 { font-size: 1.6rem; }
   .topbar h1 { font-size: 1.25rem; }
   .seg button { padding: 11px 3px; font-size: .8rem; }
   .q-progress { gap: 7px; font-size: .9rem; }
-  .explain { margin-left: 10px; font-size: .87rem; }
+  .q-text { font-size: 1.08rem; }
+  label.ans { padding: 12px; font-size: .95rem; }
+  .explain { margin-left: var(--sp-2); font-size: .87rem; }
   label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after { font-size: .62rem; padding: 2px 7px; }
+  .mode-card { padding: 14px 12px; }
+  .mode-card span { font-size: .82rem; }
   /* Exam.UP: Info-Block nicht floaten, volle Breite; größere Tap-Ziele */
   .moodle .qinfo { float: none; margin: 0 0 10px; }
   .moodle-nav { flex-wrap: wrap; }

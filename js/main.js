@@ -131,8 +131,22 @@ function home() {
 
   const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
 
+  // Erster Sync auf diesem Gerät und beide Seiten haben Daten: nachfragen statt vermischen
+  const k = C.syncKonflikt();
+  const konfliktCard = !k ? "" : `<div class="card" id="syncKonflikt">
+      <h2 style="margin-top:0">Zwei Lernstände 🤔</h2>
+      <p class="muted">Auf diesem Gerät liegt ein Lernstand, und online unter dem Code „${esc(C.syncCode())}" liegt auch einer (${(k.sessions || []).length} Sessions, ${(k.antwortLog || []).length} Antworten). Was soll gelten?</p>
+      <div class="btn-row">
+        <button class="btn small" data-k="online">Online-Stand übernehmen</button>
+        <button class="btn secondary small" data-k="zusammen">Zusammenführen</button>
+        <button class="btn ghost small" data-k="lokal">Nur auf diesem Gerät bleiben</button>
+      </div>
+      <p class="muted mt">„Zusammenführen" mischt beide Stände — nur sinnvoll, wenn beide zur selben Person gehören.</p>
+    </div>`;
+
   h(`<div class="fade-in" id="homeRoot">
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+    ${konfliktCard}
 
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
 
@@ -178,6 +192,11 @@ function home() {
   const tb = document.getElementById("themeBtn");
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
+  document.querySelectorAll("#syncKonflikt [data-k]").forEach((b) => b.onclick = async () => {
+    b.closest(".btn-row").querySelectorAll("button").forEach((x) => x.disabled = true);
+    await C.loeseKonflikt(b.dataset.k);
+    home();
+  });
 }
 
 function histRow(s) {
@@ -281,8 +300,11 @@ function einstellungen() {
     if (el) el.innerHTML = syncText(); else ab();
   });
   document.getElementById("syncCode").onchange = (e) => {
-    C.state().settings.syncCode = e.target.value.trim().toLowerCase();
-    C.save(); C.syncLernstand();
+    const st = C.state();
+    st.settings.syncCode = e.target.value.trim().toLowerCase();
+    st.settings.syncOk = false; // anderer Code = anderer Lernstand: wieder nachfragen
+    C.save();
+    C.syncLernstand().then(() => { if (C.syncKonflikt()) home(); });
   };
   document.getElementById("syncNow").onclick = () => C.syncLernstand();
   // Kein prompt()/alert() hier — die werden in manchen Kontexten (iframe, Embed)

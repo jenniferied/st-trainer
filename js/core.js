@@ -441,7 +441,12 @@ export function syncSession(s) {
 // Geraete, die gleichzeitig ueben, sich nicht gegenseitig ueberschreiben.
 // Der Merge ist eine Vereinigung: Antworten und Sessions kommen nur dazu,
 // Geloeschtes traegt einen Grabstein, der Lernstand wird danach neu berechnet.
-export const syncCode = () => (state().settings.syncCode || window.ST_CONFIG.syncCode || "").trim();
+// Bewusst leergeraeumter Code heisst "Sync aus" — darum != null statt ||,
+// sonst faellt man auf den Default zurueck und synct doch wieder.
+export const syncCode = () => {
+  const s = state().settings.syncCode;
+  return String(s != null ? s : (window.ST_CONFIG.syncCode || "")).trim();
+};
 export const syncAktiv = () => supaAktiv() && !!syncCode();
 
 function snapshot() {
@@ -497,6 +502,23 @@ export function mergeLernstand(remote) {
   return signatur(snapshot()) !== vorher;
 }
 
+// Erster Sync eines Geraets ist der gefaehrliche Moment: liegt hier ein Lernstand
+// UND online einer, wuerde der Merge beide vermischen (z.B. Testdaten in Roses
+// echten Stand). Darum einmal nachfragen statt blind zusammenzufuehren.
+const hatDaten = (d) => !!(d && ((d.sessions || []).length || (d.antwortLog || []).length));
+let konflikt = null;
+export const syncKonflikt = () => konflikt;
+export async function loeseKonflikt(wahl) {
+  const st = state();
+  if (wahl === "lokal") { st.settings.syncCode = ""; st.settings.syncOk = true; konflikt = null; save(); melde(); return; }
+  if (wahl === "online") { // Online-Stand gewinnt, lokaler wird verworfen
+    Object.assign(st, { sessions: [], antwortLog: [], offen: [], geloescht: [] });
+    mergeLernstand(konflikt);
+  }
+  st.settings.syncOk = true; konflikt = null; save(); // "zusammen" faellt in den normalen Merge
+  await syncLernstand();
+}
+
 let syncLauft = false, syncNochmal = false;
 export let syncStatus = { ts: 0, fehler: null, laeuft: false };
 const horcher = new Set();
@@ -515,6 +537,17 @@ export async function syncLernstand() {
     if (!r.ok) throw new Error("Pull " + r.status);
     const rows = await r.json();
     const remote = rows[0]?.daten || null;
+
+    const st = state();
+    if (!st.settings.syncOk) {
+      if (hatDaten(remote) && hatDaten(snapshot()) && signatur(remote) !== signatur(snapshot())) {
+        konflikt = remote; // Entscheidung liegt bei der Nutzerin — nichts anfassen
+        syncStatus = { ...syncStatus, laeuft: false, fehler: null };
+        syncLauft = false; melde();
+        return false;
+      }
+      st.settings.syncOk = true; save(); // leere Seite auf einer der beiden Seiten = gefahrlos
+    }
 
     const lokalGeaendert = remote ? mergeLernstand(remote) : false;
     const neu = snapshot();

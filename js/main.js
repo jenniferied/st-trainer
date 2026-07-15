@@ -75,6 +75,49 @@ const sticker = (cls, big) => {
   const name = arr[Math.floor(Math.random() * arr.length)];
   return `<img class="sticker${big ? " big" : ""}" src="${reactSrc(name)}" alt="" loading="lazy">`;
 };
+// Sticker passend zum Leistungsstand (0–100 %): hoch = Freude, mittel = neckisch,
+// niedrig = tröstend/aufmunternd (nie hämisch).
+const standSticker = (quote) => sticker(quote == null ? "part" : quote >= 70 ? "good" : quote >= 45 ? "part" : "sanft", true);
+
+// ---- Kleine Feier-Effekte: Konfetti-Regen, nicht-blockierend, respektiert reduzierte Bewegung ----
+const KONFETTI = ["🎉", "🎊", "💗", "💖", "⭐", "✨", "🌟", "🥳"];
+function konfetti({ n = 55, ms = 2800 } = {}) {
+  if (REDUCE_MOTION) return;
+  const ov = document.createElement("div");
+  ov.className = "konfetti";
+  ov.innerHTML = Array.from({ length: n }, () => {
+    const sym = KONFETTI[Math.floor(Math.random() * KONFETTI.length)];
+    const sw = (8 + Math.random() * 22).toFixed(0);
+    const spin = (Math.random() * 720 - 360).toFixed(0);
+    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.8 + Math.random() * 1.4).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2).toFixed(2)}s;animation-delay:${(Math.random() * 0.7).toFixed(2)}s">${sym}</span>`;
+  }).join("");
+  document.body.appendChild(ov);
+  setTimeout(() => ov.remove(), ms);
+}
+// ---- Zahlen zählen sanft hoch (nur reine Zahlen / Prozente) ----
+function countUp(el) {
+  const m = (el.dataset.to ?? el.textContent).trim().match(/^(\d+)(\s*%?)$/);
+  // Im Hintergrund-Tab drosselt der Browser rAF — dann gar nicht animieren, damit
+  // die echte Zahl stehen bleibt statt bei 0 zu hängen.
+  if (!m || REDUCE_MOTION || document.visibilityState !== "visible") return;
+  const end = +m[1], suf = m[2] || "", dur = 650, t0 = performance.now();
+  const tick = (t) => {
+    const p = Math.min(1, (t - t0) / dur);
+    el.textContent = Math.round(end * (1 - Math.pow(1 - p, 3))) + suf;
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  el.textContent = "0" + suf;
+  requestAnimationFrame(tick);
+  setTimeout(() => { el.textContent = end + suf; }, dur + 200); // Sicherheitsnetz
+}
+// Belebt eine frisch gerenderte Auswertungs-/Statistikseite: Zahlen zählen hoch,
+// Balken wachsen, Diagramm-Säulen ploppen gestaffelt rein.
+function belebeStats(root) {
+  if (!root || REDUCE_MOTION) return;
+  root.classList.add("stat-anim");
+  root.querySelectorAll(".stat-tile b, .js-count").forEach(countUp);
+  root.querySelectorAll(".tr-col > i, .akt-col > i").forEach((el, i) => { el.style.animationDelay = (i * 0.04).toFixed(2) + "s"; });
+}
 
 // Hinweis-Badges (unbestätigte Lösung, KI-generiert) — wie die Themen-Chips
 // erst NACH der Antwort zeigen, vorher wären sie ein Hinweis (Klausurnähe)
@@ -868,7 +911,7 @@ function ergebnis(session, runde, opts = {}) {
     <div class="card result-big">
       ${abgebrochen ? `<img class="sticker big" src="${reactSrc("monkey_side")}" alt="">` : sticker(pass ? "good" : "sanft", true)}
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
-      <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
+      <div class="pts"><span class="js-count" data-to="${session.punkte}">${session.punkte}</span><span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
       <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
     </div>
@@ -888,10 +931,16 @@ function ergebnis(session, runde, opts = {}) {
     document.getElementById("homeBtn").onclick = home;
     document.getElementById("nochmal").onclick = home;
   }
+  // Auswertung beleben: Punktzahl zählt hoch, Themen-Balken wachsen rein.
+  belebeStats(app.querySelector(".fade-in"));
   // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf.
   // Stufe = aktuelle Bestanden-Serie (die frische Session zählt schon mit).
   if (pass && !abgebrochen && session.modus === "klausur" && !opts.ausVerlauf)
     klausurJubel(opts.testStufe || C.pruefungsStreak());
+  // Bestandene Übungsrunde (nicht Klausur — die hat ihr eigenes großes Finale):
+  // ein kurzer, gut sichtbarer Konfetti-Regen. Im Verlauf-Blättern nicht.
+  else if (pass && !abgebrochen && !opts.ausVerlauf)
+    konfetti({ n: 70 });
 }
 
 // ================= EXPLORE =================
@@ -1108,12 +1157,13 @@ function statistik() {
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
     </div></div>
-    <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(st.analyse, "global")}</div>
+    <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen — Ø Punktequote, Anzahl, Ø Zeit; innen die Unterthemen mit Beherrschung.</p>${themenRows}</div>
     ${trendHtml}
     <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div></div>`
     : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
   </div>`);
+  belebeStats(app.querySelector(".fade-in"));
   document.getElementById("back").onclick = home;
 }
 

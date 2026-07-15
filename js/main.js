@@ -363,11 +363,15 @@ const PRESETS = {
   eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort", auswahl: "smart" },
 };
 // Auswahl-Strategien: Label + Erklärung (wird im Builder als Hint gezeigt)
+// Drei klar unterscheidbare Strategien (statt vier, die sich paarweise überlappten):
+// „schlau" (Spaced Repetition, zeitlich klug) vs. „fokus" (nur Schweres, ohne Timing)
+// sind der Schwierigkeits-Zweig; „klausur" ist der repräsentative Zweig. Reines
+// „zufall" wurde entfernt — Klausur-Mix deckt „querbeet" besser ab. (core.js
+// versteht „zufall" weiterhin, falls in alten Sessions gespeichert.)
 const AUSWAHL_OPT = [
-  ["smart", "Schlau", "Schlau: Spaced Repetition — Wackliges und Fälliges zuerst, dazu Neues. Wissenschaftlich die effizienteste Art zu üben. (empfohlen)"],
-  ["fokus", "Schwer", "Schwieriges: nur Ungelerntes und was noch wackelt, das Härteste zuerst. Zum gezielten Aufholen."],
-  ["zufall", "Zufall", "Zufall: alle Fragen gleich wahrscheinlich, rein zufällig gezogen."],
-  ["klausur", "Klausur", "Klausur-Mix: quer durch alle Themen verteilt wie in der echten Klausur."],
+  ["smart", "Schlau", "Schlau: wiederholt zum richtigen Zeitpunkt (Spaced Repetition) und mischt Neues dazu — der Standard fürs tägliche Üben bis zur Klausur. (empfohlen)"],
+  ["fokus", "Schwächen", "Schwächen: nur Ungelerntes und was noch wackelt, das Schwerste zuerst. Zum gezielten Aufholen eines Themas."],
+  ["klausur", "Klausur-Mix", "Klausur-Mix: querbeet über alle Themen verteilt wie in der echten Prüfung, ohne Rücksicht auf schwer oder leicht."],
 ];
 function builder({ preset }) {
   const P = PRESETS[preset] || PRESETS.eigene;
@@ -958,13 +962,18 @@ function toggleInfo(qid, btn) {
   const belege = belegAnker(q);
   const kopf = (q.konzept ? `<div><b>Konzept:</b> ${Beleg.render(q.konzept, q.oberthema)}</div>` : "")
     + (belege ? `<div style="margin-top:4px"><b>Nachlesen:</b> ${belege}</div>` : "");
+  // Lösung samt Erklärungen — ℹ️ ist bewusstes Nachschlagen, kein Versehen.
+  // Wer nicht spicken will, drückt einfach nicht drauf.
+  const loesung = q.quizbar ? `<div class="stat-head">Lösung & Erklärungen:</div><div class="answers">
+    ${q.optionen.map((o) => `<label class="ans ${o.richtig ? "correct" : ""}"><input type="checkbox" disabled ${o.richtig ? "checked" : ""}><span>${esc(o.text)}</span></label>
+      ${o.erklaerung ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`).join("")}</div>` : "";
   const st = C.frageStats(qid);
-  if (!st) { zone.innerHTML = `<div class="q-stats">${kopf}<div class="muted" style="margin-top:4px">Noch nie geübt — gute Gelegenheit 🙂</div></div>`; return; }
-  const zeile = (a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
-    <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`;
-  zone.innerHTML = `<div class="q-stats">${kopf ? kopf + `<div style="margin-top:6px"></div>` : ""}
-    <b>${st.n}× geübt</b> · ${st.voll}× voll richtig${st.quote != null ? ` · Ø ${st.quote} % der Punkte` : ""}${st.zeit != null ? ` · Ø ${fmtSek(st.zeit)} pro Versuch` : ""}
-    <div class="stat-head">Letzte Versuche:</div>${st.letzte.map(zeile).join("")}</div>`;
+  const stats = st
+    ? `<div style="margin-top:8px"><b>${st.n}× geübt</b> · ${st.voll}× voll richtig${st.quote != null ? ` · Ø ${st.quote} % der Punkte` : ""}${st.zeit != null ? ` · Ø ${fmtSek(st.zeit)} pro Versuch` : ""}</div>
+      <div class="stat-head">Letzte Versuche:</div>${st.letzte.map((a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
+        <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`).join("")}`
+    : `<div class="muted" style="margin-top:8px">Noch nie geübt — gute Gelegenheit 🙂</div>`;
+  zone.innerHTML = `<div class="q-stats">${kopf}${loesung}${stats}</div>`;
 }
 function tryInline(qid, btn) {
   const q = C.frage(qid);

@@ -321,7 +321,7 @@ function testBestanden(stufe) {
 // Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
 const PRESETS = {
   klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur" },
-  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
+  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", fb: "ende", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
   spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
   schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
   fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
@@ -354,8 +354,12 @@ function builder({ preset }) {
       <p class="muted" id="timerHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
-    ${!istExam ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
-      <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende</button></div></div>` : ""}
+    ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
+      <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${istExam ? " (wie echt)" : ""}</button></div>
+      ${istExam ? `<p class="muted">Bei Sofort gibt's unter jeder Frage einen Überprüfen-Button mit Erklärungen — die Frage ist danach festgelegt.</p>` : ""}</div>` : ""}
+    ${preset === "eigene" ? `<div class="field"><span class="flabel">Ansicht</span><div class="seg" id="ansicht">
+      <button data-v="uebung" class="on">Übungs-Ansicht</button><button data-v="exam">Klausuransicht</button></div>
+      <p class="muted">Klausuransicht = Exam.UP-Look wie in der echten Klausur, mit Fragen-Navigation zum Vor- und Zurückblättern.</p></div>` : ""}
     ${!istExam && C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
       <button data-v="schwer" class="${(C.state().settings.sprache || "schwer") === "schwer" ? "on" : ""}">Original (Klausur)</button>
       <button data-v="einfach" class="${C.state().settings.sprache === "einfach" ? "on" : ""}">Einfache Sprache</button></div>
@@ -388,7 +392,8 @@ function builder({ preset }) {
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
-      feedback: istExam ? "ende" : segVal("fb"), examLook: istExam, unterthemen,
+      feedback: istKlausur ? "ende" : segVal("fb") || "ende",
+      examLook: istExam || segVal("ansicht") === "exam", unterthemen,
       sprache,
     });
   };
@@ -561,9 +566,12 @@ function zeigeFeedback(q, r) {
       el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
+  document.getElementById("fbzone").innerHTML = fbBanner(q, erg);
+}
+function fbBanner(q, erg, mitSticker = true) {
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
   const txt = erg.voll ? `Voll richtig! +${erg.punkte} P. 🎉` : erg.punkte > 0 ? `Teilweise: ${erg.punkte} von ${q.maxPunkte} P.` : `Diesmal 0 Punkte — die Erklärungen sollten helfen.`;
-  document.getElementById("fbzone").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${txt}</span></div>`;
+  return `<div class="fb-banner ${cls}">${mitSticker ? sticker(cls) : ""}<span>${txt}</span></div>`;
 }
 function naechste() {
   if (R.idx + 1 < R.runde.length) {
@@ -602,20 +610,31 @@ function zeigMoodle() {
   const q = C.frage(r.qid);
   // Antworten bei jedem Anzeigen frisch mischen — aber nur solange unbeantwortet,
   // sonst springen gespeicherte Kreuze beim Vor/Zurück-Blättern herum
-  if (!r.gewaehlt?.length) C.shuffle(r.optOrder);
+  if (!r.gewaehlt?.length && !r.geprueft) C.shuffle(r.optOrder);
   const single = q.optionen.filter((o) => o.richtig).length === 1;
+  // Sofort-Feedback im Exam.UP-Look: Überprüfen-Button je Frage (wie Moodles
+  // Übungsmodus). Geprüfte Fragen sind festgelegt und zeigen ihre Erklärungen.
+  const locked = !!r.geprueft;
+  const erg = locked ? C.scoreFrage(q, r.gewaehlt || []) : null;
   h(`<div class="fade-in">
     <div class="moodle">
       <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span>
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
-        <div class="qinfo"><b>Frage ${R.idx + 1}</b>${r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
+        <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
         ${fallHtml(q)}
         <div class="qtext">${esc(q.frage)}</div>
         <div style="clear:both"></div>
         ${bildHtml(q)}
         <div class="prompt">${single ? "Wählen Sie eine Antwort:" : "Wählen Sie eine oder mehrere Antworten:"}</div>
-        ${r.optOrder.map((oi, i) => `<label class="mans"><input type="checkbox" data-oi="${oi}" ${r.gewaehlt?.includes(oi) ? "checked" : ""}><span>${"abcdefghijkl"[i]}. ${esc(q.optionen[oi].text)}</span></label>`).join("")}
+        ${r.optOrder.map((oi, i) => {
+          const o = q.optionen[oi]; const gw = r.gewaehlt?.includes(oi);
+          const cls = !locked ? "" : gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
+          const erk = locked && o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : "";
+          return `<label class="mans ${cls}"><input type="checkbox" data-oi="${oi}" ${gw ? "checked" : ""} ${locked ? "disabled" : ""}><span>${"abcdefghijkl"[i]}. ${esc(o.text)}</span></label>${erk}`;
+        }).join("")}
+        ${locked ? fbBanner(q, erg, false) /* Exam.UP bleibt nüchtern: kein Sticker */ : ""}
+        ${!locked && R.cfg.feedback === "sofort" ? `<button class="btn small" id="check" style="margin-top:10px">Überprüfen</button>` : ""}
       </div>
       <div class="moodle-nav">
         ${R.idx > 0 ? `<button id="prev">Vorherige Seite</button>` : "<span></span>"}
@@ -629,7 +648,7 @@ function zeigMoodle() {
       ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn secondary" id="pauseBtn">⏸ Pausieren</button>` : ""}
       <button class="btn ghost" id="abbruch">Abbrechen</button>
     </div></div>`);
-  qStart = Date.now();
+  qStart = locked ? null : Date.now(); // geprüfte Frage: Zeit steht, nur noch lesen
   startTick();
   const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
@@ -641,6 +660,17 @@ function zeigMoodle() {
     } else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
   };
   document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { bankZeit(); R.idx = +b.dataset.i; zeigMoodle(); });
+  const check = document.getElementById("check");
+  if (check) check.onclick = () => {
+    merke();
+    if (!r.gewaehlt?.length) { sag("Erst eine Antwort ankreuzen 🙂"); return; }
+    r.geprueft = true;
+    bankZeit(); // Erklärungen lesen zählt nicht als Nachdenkzeit auf der Frage
+    const e = C.scoreFrage(q, r.gewaehlt);
+    C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: e.punkte, max_punkte: q.maxPunkte, voll: e.voll, modus: R.cfg.modus, ts: new Date().toISOString() });
+    C.save();
+    zeigMoodle();
+  };
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
   document.getElementById("abbruch").onclick = abbrechen;
 }

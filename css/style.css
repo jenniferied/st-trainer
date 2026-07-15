@@ -401,6 +401,12 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .moodle .prompt { color: #555; font-size: .9rem; margin: 8px 0 6px; }
 .moodle label.mans { display: flex; gap: 9px; align-items: flex-start; padding: 7px 4px; border: none; background: none; font-size: .96rem; }
 .moodle label.mans input { accent-color: var(--up-blue); width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; }
+/* Sofort-Feedback (Überprüfen-Button): geprüfte Antworten färben wie Moodle */
+.moodle label.mans.correct { background: var(--ok-bg); box-shadow: inset 3px 0 0 var(--ok); border-radius: 6px; }
+.moodle label.mans.wrong   { background: var(--bad-bg); box-shadow: inset 3px 0 0 var(--bad); border-radius: 6px; }
+.moodle label.mans.missed  { background: var(--missed-bg); box-shadow: inset 3px 0 0 var(--ok); border-radius: 6px; }
+.moodle .explain { margin: 2px 0 8px 27px; border-radius: 0 0 10px 10px; }
+.moodle .fb-banner { margin: 12px 0 2px; }
 .moodle-nav { display: flex; gap: 8px; padding: 12px 14px; background: #f7f7f7; border-top: 1px solid #ddd; }
 .moodle-nav button {
   background: var(--up-blue); color: #fff; border: none; border-radius: 4px; padding: 10px 16px; font-size: .92rem;

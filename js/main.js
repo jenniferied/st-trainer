@@ -818,8 +818,21 @@ function ergebnis(session, runde, opts = {}) {
   const themenRows = Object.entries(themen).map(([slug, arr]) => {
     const t = C.THEMEN[slug] || { name: slug };
     const p = arr.reduce((a, x) => a + x.punkte, 0), m = arr.reduce((a, x) => a + x.max, 0);
-    return `<div class="progress-row" style="--tc:${t.color}"><span class="lbl">${t.name}</span>
-      <span class="bar"><i style="width:${Math.round((100 * p) / m)}%"></i></span><span class="val">${p}/${m}</span></div>`;
+    // Breakdown je Unterthema (offen, damit man's direkt sieht; antippen klappt zu).
+    // Fallback über frage(): alte Sessions haben kein unterthema in proFrage.
+    const subs = Object.entries(C.gruppiere(arr, (x) => x.unterthema || C.frage(x.qid)?.unterthema || "allgemein"))
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([u, ua], ui) => {
+        const up = ua.reduce((a, x) => a + x.punkte, 0), um = ua.reduce((a, x) => a + x.max, 0);
+        return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}">
+          <span class="lbl" style="font-weight:500;font-size:.87rem">${esc(labelU(u))} <span class="muted">(${ua.length})</span></span>
+          <span class="bar thin"><i style="width:${Math.round((100 * up) / um)}%"></i></span>
+          <span class="val">${up}/${um}</span></div>`;
+      }).join("");
+    return `<details open style="--tc:${t.color}">
+      <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}"><span class="lbl">${t.name}</span>
+        <span class="bar"><i style="width:${Math.round((100 * p) / m)}%"></i></span><span class="val">${p}/${m}</span></div></summary>
+      <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
   const review = (runde || []).filter((r) => r.gewaehlt).map((r) => {
     const erg = session.proFrage.find((x) => x.qid === r.qid);
@@ -840,7 +853,7 @@ function ergebnis(session, runde, opts = {}) {
     </div>
     <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
-    <div class="card"><h3>Nach Thema</h3>${themenRows}</div>
+    <div class="card"><h3>Nach Thema & Unterthema</h3>${themenRows}</div>
     ${opts.ausVerlauf ? "" : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
     <div class="card mt"><h3>Alle Fragen im Detail</h3>${review || "<p class='muted'>Keine beantworteten Fragen.</p>"}</div>
   </div>`);

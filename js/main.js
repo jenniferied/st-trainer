@@ -936,14 +936,33 @@ function explore() {
   app.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => toggleInfo(b.dataset.info, b));
 }
 // ℹ️ je Frage: Versuche, Punktequote, Ø Zeit + die letzten Antworten im Detail
+// Beleg-Anker (Folien, §§, GG-Artikel) aus Konzept + allen Erklärungen sammeln —
+// als klickbare Chips, OHNE die Erklärungstexte (die würden die Lösung spoilern)
+function belegAnker(q) {
+  const texte = [q.konzept || "", ...q.optionen.map((o) => o.erklaerung || "")];
+  const set = new Set();
+  for (const t of texte) {
+    for (const m of t.match(/Art\.?\s?\d+[a-z]?\s?GG/g) || []) set.add(m.replace(/\s+/g, " "));
+    // Berliner SchulG != BbgSchulG — die §§ daraus nicht anbieten (falsches Gesetz)
+    if (!/Berlin/.test(t)) for (const m of t.match(/§\s?\d+[a-z]?/g) || []) set.add(m.replace(/§\s*/, "§ "));
+    for (const m of t.match(/Folien?\s?\d{1,3}(\s?[–-]\s?\d{1,3})?/g) || []) set.add(m.replace(/\s+/g, " "));
+  }
+  if (!set.size) return "";
+  const rank = (s) => s.startsWith("Folie") ? 0 : s.includes("GG") ? 2 : 1;
+  return Beleg.render([...set].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, "de", { numeric: true })).join("  ·  "), q.oberthema);
+}
 function toggleInfo(qid, btn) {
   const zone = btn.closest(".q-item").querySelector(".info-zone");
   if (zone.innerHTML) { zone.innerHTML = ""; return; }
+  const q = C.frage(qid);
+  const belege = belegAnker(q);
+  const kopf = (q.konzept ? `<div><b>Konzept:</b> ${Beleg.render(q.konzept, q.oberthema)}</div>` : "")
+    + (belege ? `<div style="margin-top:4px"><b>Nachlesen:</b> ${belege}</div>` : "");
   const st = C.frageStats(qid);
-  if (!st) { zone.innerHTML = `<div class="q-stats muted">Noch nie geübt — gute Gelegenheit 🙂</div>`; return; }
+  if (!st) { zone.innerHTML = `<div class="q-stats">${kopf}<div class="muted" style="margin-top:4px">Noch nie geübt — gute Gelegenheit 🙂</div></div>`; return; }
   const zeile = (a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
     <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`;
-  zone.innerHTML = `<div class="q-stats">
+  zone.innerHTML = `<div class="q-stats">${kopf ? kopf + `<div style="margin-top:6px"></div>` : ""}
     <b>${st.n}× geübt</b> · ${st.voll}× voll richtig${st.quote != null ? ` · Ø ${st.quote} % der Punkte` : ""}${st.zeit != null ? ` · Ø ${fmtSek(st.zeit)} pro Versuch` : ""}
     <div class="stat-head">Letzte Versuche:</div>${st.letzte.map(zeile).join("")}</div>`;
 }

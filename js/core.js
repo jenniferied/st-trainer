@@ -375,59 +375,80 @@ export function baueRunde(cfg) {
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
   if (cfg.quellen?.length) qs = qs.filter((q) => cfg.quellen.includes(q.quelle));
-  // Spaced Repetition: fällige Wiederholungen zuerst (wackligste und am längsten
-  // überfällige vorn), dann neue Fragen, zuletzt Bald-Fälliges als Auffüller
-  if (cfg.spaced) {
-    const SR_TAGE = [0, 1, 2, 4, 6, 9]; // Soll-Abstand in Tagen je Level 0-5; Level < 0 = sofort fällig
-    const L = state().leitner;
-    const jetzt = Date.now();
-    const neu = [], faellig = [], bald = [];
-    for (const q of qs) {
-      const e = L[q.id];
-      if (!e || !e.seen) { neu.push({ q }); continue; }
-      const ueber = (jetzt - (e.ts || 0)) / 86400000 - SR_TAGE[Math.max(0, Math.min(5, e.lvl))];
-      (ueber >= 0 ? faellig : bald).push({ q, ueber, lvl: e.lvl });
-    }
-    faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
-    bald.sort((a, b) => b.ueber - a.ueber); // am nächsten an der Fälligkeit zuerst
-    shuffle(neu);
-    const grp = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
-    const nMax = Math.min(cfg.anzahl || 15, qs.length);
-    const auswahl = []; const belegt = new Set();
-    const nimm = (arr, limit) => {
-      for (const x of arr) {
-        if (auswahl.length >= limit) return;
-        const g = grp(x.q);
-        if (!belegt.has(g)) { belegt.add(g); auswahl.push(x.q); }
-      }
-    };
-    nimm(faellig, Math.ceil(nMax * 0.7)); // max ~70% Wiederholung, damit immer Neues dabei ist
-    nimm(neu, nMax);
-    nimm(faellig, nMax);
-    nimm(bald, nMax);
-    shuffle(auswahl);
-    return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));
-  }
-  // Gewichtung: niedrige Leitner-Level zuerst wahrscheinlicher, negative am stärksten
-  const gewicht = (q) => {
-    const l = lvl(q.id);
-    return (l < 0 ? 10 : [8, 5, 3, 2, 1, 1][l]) * (q.quelle?.startsWith("pingo") ? 1.4 : 1);
-  };
-  const gew = qs.map((q) => ({ q, w: gewicht(q) * (0.5 + Math.random()) }));
-  gew.sort((a, b) => b.w - a.w);
-  // Keine zwei Varianten derselben Frage in einer Runde (variantenVon/sprachVarianteVon-Gruppe)
-  const gruppe = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
-  const n = Math.min(cfg.anzahl || 10, gew.length);
-  const auswahl = []; const belegt = new Set();
-  for (const { q } of gew) {
-    if (auswahl.length >= n) break;
-    const g = gruppe(q);
-    if (belegt.has(g)) continue;
-    belegt.add(g); auswahl.push(q);
-  }
-  // Reihenfolge mischen + Optionsreihenfolge fixieren (gemischt)
-  shuffle(auswahl);
+  // Auswahl-Strategie: wie wird aus dem gefilterten Pool die Runde gebaut?
+  //   smart   = Spaced Repetition (Wackliges/Fälliges zuerst, dazu Neues) — die Wissenschaft
+  //   fokus   = nur Ungelerntes & Schwieriges, das Härteste zuerst
+  //   zufall  = rein zufällig, alle Fragen gleich wahrscheinlich
+  //   klausur = repräsentativer Mix über alle Themen wie in der echten Klausur
+  // Alt-Configs ohne `auswahl` werden aus den früheren Flags abgeleitet.
+  const strat = cfg.auswahl || (cfg.spaced ? "smart" : cfg.nurFehler ? "fokus"
+    : (cfg.modus === "klausur" || cfg.modus === "halbe") ? "klausur" : "smart");
+  const nMax = Math.min(cfg.anzahl || 10, qs.length);
+  // Nie zwei Varianten derselben Frage in einer Runde: pro Gruppe genau ein Vertreter
+  const grp = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
+  const gruppen = new Map();
+  for (const q of qs) { const g = grp(q); (gruppen.get(g) || gruppen.set(g, []).get(g)).push(q); }
+  const reps = [...gruppen.values()].map((arr) => arr[Math.floor(Math.random() * arr.length)]);
+  const auswahl = waehleFragen(reps, nMax, strat);
+  shuffle(auswahl); // Anzeige-Reihenfolge mischen (auch bei Klausur-Mix wie im Ernstfall)
   return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));
+}
+
+// Strategien der Fragen-Auswahl. reps = ein Vertreter je Varianten-Gruppe.
+function waehleFragen(reps, n, strat) {
+  n = Math.min(n, reps.length);
+  const L = state().leitner;
+  if (strat === "zufall") return shuffle([...reps]).slice(0, n);
+
+  if (strat === "klausur") {
+    // Stratifiziert nach Oberthema, proportional zur Poolgröße (Largest Remainder),
+    // zufällig innerhalb der Themen — deckt alle Themen ab wie die echte Klausur.
+    const byTh = {};
+    for (const q of reps) (byTh[q.oberthema] = byTh[q.oberthema] || []).push(q);
+    const soll = Object.keys(byTh).map((t) => ({ t, exakt: (n * byTh[t].length) / reps.length }));
+    soll.forEach((s) => { s.base = Math.floor(s.exakt); s.rest = s.exakt - s.base; });
+    let vergeben = soll.reduce((a, s) => a + s.base, 0);
+    [...soll].sort((a, b) => b.rest - a.rest).forEach((s) => { if (vergeben < n) { s.base++; vergeben++; } });
+    const out = [];
+    for (const s of soll) out.push(...shuffle(byTh[s.t]).slice(0, s.base));
+    if (out.length < n) out.push(...shuffle(reps.filter((q) => !out.includes(q))).slice(0, n - out.length));
+    return out.slice(0, n);
+  }
+
+  if (strat === "fokus") {
+    // Nur Ungelerntes & Schwieriges (Level < 3). Gewicht: falsch/negativ am stärksten,
+    // dann ungesehen, dann wacklig. Gewichtete Ziehung. Reicht der Pool nicht, wird
+    // mit gemeisterten Fragen aufgefüllt (damit die Runde voll wird).
+    const hart = (q) => { const e = L[q.id]; if (!e || !e.seen) return 5; if (e.lvl < 0) return 9; return [4, 3, 2][Math.min(2, e.lvl)]; };
+    let pool = reps.filter((q) => !gemeistert(q.id));
+    if (pool.length < n) pool = pool.concat(shuffle(reps.filter((q) => gemeistert(q.id))));
+    return zieheGewichtet(pool, n, hart);
+  }
+
+  // smart = Spaced Repetition: Fälliges/Wackliges zuerst, dann Neues, dann Bald-Fälliges
+  const SR_TAGE = [0, 1, 2, 4, 6, 9]; // Soll-Abstand in Tagen je Level 0-5; Level < 0 = sofort fällig
+  const jetzt = Date.now();
+  const neu = [], faellig = [], bald = [];
+  for (const q of reps) {
+    const e = L[q.id];
+    if (!e || !e.seen) { neu.push({ q }); continue; }
+    const ueber = (jetzt - (e.ts || 0)) / 86400000 - SR_TAGE[Math.max(0, Math.min(5, e.lvl))];
+    (ueber >= 0 ? faellig : bald).push({ q, ueber, lvl: e.lvl });
+  }
+  faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
+  bald.sort((a, b) => b.ueber - a.ueber);
+  shuffle(neu);
+  const out = [];
+  const nimm = (arr, limit) => { for (const x of arr) { if (out.length >= limit) return; if (!out.includes(x.q)) out.push(x.q); } };
+  nimm(faellig, Math.ceil(n * 0.7)); // max ~70% Wiederholung, damit immer Neues dabei ist
+  nimm(neu, n); nimm(faellig, n); nimm(bald, n);
+  return out.slice(0, n);
+}
+
+// Gewichtete Ziehung (Gewicht × Zufall) — priorisiert nach gewFn, aber jede Runde anders.
+function zieheGewichtet(pool, n, gewFn) {
+  return pool.map((q) => ({ q, s: gewFn(q) * (0.4 + Math.random()) }))
+    .sort((a, b) => b.s - a.s).slice(0, n).map((x) => x.q);
 }
 export function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 export const frage = (qid) => POOL.find((q) => q.id === qid);
@@ -487,6 +508,28 @@ export function werteAus(runde, meta) {
   syncSession(session);
   syncLernstand();
   return session;
+}
+
+// Einzeln beantwortete Fragen (Stöbern, ohne Session) als Tages-Gruppen für den
+// Verlauf — sie sind vollwertige Übung und sollen dort sichtbar sein.
+export function einzelGruppen() {
+  const tage = {};
+  for (const a of state().antwortLog) {
+    if (a.sid) continue;
+    const tag = new Date(a.ts).toDateString();
+    (tage[tag] = tage[tag] || []).push(a);
+  }
+  return Object.values(tage).map((arr) => {
+    const mitMax = arr.filter((x) => x.max);
+    return {
+      einzel: true, id: "einzel-" + arr[0].ts,
+      erstellt: arr[0].ts, ts: arr[arr.length - 1].ts,
+      n: arr.length,
+      punkte: Math.round(mitMax.reduce((s, x) => s + x.punkte, 0) * 2) / 2,
+      max: mitMax.reduce((s, x) => s + x.max, 0),
+      antworten: arr,
+    };
+  });
 }
 
 export function insights(session) {

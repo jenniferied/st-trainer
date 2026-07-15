@@ -130,7 +130,8 @@ function home() {
       <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
 
-  const letzte = [...s.sessions].reverse().slice(0, 4).map(histRow).join("");
+  const eintraege = histEintraege();
+  const letzte = eintraege.slice(0, 4).map((x) => x.html).join("");
 
   h(`<div class="fade-in" id="homeRoot">
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
@@ -138,7 +139,7 @@ function home() {
     ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
 
     ${letzte ? `<h2 class="${offene.length ? "mt" : ""}">Zuletzt</h2><div class="card">${letzte}
-      <button class="btn ghost small mt" data-go="verlauf">Alle ${s.sessions.length} Sessions ansehen ›</button></div>` : ""}
+      <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
 
     <h2 class="${offene.length || letzte ? "mt" : ""}">Neue Session</h2>
     <div class="mode-grid">
@@ -189,6 +190,21 @@ function histRow(s) {
     ${s.runde && s.beantwortet < s.anzahl ? `<button class="btn small" data-reopen="${s.id}" title="Offene Fragen weitermachen">Fortsetzen</button>` : ""}
     <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
+// Einzeln geübte Fragen (Stöbern) als Tages-Eintrag im Verlauf — vollwertige
+// Übung, gehört sichtbar dazu. Kein 🗑: Einzelantworten haben keine Grabsteine,
+// ein Löschen käme beim nächsten Geräte-Sync zurück.
+function histRowEinzel(e) {
+  return `<div class="hist-item click" data-einzel="${e.id}"><div><b>🗂 Einzelfragen</b> <span class="badge-src">Stöbern</span>
+    <div class="when">${datum(e.erstellt)} · ${e.n} ${e.n === 1 ? "Frage" : "Fragen"} einzeln geübt</div></div>
+    ${e.max ? `<span class="sc">${e.punkte}/${e.max}</span>` : ""}</div>`;
+}
+// Sessions + Einzelfragen-Tage gemischt, Neuestes zuerst
+function histEintraege() {
+  return [
+    ...C.state().sessions.map((s) => ({ ts: s.ts, html: histRow(s) })),
+    ...C.einzelGruppen().map((e) => ({ ts: e.ts, html: histRowEinzel(e) })),
+  ].sort((a, b) => b.ts - a.ts);
+}
 // Verlaufs-Zeilen: antippen öffnet die Detail-Auswertung, 🗑 löscht,
 // „Fortsetzen" holt eine Session mit offenen Fragen zurück (jeweils mit Neuberechnung)
 function bindHist(rerender) {
@@ -196,6 +212,7 @@ function bindHist(rerender) {
     if (ev.target.closest("[data-del],[data-reopen]")) return;
     sessionDetail(el.dataset.open, rerender);
   });
+  app.querySelectorAll("[data-einzel]").forEach((el) => el.onclick = () => einzelDetail(el.dataset.einzel, rerender));
   app.querySelectorAll("[data-del]").forEach((b) => b.onclick = async (ev) => {
     ev.stopPropagation();
     if (await frag("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.", { ja: "Löschen", nein: "Behalten" })) {
@@ -218,6 +235,24 @@ function sessionDetail(id, zurueck = home) {
   if (!s) return home();
   const pseudo = (s.proFrage || []).filter((x) => C.frage(x.qid)).map((x) => ({ qid: x.qid, optOrder: [...C.frage(x.qid).optionen.keys()], gewaehlt: x.gewaehlt }));
   ergebnis(s, pseudo, { ausVerlauf: true, zurueck });
+}
+// Detail eines Einzelfragen-Tags: Summen-Karte + dieselben Review-Blöcke wie
+// in der Session-Auswertung (neueste Antwort zuerst)
+function einzelDetail(id, zurueck = home) {
+  const e = C.einzelGruppen().find((x) => x.id === id);
+  if (!e) return zurueck();
+  const rows = [...e.antworten].reverse().map((a) =>
+    a.gewaehlt ? reviewQ({ qid: a.qid, optOrder: [...(C.frage(a.qid)?.optionen.keys() || [])], gewaehlt: a.gewaehlt }, a) : ""
+  ).join("");
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Einzelfragen</h1></div>
+    <div class="card">
+      <p style="margin:0"><b>${e.n} ${e.n === 1 ? "Frage" : "Fragen"}</b> beim Stöbern geübt am ${datum(e.erstellt).split(" ")[0]}${e.max ? ` — <b>${e.punkte}/${e.max} P.</b>` : ""}</p>
+      <p class="muted" style="margin:4px 0 0">Zählt voll in Lernstand & Statistik, wie jede Session.</p>
+    </div>
+    <div class="card mt"><h3>Alle Fragen im Detail</h3>${rows || "<p class='muted'>Zu diesen Antworten gibt es keine Details mehr (ältere App-Version).</p>"}</div>
+  </div>`);
+  document.getElementById("back").onclick = zurueck;
 }
 const fmtSek = (sek) => sek >= 90 ? `${Math.round(sek / 60)} min` : `${sek} s`;
 
@@ -320,13 +355,20 @@ function testBestanden(stufe) {
 // ================= BUILDER =================
 // Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
 const PRESETS = {
-  klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur" },
-  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", fb: "ende", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
-  spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
-  schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
-  fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
-  eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort" },
+  klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur", auswahl: "klausur" },
+  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", fb: "ende", auswahl: "klausur", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
+  spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, auswahl: "smart", hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
+  schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", auswahl: "smart", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
+  fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, auswahl: "fokus", hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
+  eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort", auswahl: "smart" },
 };
+// Auswahl-Strategien: Label + Erklärung (wird im Builder als Hint gezeigt)
+const AUSWAHL_OPT = [
+  ["smart", "Schlau", "Schlau: Spaced Repetition — Wackliges und Fälliges zuerst, dazu Neues. Wissenschaftlich die effizienteste Art zu üben. (empfohlen)"],
+  ["fokus", "Schwer", "Schwieriges: nur Ungelerntes und was noch wackelt, das Härteste zuerst. Zum gezielten Aufholen."],
+  ["zufall", "Zufall", "Zufall: alle Fragen gleich wahrscheinlich, rein zufällig gezogen."],
+  ["klausur", "Klausur", "Klausur-Mix: quer durch alle Themen verteilt wie in der echten Klausur."],
+];
 function builder({ preset }) {
   const P = PRESETS[preset] || PRESETS.eigene;
   const istKlausur = preset === "klausur";
@@ -352,6 +394,9 @@ function builder({ preset }) {
       <button data-v="normal" class="${istExam && !nta ? "on" : ""}">Normal</button>
       <button data-v="nta" class="${istExam && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
       <p class="muted" id="timerHint"></p></div>
+    <div class="field"><span class="flabel">Auswahl der Fragen</span><div class="seg" id="auswahl">
+      ${AUSWAHL_OPT.map(([v, lbl]) => `<button data-v="${v}" class="${v === (P.auswahl || "smart") ? "on" : ""}">${lbl}</button>`).join("")}</div>
+      <p class="muted" id="auswahlHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
     ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
@@ -380,6 +425,8 @@ function builder({ preset }) {
     const n = fixAnzahl || +(segVal("anz") || 10);
     const t = segVal("timer");
     document.getElementById("timerHint").textContent = t === "aus" ? "Ohne Zeitdruck üben." : `≈ ${C.timerMinuten(n, t)} Minuten für ${n} Fragen (${t === "nta" ? "mit" : "ohne"} Nachteilsausgleich, relativ zur echten Klausur).`;
+    const aw = segVal("auswahl");
+    document.getElementById("auswahlHint").textContent = (AUSWAHL_OPT.find(([v]) => v === aw) || [])[2] || "";
   };
   updateHint();
   document.getElementById("los").onclick = () => {
@@ -390,6 +437,7 @@ function builder({ preset }) {
     if (!istExam && segVal("sprache")) { C.state().settings.sprache = segVal("sprache"); C.save(); }
     starte({
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
+      auswahl: segVal("auswahl") || P.auswahl || "smart",
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
       feedback: istKlausur ? "ende" : segVal("fb") || "ende",
@@ -633,7 +681,14 @@ function zeigMoodle() {
           const erk = locked && o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : "";
           return `<label class="mans ${cls}"><input type="checkbox" data-oi="${oi}" ${gw ? "checked" : ""} ${locked ? "disabled" : ""}><span>${"abcdefghijkl"[i]}. ${esc(o.text)}</span></label>${erk}`;
         }).join("")}
-        ${locked ? fbBanner(q, erg, false) /* Exam.UP bleibt nüchtern: kein Sticker */ : ""}
+        ${locked ? (() => {
+          // Erst nach dem Überprüfen: Thema + Lernstand-Dots zeigen (wie beim
+          // Stöbern) — vorher wäre das Thema ein Hinweis auf die Antwort
+          const t = C.THEMEN[q.oberthema] || {};
+          return `<div class="q-head" style="margin-top:12px"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+            <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}
+            <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg, false); // Exam.UP bleibt nüchtern: kein Sticker
+        })() : ""}
         ${!locked && R.cfg.feedback === "sofort" ? `<button class="btn small" id="check" style="margin-top:10px">Überprüfen</button>` : ""}
       </div>
       <div class="moodle-nav">
@@ -730,6 +785,28 @@ const reviewTags = (q, t) =>
   (q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">Lösung unbestätigt</span>` : "") +
   `<span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span>`;
 
+// Ein Frage-Block im Detail-Review (Auswertung & Einzelfragen-Verlauf):
+// r = { qid, optOrder, gewaehlt }, erg = { punkte, max, zeit }
+function reviewQ(r, erg) {
+  const q = C.frage(r.qid); if (!q) return "";
+  const t = C.THEMEN[q.oberthema] || {};
+  return `<div class="review-q">
+    <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+      <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>
+      ${reviewTags(q, t)}
+      ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
+      <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
+    ${fallHtml(q)}
+    <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
+    ${bildHtml(q)}
+    <div class="answers">${r.optOrder.map((oi) => {
+      const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
+      const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
+      return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
+        ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
+    }).join("")}</div></div>`;
+}
+
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
@@ -745,25 +822,8 @@ function ergebnis(session, runde, opts = {}) {
       <span class="bar"><i style="width:${Math.round((100 * p) / m)}%"></i></span><span class="val">${p}/${m}</span></div>`;
   }).join("");
   const review = (runde || []).filter((r) => r.gewaehlt).map((r) => {
-    const q = C.frage(r.qid); if (!q) return "";
-    const t = C.THEMEN[q.oberthema] || {};
     const erg = session.proFrage.find((x) => x.qid === r.qid);
-    if (!erg) return "";
-    return `<div class="review-q">
-      <div class="q-head"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
-        <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>
-        ${reviewTags(q, t)}
-        ${erg.zeit != null ? `<span class="badge-src">⏱ ${fmtSek(erg.zeit)}</span>` : ""}
-        <span class="q-pts">${erg.punkte}/${erg.max} P.</span></div>
-      ${fallHtml(q)}
-      <div class="q-text" style="font-size:1rem">${esc(q.frage)}</div>
-      ${bildHtml(q)}
-      <div class="answers">${r.optOrder.map((oi) => {
-        const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
-        const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
-        return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
-          ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
-      }).join("")}</div></div>`;
+    return erg ? reviewQ(r, erg) : "";
   }).join("");
 
   h(`<div class="fade-in">
@@ -898,9 +958,12 @@ function tryInline(qid, btn) {
       if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     });
     const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
-    wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>`;
+    // Nochmal üben setzt die Zone frisch auf — jeder Versuch zählt einzeln
+    wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>
+      <button class="btn small" id="re-${qid}">🔁 Nochmal üben</button>`;
     const dots = item.querySelector(".lvl-dots"); if (dots) dots.innerHTML = lvlDots(q.id);
     document.getElementById(`chk-${qid}`).classList.add("hidden");
+    document.getElementById(`re-${qid}`).onclick = () => tryInline(qid, btn);
   };
 }
 
@@ -998,7 +1061,7 @@ function statistik() {
 
 // ================= VERLAUF =================
 function verlauf() {
-  const items = [...C.state().sessions].reverse().map(histRow).join("");
+  const items = histEintraege().map((x) => x.html).join("");
   h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Verlauf</h1></div>
     <div class="card">${items || "<p class='muted'>Noch keine abgeschlossenen Sessions — die erste ist die wichtigste! 💪</p>"}</div></div>`);
   document.getElementById("back").onclick = home;

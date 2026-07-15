@@ -1,7 +1,7 @@
 // Offline-Cache für den ST-Trainer.
 // Strategie: network-first mit Cache-Fallback — Rose bekommt immer die neueste
 // Version, wenn sie online ist, und kann offline weiterüben (z.B. unterwegs).
-const CACHE = "st-trainer-v1";
+const CACHE = "st-trainer-v2";
 const SHELL = [
   ".",
   "index.html",

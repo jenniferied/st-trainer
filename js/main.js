@@ -1,4 +1,5 @@
 import * as C from "./core.js";
+import * as Beleg from "./beleg.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -557,7 +558,7 @@ function zeigeFeedback(q, r) {
     else if (gw && !o.richtig) el.classList.add("wrong");
     else if (!gw && o.richtig) el.classList.add("missed");
     if (o.erklaerung && (gw || o.richtig)) {
-      el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${esc(o.erklaerung)}</div>`);
+      el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
@@ -730,7 +731,7 @@ function ergebnis(session, runde, opts = {}) {
         const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
         const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
         return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
-          ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${esc(o.erklaerung)}</div>` : ""}`;
+          ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
       }).join("")}</div></div>`;
   }).join("");
 
@@ -862,7 +863,7 @@ function tryInline(qid, btn) {
       const oi = +el.querySelector("input").dataset.oi; const o = q.optionen[oi]; const gw = gewaehlt.includes(oi);
       el.querySelector("input").disabled = true;
       if (gw && o.richtig) el.classList.add("correct"); else if (gw) el.classList.add("wrong"); else if (o.richtig) el.classList.add("missed");
-      if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${esc(o.erklaerung)}</div>`);
+      if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     });
     const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
     wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>`;

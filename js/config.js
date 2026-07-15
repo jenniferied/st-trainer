@@ -9,6 +9,8 @@ window.ST_CONFIG = {
   scoringVariante: "streng",
   // Lernstand-Sync: gleicher Code = gleicher Lernstand auf allen Geraeten.
   // Voreingestellt, damit niemand etwas eintippen muss; in den Einstellungen aenderbar.
-  syncCode: "rose",
+  // Schutz gegen Test-Verschmutzung: Auf localhost/127.0.0.1 (= Entwicklung) NICHT
+  // mit Roses "rose"-Stand syncen. Nur die Live-Seite (github.io) synct echt.
+  syncCode: (location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "") ? "" : "rose",
   klausur: { fragen: 42, minutenNormal: 90, minutenNTA: 120, bestehen: 42 },
 };

@@ -56,19 +56,24 @@ const fmtMN = (f) => f.ki.n
   ? `<span title="Originalfragen">${f.og.m}/${f.og.n}</span><small style="display:block;opacity:.75">KI ${f.ki.m}/${f.ki.n}</small>`
   : `${f.og.m}/${f.og.n}`;
 
-// Sticker-Feedback: Meme-Bilder aus assets/stickers, je nach Ergebnis zufällig gewählt.
-// Nur im Trainer-Look — der Exam.UP-Klausurmodus bleibt bewusst nüchtern.
+// Sticker-Feedback: Roses & Jennifers meistgenutzte WhatsApp-Sticker (animiertes
+// WebP), je nach Ergebnis zufällig gewählt. Nur im Trainer-Look — der Exam.UP-
+// Klausurmodus bleibt bewusst nüchtern. Bei prefers-reduced-motion wird das
+// Standbild (.png, erster Frame) statt der Animation geladen.
 const STICKER = {
-  good: ["happy_cat", "lovey_hedgehog", "verylovey_duck"],
-  part: ["sceptical_creature", "sweet_hamster", "sadsmiling_cat"],
-  bad: ["sad_cat", "bonk", "chained_cat"],
-  sanft: ["sweet_hamster", "sadsmiling_cat"], // fürs Nicht-Bestehen: tröstend, nie Bonk
+  good: ["pepe_drool", "troll_grin", "patrick_happy", "laugh_cam", "happy_dog", "laughcry", "rat_dance", "kitten_lift"],
+  part: ["emoji_eye", "seal_blob", "patrick_slime", "monkey_side", "cat_grass", "fish_drink"],
+  bad: ["nervous_grin", "laptop_bite", "shocked_dog", "bonk_dog"],
+  sanft: ["praying_cat", "pat_pat", "kitten_braces", "kitten_suit", "sad_hamster", "teary_cat"], // fürs Nicht-Bestehen: tröstend, nie Bonk
 };
+const REDUCE_MOTION = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Pfad zum Reaktions-Sticker: animiert (.webp), oder Standbild (.png) bei reduzierter Bewegung.
+const reactSrc = (name) => `assets/reactions/${name}.${REDUCE_MOTION ? "png" : "webp"}`;
 const sticker = (cls, big) => {
   const arr = STICKER[cls] || [];
   if (!arr.length) return "";
   const name = arr[Math.floor(Math.random() * arr.length)];
-  return `<img class="sticker${big ? " big" : ""}" src="assets/stickers/${name}.png" alt="">`;
+  return `<img class="sticker${big ? " big" : ""}" src="${reactSrc(name)}" alt="" loading="lazy">`;
 };
 
 // Hinweis-Badges (unbestätigte Lösung, KI-generiert) — wie die Themen-Chips
@@ -752,7 +757,7 @@ function zeigMoodle() {
 // jede Stufe mehr Regen, neue Symbole, mehr tanzende Sticker. Stufe 5 = Finale
 // (prüfungsreif): alle Happy-Sticker tanzen, goldener Glow, größter Regen.
 // Tippen schließt das Overlay (Ergebnis liegt darunter).
-const JUBEL_TAENZER = ["happy_cat", "lovey_hedgehog", "verylovey_duck", "sweet_hamster"];
+const JUBEL_TAENZER = ["rat_dance", "kitten_lift", "patrick_happy", "happy_dog", "laugh_cam", "laughcry", "troll_grin"];
 const JUBEL_PLAETZE = [
   "left:4%;top:10%", "right:4%;top:16%", "left:6%;bottom:16%", "right:6%;bottom:12%",
   "left:36%;top:4%", "right:32%;bottom:5%", "left:2%;top:44%", "right:2%;top:40%",
@@ -781,11 +786,11 @@ function klausurJubel(stufe = 1) {
   const amp = (1 + Math.max(0, stufe - 2) * 0.22).toFixed(2);
   const taenzer = Array.from({ length: nTaenzer }, (_, i) => {
     const dreht = stufe >= 3 && i % 2 === 1;
-    return `<img class="jubel-taenzer${dreht ? " dreht" : ""}" src="assets/stickers/${JUBEL_TAENZER[i % JUBEL_TAENZER.length]}.png" style="${JUBEL_PLAETZE[i % JUBEL_PLAETZE.length]};--amp:${amp};--dl:${(1.6 + i * 0.2).toFixed(2)}s;--d:${(1.3 + Math.random() * 0.8 - stufe * 0.08).toFixed(2)}s" alt="">`;
+    return `<img class="jubel-taenzer${dreht ? " dreht" : ""}" src="${reactSrc(JUBEL_TAENZER[i % JUBEL_TAENZER.length])}" style="${JUBEL_PLAETZE[i % JUBEL_PLAETZE.length]};--amp:${amp};--dl:${(1.6 + i * 0.2).toFixed(2)}s;--d:${(1.3 + Math.random() * 0.8 - stufe * 0.08).toFixed(2)}s" alt="">`;
   }).join("");
   const ov = document.createElement("div");
   ov.className = "jubel" + (stufe === 5 ? " s5" : "");
-  ov.innerHTML = `${regen}${taenzer}<img class="jubel-figur" src="assets/stickers/happylovey_figure.png" alt="">
+  ov.innerHTML = `${regen}${taenzer}<img class="jubel-figur" src="${reactSrc("pepe_drool")}" alt="">
     <div class="jubel-text">${JUBEL_TEXT[stufe - 1]}</div>
     <div class="jubel-hint">tippen zum Schließen</div>`;
   document.body.appendChild(ov);
@@ -861,7 +866,7 @@ function ergebnis(session, runde, opts = {}) {
         ${session.runde && session.beantwortet < session.anzahl ? `<button class="btn small" id="reopenBtn">Fortsetzen</button>` : ""}
         <button class="btn ghost small" id="delBtn" title="Session löschen">🗑</button></span></div>
     <div class="card result-big">
-      ${abgebrochen ? `<img class="sticker big" src="assets/stickers/sceptical_creature.png" alt="">` : sticker(pass ? "good" : "sanft", true)}
+      ${abgebrochen ? `<img class="sticker big" src="${reactSrc("monkey_side")}" alt="">` : sticker(pass ? "good" : "sanft", true)}
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts">${session.punkte}<span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>

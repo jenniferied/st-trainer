@@ -734,6 +734,7 @@ function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
   const insights = C.insights(session);
+  const rundeAnalyse = C.bewerteRows(session.proFrage || []);
   const zeiten = (session.proFrage || []).map((x) => x.zeit).filter((z) => z != null);
   const avgZeit = zeiten.length ? Math.round(zeiten.reduce((a, b) => a + b, 0) / zeiten.length) : null;
   const themen = C.gruppiere(session.proFrage, (x) => x.thema);
@@ -777,7 +778,8 @@ function ergebnis(session, runde, opts = {}) {
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
       <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
     </div>
-    ${insights.length ? `<div class="card"><h3>💡 Insights</h3>${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}
+    <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
+      ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
     <div class="card"><h3>Nach Thema</h3>${themenRows}</div>
     ${opts.ausVerlauf ? "" : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
     <div class="card mt"><h3>Alle Fragen im Detail</h3>${review || "<p class='muted'>Keine beantworteten Fragen.</p>"}</div>
@@ -902,16 +904,75 @@ function tryInline(qid, btn) {
   };
 }
 
+// Klartext-Auswertung: WAS ist der Hebel (praezise benennen), WIE ermutigend
+// rahmen (Optionen statt Befehle, immer ein Staerken-Anker, ein kleinster Schritt).
+// Nur belastbare Aussagen — die Schwellen stecken in core.bewerteRows.
+function analyseHtml(a, scope = "global") {
+  const tn = (slug) => (C.THEMEN[slug] || {}).name || slug;
+  if (!a || a.nQual < 3 || (!a.staerken.length && !a.schwaechen.length)) {
+    return `<p class="muted">${scope === "runde" ? "Für klare Muster war die Runde noch zu kurz" : "Noch zu wenig echte Antworten für eine klare Auswertung"} — je mehr Runden, desto konkreter wird's hier. 💪</p>`;
+  }
+  const p = [];
+  if (a.schwaechen.length) {
+    const w = a.schwaechen[0];
+    const bp = w.brennpunkt ? `, vor allem bei ${esc(labelU(w.brennpunkt.u))}` : "";
+    let s = `<b>Dein größter Hebel gerade:</b> ${esc(tn(w.thema))}${bp} — im Schnitt ${w.quote}% bei ${w.n} ${w.n === 1 ? "Frage" : "Fragen"}. `;
+    s += scope === "runde"
+      ? `Nimm dir als Nächstes eine kurze Runde nur dazu und geh die Erklärungen mit den 📄-Folien durch.`
+      : `Kleinster Schritt: eine 10er-Runde nur zu ${esc(tn(w.thema))} — beim Nachlesen führen die 📄-Sprungmarken direkt zur Folie.`;
+    if (w.tempo) s += ` Du gehst da oft schnell ran; einmal bewusst langsamer lesen bringt hier am meisten.`;
+    p.push(`<div class="fokus">${s}</div>`);
+  }
+  if (a.staerken.length)
+    p.push(`<p class="an-zeile"><b>Das sitzt schon:</b> ${a.staerken.map((x) => `<span class="tag-gut">${esc(tn(x.thema))} ${x.quote}%</span>`).join(" ")} — deine Basis, da kannst du dir sicher sein. 💪</p>`);
+  if (a.schwaechen.length)
+    p.push(`<p class="an-zeile"><b>Hier ist am meisten drin:</b> ${a.schwaechen.map((x) => `<span class="tag-hebel">${esc(tn(x.thema))} ${x.quote}%</span>`).join(" ")}</p>`);
+  if (a.verwechslung?.length)
+    p.push(`<p class="muted an-zeile">Leicht zu verwechseln: ${a.verwechslung.slice(0, 3).map((v) => esc(v.paar)).join(" · ")}.</p>`);
+  return p.join("");
+}
+
 // ================= STATISTIK =================
 function statistik() {
   const st = C.statistik();
   const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
-  const themenRows = st.proThema.map(({ slug, n, quote, zeit }) => {
-    const t = C.THEMEN[slug] || { name: slug };
-    return `<div class="progress-row" style="--tc:${t.color}"><span class="lbl">${t.name}</span>
-      <span class="bar"><i style="width:${quote ?? 0}%"></i></span>
-      <span class="val">${quote != null ? quote + " %" : "–"}<small style="display:block;opacity:.75">${n}×${zeit != null ? " · Ø " + fmtSek(zeit) : ""}</small></span></div>`;
+  const pkt = (v) => `${v.pkt}/${v.maxSchnitt} P.`;
+  // Pro Thema: aufklappbar bis auf die Unterthemen (Beherrschung + Ø Punkte + Ø Zeit)
+  const themenRows = st.proThema.map((tt) => {
+    const t = C.THEMEN[tt.slug] || { name: tt.slug, color: "var(--ink-soft)" };
+    const subRows = tt.unterthemen.map((s, ui) => {
+      const beherrsch = s.tot ? Math.round((100 * s.m) / s.tot) : 0;
+      return `<div class="progress-row sub" style="--tc:${C.subColor(tt.slug, ui)}">
+        <span class="lbl">${esc(labelU(s.u))} <small class="muted">${s.n}×</small></span>
+        <span class="bar thin"><i style="width:${beherrsch}%"></i></span>
+        <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`;
+    }).join("");
+    return `<details class="topic" style="--tc:${t.color}">
+      <summary><span class="lbl">${t.name}</span>
+        <span class="bar"><i style="width:${tt.quote ?? 0}%"></i></span>
+        <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span></summary>
+      <div class="sub-wrap"><p class="muted sub-head">Balken = beherrschte Fragen (Level ≥ 3) · Zahl = Ø Punktequote · dann Ø Punkte & Ø Zeit</p>${subRows}</div>
+    </details>`;
   }).join("");
+  // Trend: Punktequote der letzten Sitzungen als Mini-Verlauf
+  const tr = st.trend;
+  let trendHtml = "";
+  if (tr.genug) {
+    const qs = tr.proSession.map((s) => s.quote);
+    const mx = Math.max(60, ...qs), mn = Math.min(40, ...qs);
+    const bars = tr.proSession.map((s) => {
+      const hoehe = Math.round((100 * (s.quote - mn)) / Math.max(1, mx - mn));
+      return `<div class="tr-col" title="${MODUS_LBL[s.modus] || s.modus}: ${s.punkte}/${s.max} (${s.quote} %)">
+        <span class="tr-q">${s.quote}%</span><i style="height:${Math.max(6, hoehe)}%;--tc:${s.bestanden ? "var(--ok)" : "var(--bad)"}"></i>
+        <span class="tr-lbl">${(MODUS_LBL[s.modus] || s.modus).replace(/^\S+\s/, "").slice(0, 8)}</span></div>`;
+    }).join("");
+    const satz = tr.richtung === "hoch" ? `Aufwärts — zuletzt +${tr.delta} Punkte gegenüber vorher. Weiter so! 🎉`
+      : tr.richtung === "runter" ? `Zuletzt ${tr.delta} Punkte unter dem Schnitt davor — erst ${tr.proSession.length} Runden, das schwankt noch. Kein Grund zur Sorge.`
+      : `Stabil um die ${Math.round(tr.proSession.reduce((a, s) => a + s.quote, 0) / tr.proSession.length)} %.`;
+    trendHtml = `<div class="card"><h3>Trend 📈</h3><div class="trend-chart">${bars}</div><p class="muted" style="margin-bottom:0">${satz}</p></div>`;
+  } else if (st.sessions >= 1) {
+    trendHtml = `<div class="card"><h3>Trend 📈</h3><p class="muted" style="margin:0">Nach der zweiten abgeschlossenen Runde zeigt sich hier dein Verlauf.</p></div>`;
+  }
   const maxTag = Math.max(1, ...st.tage14.map((d) => d.n));
   const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Antworten">
     <i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
@@ -926,7 +987,9 @@ function statistik() {
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
     </div></div>
-    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Ø erreichte Punkte, Anzahl Antworten, Ø Zeit</p>${themenRows}</div>
+    <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(st.analyse, "global")}</div>
+    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen — Ø Punktequote, Anzahl, Ø Zeit; innen die Unterthemen mit Beherrschung.</p>${themenRows}</div>
+    ${trendHtml}
     <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div></div>`
     : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
   </div>`);

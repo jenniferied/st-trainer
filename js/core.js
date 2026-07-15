@@ -203,23 +203,108 @@ export function frageStats(qid) {
     letzte: log.slice(-5).reverse(),
   };
 }
+// Ein echter Versuch braucht Lesezeit. Unter 3s (z.B. schnelles Durchtippen im
+// Explore) zaehlt fuer Aktivitaet, aber NICHT fuer Qualitaetszahlen (Quote, Zeit,
+// Staerken/Schwaechen) — sonst verfaelschen Schnelltaps die Diagnose.
+const plausibel = (a) => a.zeit == null || a.zeit >= 3;
+
+// antwortLog -> angereicherte Zeilen (mit Thema/Unterthema aus dem Korpus)
+function logZeilen() {
+  const out = [];
+  for (const a of state().antwortLog) {
+    const q = frage(a.qid); if (!q) continue;
+    out.push({ qid: a.qid, punkte: a.punkte, max: a.max, voll: a.voll, zeit: a.zeit,
+      thema: q.oberthema, unter: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar,
+      plaus: plausibel(a) });
+  }
+  return out;
+}
+
+// Kern-Auswertung: aus Antwort-Zeilen Staerken, Schwaechen (nach Hebel = Luecke ×
+// Anzahl), Verwechslungen und Tempo ableiten. Wird von der globalen Statistik UND
+// der Sitzungs-Auswertung genutzt. Nur belastbare Gruppen werden gelabelt:
+// Thema ab THEME_MIN Antworten, Unterthema ab SUB_MIN.
+const THEME_MIN = 4, SUB_MIN = 3;
+export function bewerteRows(input) {
+  // Tolerant gegenueber Sitzungs-Zeilen (proFrage nutzt `unterthema`, hat kein `plaus`).
+  const rows = input.map((r) => ({ ...r, unter: r.unter ?? r.unterthema,
+    plaus: r.plaus !== undefined ? r.plaus : plausibel(r) }));
+  const qual = rows.filter((r) => r.plaus && r.max);
+  const zAll = avg(qual.map((r) => r.zeit).filter((z) => z != null));
+  const grp = (keyFn) => {
+    const o = {};
+    for (const r of qual) { const k = keyFn(r); if (k == null) continue; (o[k] = o[k] || []).push(r); }
+    return o;
+  };
+  const stat = (arr) => {
+    const zt = arr.map((r) => r.zeit).filter((z) => z != null);
+    return { n: arr.length, quote: Math.round(100 * avg(arr.map((r) => r.punkte / r.max))),
+      pkt: +avg(arr.map((r) => r.punkte)).toFixed(1), maxSchnitt: +avg(arr.map((r) => r.max)).toFixed(1),
+      zeit: zt.length ? Math.round(avg(zt)) : null };
+  };
+  const themen = grp((r) => r.thema);
+  const belastbar = Object.entries(themen).filter(([, a]) => a.length >= THEME_MIN)
+    .map(([thema, a]) => ({ thema, ...stat(a) }));
+  const staerken = belastbar.filter((x) => x.quote >= 80).sort((a, b) => b.quote - a.quote);
+  const schwaechen = belastbar.filter((x) => x.quote < 55)
+    .map((x) => ({ ...x, tempo: x.zeit != null && zAll != null && x.zeit < 0.55 * zAll,
+      // schwaechstes belastbares Unterthema im Thema (fuer den konkreten Fokus)
+      brennpunkt: (() => {
+        const subs = Object.entries(grp((r) => r.thema === x.thema ? r.unter : null))
+          .filter(([, a]) => a.length >= SUB_MIN).map(([u, a]) => ({ u, ...stat(a) }))
+          .sort((p, q) => p.quote - q.quote);
+        return subs.length && subs[0].quote < 60 ? subs[0] : null;
+      })() }))
+    .sort((a, b) => (1 - b.quote / 100) * b.n - (1 - a.quote / 100) * a.n);
+  const verw = Object.entries(grp((r) => (r.punkte < r.max && r.paar) ? r.paar : null))
+    .filter(([, a]) => a.length >= 2).map(([paar, a]) => ({ paar, n: a.length }));
+  return { staerken, schwaechen, verwechslung: verw, overallQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null, nQual: qual.length };
+}
+
+// Verlauf der abgeschlossenen Sitzungen -> Trend der Punktequote ueber die Zeit.
+export function trend() {
+  const ses = state().sessions.filter((s) => s.status !== "abgebrochen" && s.max)
+    .map((s) => ({ ts: s.ts, modus: s.modus, punkte: s.punkte, max: s.max,
+      quote: Math.round(100 * s.punkte / s.max), bestanden: s.bestanden }))
+    .sort((a, b) => a.ts - b.ts);
+  if (ses.length < 2) return { proSession: ses, genug: false };
+  const letzte = ses[ses.length - 1].quote;
+  const vorher = Math.round(avg(ses.slice(0, -1).map((s) => s.quote)));
+  const delta = letzte - vorher;
+  return { proSession: ses, genug: true, delta,
+    richtung: delta >= 6 ? "hoch" : delta <= -6 ? "runter" : "stabil" };
+}
+
 export function statistik() {
   const st = state();
   const log = st.antwortLog;
-  const mitMax = log.filter((a) => a.max);
-  const zeit = avg(log.map((a) => a.zeit).filter((z) => z != null));
+  const rows = logZeilen();
+  const qual = rows.filter((r) => r.plaus && r.max);
+  const zeit = avg(qual.map((r) => r.zeit).filter((z) => z != null));
   const themen = {};
-  for (const a of log) {
-    const q = frage(a.qid); if (!q) continue;
-    const t = (themen[q.oberthema] = themen[q.oberthema] || { n: 0, quoten: [], zeiten: [] });
-    t.n++;
-    if (a.max) t.quoten.push(a.punkte / a.max);
-    if (a.zeit != null) t.zeiten.push(a.zeit);
+  for (const r of qual) {
+    const t = (themen[r.thema] = themen[r.thema] || { n: 0, quoten: [], zeiten: [], pkt: [], mx: [], subs: {} });
+    t.n++; t.quoten.push(r.punkte / r.max); t.pkt.push(r.punkte); t.mx.push(r.max);
+    if (r.zeit != null) t.zeiten.push(r.zeit);
+    const s = (t.subs[r.unter] = t.subs[r.unter] || { n: 0, quoten: [], zeiten: [], pkt: [], mx: [] });
+    s.n++; s.quoten.push(r.punkte / r.max); s.pkt.push(r.punkte); s.mx.push(r.max);
+    if (r.zeit != null) s.zeiten.push(r.zeit);
   }
+  const meister = (thema, unter) => {
+    let m = 0, tot = 0;
+    for (const q of POOL) if (q.oberthema === thema && (unter == null || q.unterthema === unter) && zaehlt(q)) { tot++; if (gemeistert(q.id)) m++; }
+    return { m, tot };
+  };
+  const mkSub = (thema, u, s) => ({ u, n: s.n,
+    quote: Math.round(100 * avg(s.quoten)), pkt: +avg(s.pkt).toFixed(1), maxSchnitt: +avg(s.mx).toFixed(1),
+    zeit: s.zeiten.length ? Math.round(avg(s.zeiten)) : null, ...meister(thema, u) });
   const proThema = Object.entries(themen).map(([slug, t]) => ({
     slug, n: t.n,
     quote: t.quoten.length ? Math.round(100 * avg(t.quoten)) : null,
+    pkt: +avg(t.pkt).toFixed(1), maxSchnitt: +avg(t.mx).toFixed(1),
     zeit: t.zeiten.length ? Math.round(avg(t.zeiten)) : null,
+    ...meister(slug, null),
+    unterthemen: Object.entries(t.subs).map(([u, s]) => mkSub(slug, u, s)).sort((a, b) => b.n - a.n),
   })).sort((a, b) => b.n - a.n);
   const tage14 = [];
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
@@ -229,12 +314,15 @@ export function statistik() {
   }
   return {
     beantwortet: log.length,
-    punkteQuote: mitMax.length ? Math.round(100 * avg(mitMax.map((a) => a.punkte / a.max))) : null,
-    vollQuote: log.length ? Math.round((100 * log.filter((a) => a.voll).length) / log.length) : null,
+    nQual: qual.length,
+    punkteQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null,
+    vollQuote: qual.length ? Math.round((100 * qual.filter((r) => r.voll).length) / qual.length) : null,
     avgZeit: zeit != null ? Math.round(zeit) : null,
     uebungsTage: new Set(log.map((a) => new Date(a.ts).toDateString())).size,
     sessions: st.sessions.length,
     proThema, tage14,
+    analyse: bewerteRows(rows),
+    trend: trend(),
   };
 }
 
@@ -405,13 +493,10 @@ export function insights(session) {
   const out = [];
   const byTyp = gruppiere(session.proFrage, (x) => x.fragetyp || "positiv");
   const acc = (arr) => arr.reduce((a, x) => a + x.punkte / x.max, 0) / arr.length;
+  // Nur der taktische NICHT-Frage-Tipp bleibt hier — Themen-Staerken/-Schwaechen
+  // und Verwechslungen deckt jetzt die „Wo du stehst"-Karte (bewerteRows) ab.
   if (byTyp.negation?.length >= 2 && byTyp.positiv?.length >= 2 && acc(byTyp.negation) < acc(byTyp.positiv) - 0.15)
-    out.push("NICHT-Fragen kosten dich überdurchschnittlich Punkte. Tipp: Bei ‚NICHT' erst alle richtigen Aussagen markieren, dann umdrehen.");
-  const paare = gruppiere(session.proFrage.filter((x) => x.punkte < x.max && x.paar), (x) => x.paar);
-  for (const [p, arr] of Object.entries(paare)) if (arr.length >= 2) out.push(`Verwechslungsgefahr bei: ${p} — hier lohnt gezieltes Differenzieren.`);
-  const themen = gruppiere(session.proFrage, (x) => x.thema);
-  const schwach = Object.entries(themen).filter(([, arr]) => arr.length >= 3 && acc(arr) < 0.5).map(([t]) => THEMEN[t]?.name || t);
-  if (schwach.length) out.push("Schwächste Themen in dieser Runde: " + schwach.join(", ") + ".");
+    out.push("NICHT-Fragen kosten dich gerade mehr Punkte. Tipp: Bei ‚NICHT' erst alle richtigen Aussagen markieren, dann umdrehen.");
   return out;
 }
 export function gruppiere(arr, fn) { const o = {}; for (const x of arr) { const k = fn(x); if (k == null) continue; (o[k] = o[k] || []).push(x); } return o; }

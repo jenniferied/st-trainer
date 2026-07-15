@@ -374,6 +374,42 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .akt-col i { display: block; width: 100%; max-width: 22px; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--accent); opacity: .85; }
 .akt-col span { font-size: .62rem; color: var(--ink-soft); }
 
+/* Klartext-Auswertung „Wo du stehst" (Statistik + Sitzungs-Auswertung) */
+.an-card .fokus {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-left: 4px solid var(--accent);
+  border-radius: 10px; padding: 10px 13px; margin: 4px 0 10px; font-size: .95rem;
+}
+.an-zeile { margin: .35em 0; font-size: .93rem; }
+.tag-gut, .tag-hebel {
+  display: inline-block; font-weight: 700; font-size: .82rem;
+  padding: 2px 9px; border-radius: 999px; margin: 2px 2px 2px 0; white-space: nowrap;
+}
+.tag-gut { background: var(--ok-bg); color: var(--ok); }
+.tag-hebel { background: var(--warn-bg); color: var(--warn-ink); }
+.insight-list { margin-top: 8px; }
+
+/* Aufklappbare Thema-Zeilen in der Statistik (Balken in der summary) */
+.topic > summary > .lbl { flex: 1 1 32%; min-width: 0; font-family: "Fraunces", serif; }
+.topic > summary > .bar { flex: 1 1 28%; height: 10px; }
+.topic > summary > .val { min-width: 66px; text-align: right; font-family: "Karla", sans-serif; font-weight: 700; font-size: .9rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.topic > summary > .val small { display: block; font-weight: 500; font-size: .66rem; opacity: .85; }
+.sub-wrap { padding: 4px 14px 12px; }
+.sub-head { font-size: .72rem; margin: 2px 0 8px; }
+.progress-row.sub { gap: var(--sp-3); margin: 6px 0; }
+.progress-row.sub .lbl { flex: 1 1 40%; font-weight: 600; font-size: .88rem; }
+.progress-row.sub .lbl small { font-weight: 400; }
+.progress-row.sub .val { font-size: .78rem; font-weight: 700; }
+.progress-row.sub .val small { display: block; font-weight: 500; font-size: .66rem; opacity: .85; }
+
+/* Trend: Punktequote je Sitzung */
+.trend-chart { display: flex; gap: 8px; align-items: flex-end; height: 120px; margin-bottom: 10px; }
+.tr-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; }
+.tr-col i { display: block; width: 100%; max-width: 46px; min-height: 4px; border-radius: 6px 6px 0 0; background: var(--tc, var(--accent)); }
+.tr-q { font-size: .74rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tr-lbl { font-size: .64rem; color: var(--ink-soft); text-align: center; }
+
 /* Fragen-Statistik im Explore (ℹ️) */
 .q-stats { background: var(--paper-2); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: .85rem; }
 .q-stats .stat-head { font-weight: 700; font-size: .78rem; color: var(--ink-soft); margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }

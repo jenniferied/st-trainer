@@ -191,12 +191,12 @@ function histRow(s) {
     <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
 // Einzeln geübte Fragen (Stöbern) als Tages-Eintrag im Verlauf — vollwertige
-// Übung, gehört sichtbar dazu. Kein 🗑: Einzelantworten haben keine Grabsteine,
-// ein Löschen käme beim nächsten Geräte-Sync zurück.
+// Übung, gehört sichtbar dazu. 🗑 löscht den ganzen Tag (aid-Grabsteine).
 function histRowEinzel(e) {
   return `<div class="hist-item click" data-einzel="${e.id}"><div><b>🗂 Einzelfragen</b> <span class="badge-src">Stöbern</span>
     <div class="when">${datum(e.erstellt)} · ${e.n} ${e.n === 1 ? "Frage" : "Fragen"} einzeln geübt</div></div>
-    ${e.max ? `<span class="sc">${e.punkte}/${e.max}</span>` : ""}</div>`;
+    ${e.max ? `<span class="sc">${e.punkte}/${e.max}</span>` : ""}
+    <button class="btn ghost small" data-del-einzel="${e.id}" title="Diese Einzelantworten löschen">🗑</button></div>`;
 }
 // Sessions + Einzelfragen-Tage gemischt, Neuestes zuerst
 function histEintraege() {
@@ -212,7 +212,19 @@ function bindHist(rerender) {
     if (ev.target.closest("[data-del],[data-reopen]")) return;
     sessionDetail(el.dataset.open, rerender);
   });
-  app.querySelectorAll("[data-einzel]").forEach((el) => el.onclick = () => einzelDetail(el.dataset.einzel, rerender));
+  app.querySelectorAll("[data-einzel]").forEach((el) => el.onclick = (ev) => {
+    if (ev.target.closest("[data-del-einzel]")) return;
+    einzelDetail(el.dataset.einzel, rerender);
+  });
+  app.querySelectorAll("[data-del-einzel]").forEach((b) => b.onclick = async (ev) => {
+    ev.stopPropagation();
+    const g = C.einzelGruppen().find((x) => x.id === b.dataset.delEinzel);
+    if (!g) return;
+    if (await frag(`${g.n} Einzelantworten vom ${datum(g.erstellt).split(" ")[0]} löschen? Dein Lernstand (Dots & Fortschritt) wird ohne sie neu berechnet — auf allen Geräten.`, { ja: "Löschen", nein: "Behalten" })) {
+      C.loescheEinzel(g.antworten.map((a) => a.aid));
+      rerender();
+    }
+  });
   app.querySelectorAll("[data-del]").forEach((b) => b.onclick = async (ev) => {
     ev.stopPropagation();
     if (await frag("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.", { ja: "Löschen", nein: "Behalten" })) {

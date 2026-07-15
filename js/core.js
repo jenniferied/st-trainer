@@ -156,6 +156,17 @@ export function loescheSession(id) {
   syncLernstand();
 }
 
+// Einzelantworten (Stöbern) löschen: die aids wandern als Grabsteine in die
+// geloescht-Liste, sonst holt der Merge sie vom nächsten Gerät zurück.
+export function loescheEinzel(aids) {
+  const st = state();
+  const weg = new Set(aids);
+  st.antwortLog = st.antwortLog.filter((a) => a.sid || !weg.has(a.aid || antwortId(a)));
+  for (const aid of aids) if (!st.geloescht.includes(aid)) st.geloescht.push(aid);
+  rebuildLeitner();
+  syncLernstand();
+}
+
 // Fertige/abgebrochene Session aus dem Verlauf wieder öffnen: alte Wertung
 // zurückrechnen (wie beim Löschen), Session mit den bisherigen Antworten
 // zurück zu den offenen. Beim Abschluss wird alles neu gewertet & geloggt.
@@ -611,6 +622,9 @@ export function mergeLernstand(remote) {
   for (const a of [...(remote.antwortLog || []), ...st.antwortLog]) {
     if (!a?.qid) continue;
     if (a.sid && tot.has(a.sid)) continue;
+    // Einzelantworten (ohne sid) tragen ihre aid als Grabstein in derselben Liste —
+    // alte App-Versionen reichen unbekannte Ids einfach mit weiter (Union)
+    if (!a.sid && tot.has(a.aid || antwortId(a))) continue;
     log.set(a.aid || antwortId(a), a);
   }
   st.antwortLog = [...log.values()].sort((a, b) => a.ts - b.ts);

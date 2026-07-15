@@ -323,8 +323,14 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .sticker {
   width: 54px; height: 54px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
   box-shadow: var(--shadow);
+  /* WhatsApp-Fotomemes haben teils weißen, teils transparenten Hintergrund —
+     ein helles Sticker-Papier vereinheitlicht beides und trägt beide Themes. */
+  background: #fbfbf7;
   animation: sticker-pop .35s cubic-bezier(.34, 1.56, .64, 1) both;
 }
+/* Nach dem Reinploppen sanft weiteratmen (bei reduzierter Bewegung aus, s.u.) */
+.fb-banner .sticker { animation: sticker-pop .35s cubic-bezier(.34, 1.56, .64, 1) both, sticker-idle 3.2s .5s ease-in-out infinite; }
+@keyframes sticker-idle { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
 .sticker.big { width: 96px; height: 96px; border-radius: 18px; margin-bottom: 10px; transform: rotate(-3deg); }
 @keyframes sticker-pop { from { opacity: 0; transform: scale(.4) rotate(-14deg); } }
 
@@ -606,6 +612,7 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 @media (prefers-reduced-motion: reduce) {
   .jubel .herz, .jubel-taenzer.dreht { display: none; }
   .jubel-figur, .jubel.s5 .jubel-figur, .jubel-taenzer, .jubel.s5 .jubel-text { animation: fadein .4s ease both; }
+  .sticker, .fb-banner .sticker { animation: fadein .3s ease both; }
 }
 .pw-input {
   flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px;

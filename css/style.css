@@ -457,6 +457,26 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .moodle-bar { background: var(--up-dark); color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: .95rem; }
 .moodle-bar .brand { font-weight: 700; letter-spacing: .01em; padding-right: 10px; border-right: 1px solid rgba(255, 255, 255, .3); }
 .moodle-bar .timer { margin-left: auto; background: #fff; color: #333; border-radius: 4px; padding: 3px 10px; }
+/* Foliensicht im Klausurmodus: wie die Folien-Seitenansicht in der echten Klausur,
+   aber immer nur die zur Frage relevante Folie. Bewusst im nüchternen Exam-Grau. */
+.mf-toggle {
+  background: transparent; border: 1px solid rgba(255, 255, 255, .55); color: #fff;
+  border-radius: 5px; padding: 4px 10px; cursor: pointer; font-size: .85rem; white-space: nowrap;
+}
+.mf-toggle.on { background: #fff; color: var(--up-dark); border-color: #fff; }
+.moodle-folien {
+  background: #f7f7f7; border: 1px solid #ddd; border-radius: 6px;
+  padding: 8px; margin: 0 0 12px; clear: right;
+}
+.moodle-folien .mf-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.moodle-folien .fv-btn { min-width: 32px; height: 32px; font-size: 1rem; background: #fff; border-color: #ccc; color: #333; }
+.mf-cap { font-weight: 700; font-variant-numeric: tabular-nums; font-size: .85rem; color: #333; }
+.moodle-folien img { display: block; width: 100%; border: 1px solid #ccc; background: #fff; border-radius: 3px; cursor: zoom-in; }
+.mf-hint { font-size: .75rem; color: #777; margin-top: 6px; }
+@media (min-width: 900px) {
+  /* Desktop: Folie als Seitenansicht rechts neben der Frage */
+  .moodle-folien { float: right; width: 46%; margin: 0 0 10px 14px; clear: none; }
+}
 .moodle-body { background: #fff; padding: 16px 14px; }
 .moodle .qinfo {
   float: left; background: #f2f2f2; border: 1px solid #ddd; border-radius: 4px;

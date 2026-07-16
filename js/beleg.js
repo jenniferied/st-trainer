@@ -31,8 +31,8 @@ const SITZUNG = {
   "schulqualitaet": "Schulqualität",
   "schulrecht": "Schulrecht",
 };
-const TOTAL = 317;
-const bildUrl = (seite) => `data/folien/folie-${String(seite).padStart(3, "0")}.jpg`;
+export const TOTAL = 317;
+export const bildUrl = (seite) => `data/folien/folie-${String(seite).padStart(3, "0")}.jpg`;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -40,6 +40,21 @@ export function folienSeite(thema, folie) {
   const off = OFFSET[thema];
   if (off == null || !Number.isFinite(folie)) return null;
   return Math.min(TOTAL, Math.max(1, folie + off));
+}
+
+// Relevante Folien einer Frage: alle "Folie N"-Anker aus den Options-Erklaerungen,
+// als absolute Bildseiten, meistreferenzierte zuerst. Grundlage fuer die
+// Foliensicht im Klausurmodus (nur die zur Frage passende Folie einblenden).
+export function relevanteFolien(q) {
+  const zaehl = new Map();
+  for (const o of q.optionen || []) {
+    if (!o.erklaerung) continue;
+    for (const m of String(o.erklaerung).matchAll(/Folien?\s?(\d{1,3})/g)) {
+      const seite = folienSeite(q.oberthema, +m[1]);
+      if (seite) zaehl.set(seite, (zaehl.get(seite) || 0) + 1);
+    }
+  }
+  return [...zaehl.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map((e) => e[0]);
 }
 
 // Erklaerungstext -> HTML mit Beleg-Chips. Gibt bereits escapten HTML zurueck.

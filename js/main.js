@@ -728,12 +728,31 @@ function zeigMoodle() {
   // Übungsmodus). Geprüfte Fragen sind festgelegt und zeigen ihre Erklärungen.
   const locked = !!r.geprueft;
   const erg = locked ? C.scoreFrage(q, r.gewaehlt || []) : null;
+  // Foliensicht (wie in der echten Klausur, dort liegen die Vorlesungsfolien neben
+  // dem Test): Toggle in der Kopfleiste, zeigt immer nur die zur Frage relevante
+  // Folie (aus den Beleg-Ankern der Erklärungen), blätter- und zoombar.
+  const folSeiten = Beleg.relevanteFolien(q);
+  const folienPanel = !R.folienAuf ? "" : folSeiten.length ? `
+        <div class="moodle-folien" id="mfPanel">
+          <div class="mf-bar">
+            <button class="fv-btn" id="mfPrev" title="Vorige Folie" aria-label="Vorige Folie">‹</button>
+            <span class="mf-cap" id="mfCap">…</span>
+            <button class="fv-btn" id="mfNext" title="Nächste Folie" aria-label="Nächste Folie">›</button>
+            <span class="fv-sp"></span>
+            <button class="fv-btn" id="mfBig" title="Groß ansehen" aria-label="Groß ansehen">⤢</button>
+          </div>
+          <img id="mfImg" alt="Vorlesungsfolie" loading="lazy">
+          <div class="mf-hint">Folie zur Frage · antippen zum Vergrößern${folSeiten.length > 1 ? ` · Belege auf ${folSeiten.length} Folien` : ""}</div>
+        </div>` : `
+        <div class="moodle-folien" id="mfPanel"><div class="mf-hint">Zu dieser Frage gibt es keinen Folien-Beleg (z.&nbsp;B. Gesetzestext) — nach dem Überprüfen führen die 📖-Chips direkt zur Quelle.</div></div>`;
   h(`<div class="fade-in">
     <div class="moodle">
       <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span>
+        <button class="mf-toggle${R.folienAuf ? " on" : ""}" id="folienBtn" title="Vorlesungsfolie zur Frage ein-/ausblenden">📄 Folien</button>
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
+        ${folienPanel}
         ${fallHtml(q)}
         <div class="qtext">${esc(q.frage)}</div>
         <div style="clear:both"></div>
@@ -769,6 +788,19 @@ function zeigMoodle() {
     </div></div>`);
   qStart = locked ? null : Date.now(); // geprüfte Frage: Zeit steht, nur noch lesen
   startTick();
+  document.getElementById("folienBtn").onclick = () => { bankZeit(); R.folienAuf = !R.folienAuf; zeigMoodle(); };
+  if (R.folienAuf && folSeiten.length) {
+    // Blättern nur lokal für diese Frage — beim Weiterblättern zur nächsten Frage
+    // startet die Sicht wieder auf deren relevanter Folie.
+    let mfSeite = folSeiten[0];
+    const img = document.getElementById("mfImg"), cap = document.getElementById("mfCap");
+    const mal = () => { img.src = Beleg.bildUrl(mfSeite); cap.textContent = `Folie ${mfSeite} / ${Beleg.TOTAL}`; };
+    document.getElementById("mfPrev").onclick = () => { mfSeite = Math.max(1, mfSeite - 1); mal(); };
+    document.getElementById("mfNext").onclick = () => { mfSeite = Math.min(Beleg.TOTAL, mfSeite + 1); mal(); };
+    document.getElementById("mfBig").onclick = () => Beleg.oeffneFolie(mfSeite);
+    img.onclick = () => Beleg.oeffneFolie(mfSeite);
+    mal();
+  }
   const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
   const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };

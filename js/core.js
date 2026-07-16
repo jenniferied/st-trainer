@@ -448,12 +448,39 @@ function waehleFragen(reps, n, strat) {
   }
   faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
   bald.sort((a, b) => b.ueber - a.ueber);
-  shuffle(neu);
+  // Neue Fragen nicht rein zufällig: Unterthemen, die in der Historie schwach waren,
+  // bekommen bevorzugt UNGESEHENE Fragen. Die echte Klausur besteht aus lauter neuen
+  // Fragen — gekonnt sein muss das Thema, nicht die (auswendig gelernte) Frage.
+  const boost = schwacheUnterthemen();
+  const neuSortiert = zieheGewichtet(neu, neu.length, (x) => boost[x.q.oberthema + "/" + x.q.unterthema] || 1);
+  neu.length = 0; neu.push(...neuSortiert);
   const out = [];
   const nimm = (arr, limit) => { for (const x of arr) { if (out.length >= limit) return; if (!out.includes(x.q)) out.push(x.q); } };
   nimm(faellig, Math.ceil(n * 0.7)); // max ~70% Wiederholung, damit immer Neues dabei ist
   nimm(neu, n); nimm(faellig, n); nimm(bald, n);
   return out.slice(0, n);
+}
+
+// Unterthemen-Schwäche aus der KOMPLETTEN Antwort-Historie (nicht nur dem aktuellen
+// Leitner-Stand): ein Unterthema, das mal schwach war, bleibt geboostet, bis auch
+// frische Fragen daraus sitzen — erst dann steigt die Quote und der Boost fällt weg.
+// Schnell-Taps (< 3 s) zählen nicht, sie sind kein echter Versuch (Plausibilitäts-Filter).
+function schwacheUnterthemen() {
+  const agg = {};
+  for (const a of state().antwortLog) {
+    if (a.zeit != null && a.zeit < 3) continue;
+    const q = frage(a.qid); if (!q) continue;
+    const k = q.oberthema + "/" + q.unterthema;
+    const s = agg[k] || (agg[k] = { n: 0, voll: 0 });
+    s.n++; s.voll += a.voll ? 1 : 0;
+  }
+  const w = {};
+  for (const [k, s] of Object.entries(agg)) {
+    if (s.n < 3) continue; // zu wenig Daten, um "schwach" zu behaupten
+    const quote = s.voll / s.n;
+    if (quote < 0.6) w[k] = quote < 0.35 ? 3 : 2;
+  }
+  return w;
 }
 
 // Gewichtete Ziehung (Gewicht × Zufall) — priorisiert nach gewFn, aber jede Runde anders.

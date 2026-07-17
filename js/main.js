@@ -141,10 +141,71 @@ function bankZeit() {
 }
 
 // ================= HOME =================
+// ---- Tagesziel-Bar: Orange -> Gelb -> Gruen. Bewusst nie rot, kein Rueckstands-
+// Uebertrag von gestern — jeder Tag startet frisch. Gruen = "genug fuer heute",
+// ein erreichbarer Endpunkt statt endlosem Grind.
+function tageszielHtml(tz, sich) {
+  if (tz.tage != null && tz.tage < 0) return "";
+  if (tz.tage === 0) {
+    const sicher = sich.filter((t) => t.stars >= 2).length;
+    return `<div class="card tagesziel klausurtag">
+      <b>🍀 Heute ist dein Tag</b>
+      <p style="margin:6px 0 0">Du hast <b>${C.state().antwortLog.length}</b> Antworten trainiert und ${sicher} von 6 Themen sicher. Das Wissen ist da — ruhig atmen (4 Sek. ein, 6 Sek. aus), erst die sicheren Fragen, dann die kniffligen. Du kannst das. 💛</p>
+    </div>`;
+  }
+  const pct = Math.min(100, Math.round((100 * tz.n) / tz.ziel));
+  const zone = tz.n >= tz.ziel ? "fertig" : pct >= 80 ? "g" : pct >= 40 ? "y" : "o";
+  const msg = tz.n >= tz.ziel ? "Tagesziel geschafft 🎉 Alles ab jetzt ist Bonus — und Pause ist auch Lernen."
+    : tz.n === 0 ? "Frischer Tag, frische Bar. Die erste Karte ist der ganze Trick — eine ⚡ 10er reicht zum Ankommen."
+    : zone === "o" ? "Warmlaufen — jede Karte zählt."
+    : zone === "y" ? "Gut im Fluss — schon ein ordentliches Stück geschafft."
+    : "Endspurt in Sicht — nach Gefühl, kein Muss.";
+  const note = tz.tage == null ? ""
+    : tz.tage === 1 ? `<p class="muted tz-note">Morgen früh ist es so weit. Heute reichen lockere ${tz.ziel} zum Festigen — und dann Feierabend und früh schlafen. 💛</p>`
+    : `<p class="muted tz-note">Noch ${tz.tage} Übungstage · mit ~${tz.ziel} Karten am Tag hast du bis Freitag den ganzen Stoff nochmal in der Hand.</p>`;
+  return `<div class="card tagesziel">
+    <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
+    <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute">
+      <i class="fill ${zone}" style="width:${pct}%"></i>
+      <span class="mark" style="left:40%"></span><span class="mark" style="left:80%"></span>
+    </div>
+    <p class="muted tz-msg">${msg}</p>${note}
+  </div>`;
+}
+
+// ---- Sicherheits-Sterne je Thema. Sprachregel: nie "schwach" — Stufen heissen
+// "im Aufbau / auf dem Weg / sicher / pruefungsreif" (Wachstums-Framing).
+const sterneHtml = (n) => `<span class="sterne">${[0, 1, 2].map((i) => `<span class="${i < n ? "an" : ""}">${i < n ? "★" : "☆"}</span>`).join("")}</span>`;
+const STERN_STATUS = ["im Aufbau", "auf dem Weg", "sicher", "prüfungsreif ✨"];
+function sicherheitHtml(sich) {
+  const sicher = sich.filter((t) => t.stars >= 2).length;
+  const rows = sich.map((t) => {
+    const th = C.THEMEN[t.slug];
+    return `<div class="progress-row sich-row" data-stern="${t.slug}" style="--tc:${th.color}">
+      <span class="lbl">${th.name}</span>${sterneHtml(t.stars)}<span class="val">${STERN_STATUS[t.stars]}</span></div>`;
+  }).join("");
+  // Ein konkreter kleinster Schritt statt sechs Baustellen: das Thema, dem am
+  // wenigsten zum naechsten Stern fehlt (Entscheidungslast rausnehmen).
+  const offen = sich.filter((t) => t.stars < 3);
+  const kandidat = offen.filter((t) => t.fehlt?.karten).sort((a, b) => a.fehlt.karten - b.fehlt.karten)[0] || offen[0];
+  const alle3 = !offen.length;
+  const schritt = alle3
+    ? `<p class="tz-msg" style="margin:10px 0 0"><b>Alle 6 Themen prüfungsreif ⭐⭐⭐</b> — du bist bereit. Ab hier nur noch frisch halten.</p>`
+    : kandidat ? `<div class="stern-schritt"><span>Nächster Stern: <b>${C.THEMEN[kandidat.slug].name}</b>${kandidat.fehlt?.karten ? ` — noch ~${kandidat.fehlt.karten} Karten` : " — Wiederholen hebt die Quote"}</span>
+        <button class="btn small" id="sternRunde" data-thema="${kandidat.slug}">10 Karten üben</button></div>` : "";
+  return `<div class="card sicherheit">
+    <div class="tz-head"><b>⭐ Sicherheit pro Thema</b><span class="tz-count"><b>${sicher}</b> / 6 sicher</span></div>
+    ${rows}${schritt}
+    <p class="muted tz-note">Sterne = deine letzten Antworten je Thema + wie viel davon du schon gesehen hast. ⭐⭐ = sicher, ⭐⭐⭐ = prüfungsreif.</p>
+  </div>`;
+}
+
 function home() {
   stopTimer(); R = null;
   const s = C.state();
   const offene = s.offen || [];
+  const tz = C.tagesStand();
+  const sich = C.sicherheit();
 
   const offenCards = offene.map((o) => {
     const done = o.runde.filter((r) => r.gewaehlt).length;
@@ -184,7 +245,10 @@ function home() {
   h(`<div class="fade-in" id="homeRoot">
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
-    ${offene.length ? `<h2>Offene Sessions</h2>${offenCards}` : ""}
+    ${tageszielHtml(tz, sich)}
+    ${sicherheitHtml(sich)}
+
+    ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
     ${letzte ? `<h2 class="${offene.length ? "mt" : ""}">Zuletzt</h2><div class="card">${letzte}
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
@@ -229,6 +293,31 @@ function home() {
   const tb = document.getElementById("themeBtn");
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
+
+  // Ein-Tipp-Runde zum naechsten Stern: 10 smarte Karten nur aus diesem Thema
+  const sr = document.getElementById("sternRunde");
+  if (sr) sr.onclick = () => starte({
+    modus: "schnell", anzahl: 10, auswahl: "smart", themen: [sr.dataset.thema],
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+    sprache: s.settings.sprache || "schwer",
+  });
+
+  // Feiern (einmalig, geraetelokal): Tagesziel erreicht -> Konfetti einmal pro Tag;
+  // Sternaufstieg -> Konfetti + Puls auf der Zeile. Abstiege werden bewusst NIE
+  // kommentiert — die Anzeige ist ehrlich, aber wir reiben es nicht rein.
+  const heuteKey = new Date().toDateString();
+  let gefeiert = false;
+  if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.ziel && s.settings.tzFeier !== heuteKey) {
+    s.settings.tzFeier = heuteKey; C.save();
+    konfetti(); gefeiert = true;
+  }
+  const alteSterne = s.settings.sterneStand;
+  if (alteSterne) for (const t of sich) if (t.stars > (alteSterne[t.slug] || 0)) {
+    document.querySelector(`[data-stern="${t.slug}"]`)?.classList.add("neu");
+    if (!gefeiert) { konfetti({ n: 32 }); gefeiert = true; }
+  }
+  s.settings.sterneStand = Object.fromEntries(sich.map((t) => [t.slug, t.stars]));
+  C.save();
 }
 
 function histRow(s) {

@@ -721,3 +721,34 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .bg-card.shake { animation: bgshake .4s; border-color: var(--bad); background: var(--bad-bg); }
 @keyframes bgshake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 .bg-kat { margin-bottom: 10px; width: 100%; }
+
+/* ---- Endspurt: Tagesziel-Zonen-Bar + Sicherheits-Sterne ---- */
+.tz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.tz-head > b { font-size: 1.02rem; }
+.tz-count { color: var(--ink-soft); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.tz-count b { font-family: "Fraunces", serif; font-size: 1.2rem; color: var(--ink); }
+.zonen-bar { position: relative; height: 15px; border-radius: 999px; overflow: hidden;
+  background: linear-gradient(to right,
+    color-mix(in srgb, #e08a2e 24%, var(--paper-2)) 0 40%,
+    color-mix(in srgb, #d9b93a 26%, var(--paper-2)) 40% 80%,
+    color-mix(in srgb, var(--ok) 24%, var(--paper-2)) 80% 100%); }
+.zonen-bar .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px; transition: width .6s ease; min-width: 0; }
+.zonen-bar .fill.o { background: #e08a2e; }
+.zonen-bar .fill.y { background: #c9a92c; }
+.zonen-bar .fill.g { background: var(--ok); }
+.zonen-bar .fill.fertig { background: linear-gradient(90deg, var(--ok), #d4a017); }
+.zonen-bar .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--paper); opacity: .85; }
+.tz-msg { margin: 8px 0 0; }
+.tz-note { margin: 4px 0 0; font-size: .8rem; }
+.tagesziel.klausurtag { border: 1.5px solid color-mix(in srgb, #d4a017 45%, transparent); }
+.sicherheit { margin-top: 12px; }
+.sterne { flex: 0 0 auto; display: inline-flex; gap: 2px; font-size: 1.08rem; line-height: 1; }
+.sterne span { color: color-mix(in srgb, var(--ink-soft) 45%, transparent); display: inline-block; }
+.sterne .an { color: #d4a017; text-shadow: 0 0 7px color-mix(in srgb, #d4a017 35%, transparent); }
+.sich-row .lbl { font-size: .9rem; }
+.sich-row .val { min-width: 96px; font-size: .76rem; }
+.stern-schritt { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .88rem; }
+.stern-schritt span { flex: 1; min-width: 0; }
+@keyframes stern-puls { 0% { transform: scale(1); } 45% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
+.sich-row.neu .sterne .an { animation: stern-puls .8s ease 2; }
+@media (prefers-reduced-motion: reduce) { .sich-row.neu .sterne .an { animation: none; } }

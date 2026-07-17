@@ -431,6 +431,63 @@ export function statistik() {
   };
 }
 
+// ---------- Tagesziel & Sicherheits-Sterne (Endspurt) ----------
+// Tages-Aktivitaet: alle heutigen Antworten (inkl. Begriffe-Blitz) ausser
+// Spam-Wiederholungen. Bewusst OHNE 3s-Filter: die Bar misst Einsatz, nicht
+// Qualitaet — schnelle Wiederholrunden sind trotzdem Ueben.
+export function tagesStand() {
+  const cfg = window.ST_CONFIG;
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  const spam = spamAids();
+  let n = 0;
+  for (const a of state().antwortLog)
+    if (a.ts >= heute.getTime() && !spam.has(a.aid || antwortId(a))) n++;
+  let tage = null;
+  if (cfg.klausurTag) tage = Math.round((new Date(cfg.klausurTag + "T00:00:00") - heute) / 86400000);
+  // Vortag der Klausur: bewusst kleineres Ziel — locker wiederholen, frueh schlafen
+  const ziel = tage === 1 ? Math.min(60, cfg.tagesziel || 100) : (cfg.tagesziel || 100);
+  return { n, ziel, tage };
+}
+
+// Sicherheits-Sterne je Oberthema (0-3, ehrliche Momentaufnahme):
+// Basis sind die letzten 30 echten Antworten (Plausibilitaets- + Spam-Filter)
+// UND die Abdeckung (wie viel vom Thema ueberhaupt gesehen wurde) — damit
+// 5 richtige Antworten auf immer dieselben Karten kein "pruefungsreif" ergeben.
+// Bewusst aus den NEUEN Antworten gerechnet: alte Fehler vom Anfang druecken
+// die Sterne nicht ewig, Verbesserung wird sichtbar (Wachstums-Logik).
+export const STERN_STUFEN = [
+  { stars: 1, n: 8,  quote: 50, abdeckung: 0.20 },
+  { stars: 2, n: 15, quote: 65, abdeckung: 0.45 },
+  { stars: 3, n: 20, quote: 78, abdeckung: 0.65 },
+];
+export function sicherheit() {
+  const spam = spamAids();
+  const byThema = {};
+  for (const a of state().antwortLog) {
+    if (!a.max || !plausibel(a) || spam.has(a.aid || antwortId(a))) continue;
+    const q = frage(a.qid); if (!q) continue;
+    (byThema[q.oberthema] = byThema[q.oberthema] || []).push(a);
+  }
+  return Object.keys(THEMEN).map((slug) => {
+    const qs = POOL.filter((q) => q.oberthema === slug && zaehlt(q));
+    const gesehen = qs.filter((q) => ((state().leitner[q.id] || {}).seen || 0) > 0).length;
+    const abdeckung = qs.length ? gesehen / qs.length : 0;
+    const rows = (byThema[slug] || []).sort((a, b) => a.ts - b.ts).slice(-30);
+    const quote = rows.length ? Math.round((100 * rows.reduce((s, a) => s + a.punkte / a.max, 0)) / rows.length) : null;
+    let stars = 0;
+    for (const st of STERN_STUFEN) if (rows.length >= st.n && quote >= st.quote && abdeckung >= st.abdeckung) stars = st.stars;
+    // Konkreter kleinster Schritt zum naechsten Stern: fehlende Karten (Antworten
+    // oder ungesehene Fragen) — oder, wenn nur die Quote fehlt, Wiederholen.
+    const next = STERN_STUFEN.find((st) => st.stars === stars + 1);
+    let fehlt = null;
+    if (next) {
+      const karten = Math.max(next.n - rows.length, Math.ceil(next.abdeckung * qs.length) - gesehen, 0);
+      fehlt = karten > 0 ? { karten } : { quote: next.quote };
+    }
+    return { slug, stars, quote, n: rows.length, abdeckung, gesehen, gesamt: qs.length, fehlt };
+  });
+}
+
 // Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten
 export function splitFortschritt(qs) {
   const og = qs.filter((q) => q.quelle !== "generiert");

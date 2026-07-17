@@ -720,4 +720,4 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .bg-card.done { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); opacity: .75; pointer-events: none; }
 .bg-card.shake { animation: bgshake .4s; border-color: var(--bad); background: var(--bad-bg); }
 @keyframes bgshake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
-.bg-kat { margin-bottom: 10px; }
+.bg-kat { margin-bottom: 10px; width: 100%; }

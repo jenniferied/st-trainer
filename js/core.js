@@ -53,6 +53,32 @@ export async function ladeFragen() {
   return POOL;
 }
 
+// ---------- Begriffe-Blitz (Zuordnungs-Paare) ----------
+// Eigenes kleines Dataset (data/begriffe.json); Antworten darauf landen als
+// ganz normale antwortLog-Eintraege (qid = "bg-...", modus "begriffe") und
+// syncen damit ueber Geraete wie alles andere. In die Fragen-Statistik
+// flieszen sie nicht ein (frage(qid) kennt sie nicht) — bewusst.
+let BEGRIFFE = [];
+export const begriffe = () => BEGRIFFE;
+export async function ladeBegriffe() {
+  try {
+    const r = await fetch("data/begriffe.json");
+    BEGRIFFE = r.ok ? await r.json() : [];
+  } catch { BEGRIFFE = []; }
+  if (!Array.isArray(BEGRIFFE)) BEGRIFFE = [];
+  return BEGRIFFE;
+}
+// Lernstand je Paar aus dem Antwort-Log (erster Match-Versuch je Runde zaehlt)
+export function begriffStats() {
+  const o = {};
+  for (const a of state().antwortLog) {
+    if (!String(a.qid).startsWith("bg-")) continue;
+    const s = (o[a.qid] = o[a.qid] || { n: 0, ok: 0 });
+    s.n++; if (a.voll) s.ok++;
+  }
+  return o;
+}
+
 export function unterthemen(thema) {
   const set = new Map();
   for (const q of POOL) if (q.oberthema === thema) set.set(q.unterthema, (set.get(q.unterthema) || 0) + 1);
@@ -199,6 +225,34 @@ export function reaktiviereSession(id) {
 }
 const neueId = () => "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 
+// Fertige Session als NEUEN Versuch wiederholen: gleiche Fragen, frisch gemischt.
+// Der alte Eintrag bleibt unangetastet — der neue Durchgang wird als Versuch
+// 2/3/4… derselben Kette gewertet und in der Auswertung verglichen.
+export function wiederholeSession(id) {
+  const st = state();
+  const s = st.sessions.find((x) => x.id === id);
+  if (!s) return null;
+  const qids = (s.runde?.length ? s.runde : s.proFrage || []).map((r) => r.qid).filter((qid) => frage(qid));
+  if (!qids.length) return null;
+  const root = s.versuchVon || s.id;
+  const nr = 1 + st.sessions.filter((x) => x.id === root || x.versuchVon === root).length;
+  const runde = shuffle([...qids]).map((qid) => ({ qid, optOrder: shuffle([...frage(qid).optionen.keys()]), gewaehlt: null }));
+  const cfg = { ...(s.cfg || { modus: s.modus, timerModus: s.timerModus, pausierbar: true, feedback: ["klausur", "halbe"].includes(s.modus) ? "ende" : "sofort", examLook: ["klausur", "halbe"].includes(s.modus) }) };
+  let restSek = null;
+  if (cfg.timerModus && cfg.timerModus !== "aus") restSek = timerMinuten(runde.length, cfg.timerModus) * 60;
+  const sess = { id: neueId(), erstellt: Date.now(), cfg, runde, idx: 0, restSek, dauerSek: 0, versuchVon: root, versuchNr: nr };
+  st.offen.push(sess); save();
+  syncLernstand();
+  return sess;
+}
+// Alle frueheren Versuche derselben Kette (Original = Versuch 1), aelteste zuerst.
+export function vorVersuche(session) {
+  const root = session.versuchVon || session.id;
+  return state().sessions
+    .filter((x) => (x.id === root || x.versuchVon === root) && x.id !== session.id && (x.ts || 0) <= (session.ts || Infinity))
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+}
+
 // ---------- Statistiken ----------
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 export function frageStats(qid) {
@@ -219,14 +273,30 @@ export function frageStats(qid) {
 // Staerken/Schwaechen) — sonst verfaelschen Schnelltaps die Diagnose.
 const plausibel = (a) => a.zeit == null || a.zeit >= 3;
 
+// Zweiter Diagnose-Filter: dieselbe Frage direkt nochmal (z.B. "Nochmal üben"-
+// Schleife, Frust-Getippe) ist kein eigenstaendiger Versuch — die Loesung war
+// gerade sichtbar. Fuer Qualitaetszahlen zaehlt ein erneuter Versuch derselben
+// Frage erst, wenn die letzte Antwort darauf >10 Minuten her ist.
+const SPAM_FENSTER = 10 * 60000;
+function spamAids() {
+  const spam = new Set();
+  const letzte = {};
+  for (const a of [...state().antwortLog].sort((x, y) => x.ts - y.ts)) {
+    if (letzte[a.qid] != null && a.ts - letzte[a.qid] < SPAM_FENSTER) spam.add(a.aid || antwortId(a));
+    letzte[a.qid] = a.ts;
+  }
+  return spam;
+}
+
 // antwortLog -> angereicherte Zeilen (mit Thema/Unterthema aus dem Korpus)
 function logZeilen() {
   const out = [];
+  const spam = spamAids();
   for (const a of state().antwortLog) {
     const q = frage(a.qid); if (!q) continue;
-    out.push({ qid: a.qid, punkte: a.punkte, max: a.max, voll: a.voll, zeit: a.zeit,
+    out.push({ qid: a.qid, ts: a.ts, punkte: a.punkte, max: a.max, voll: a.voll, zeit: a.zeit,
       thema: q.oberthema, unter: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar,
-      plaus: plausibel(a) });
+      plaus: plausibel(a) && !spam.has(a.aid || antwortId(a)) });
   }
   return out;
 }
@@ -270,6 +340,26 @@ export function bewerteRows(input) {
   const verw = Object.entries(grp((r) => (r.punkte < r.max && r.paar) ? r.paar : null))
     .filter(([, a]) => a.length >= 2).map(([paar, a]) => ({ paar, n: a.length }));
   return { staerken, schwaechen, verwechslung: verw, overallQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null, nQual: qual.length };
+}
+
+// "Werde ich besser?" — vergleicht je Thema (und gesamt) die aeltere Haelfte
+// der plausiblen Antworten mit der neueren. Nur belastbare Aussagen: mindestens
+// 5 Antworten je Haelfte (gesamt) bzw. 4 (Thema).
+export function entwicklung() {
+  const rows = logZeilen().filter((r) => r.plaus && r.max).sort((a, b) => a.ts - b.ts);
+  const quote = (arr) => Math.round(100 * arr.reduce((s, r) => s + r.punkte / r.max, 0) / arr.length);
+  const halb = (arr, min) => {
+    if (arr.length < min * 2) return null;
+    const mitte = Math.floor(arr.length / 2);
+    const vorher = quote(arr.slice(0, mitte)), jetzt = quote(arr.slice(mitte));
+    return { vorher, jetzt, delta: jetzt - vorher, n: arr.length };
+  };
+  const gesamt = halb(rows, 5);
+  const proThema = Object.entries(gruppiere(rows, (r) => r.thema))
+    .map(([thema, arr]) => ({ thema, ...halb(arr, 4) }))
+    .filter((x) => x.n)
+    .sort((a, b) => b.delta - a.delta);
+  return { gesamt, proThema };
 }
 
 // Verlauf der abgeschlossenen Sitzungen -> Trend der Punktequote ueber die Zeit.
@@ -321,7 +411,10 @@ export function statistik() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
   for (let i = 13; i >= 0; i--) {
     const von = heute.getTime() - i * 86400000;
-    tage14.push({ ts: von, n: log.filter((a) => a.ts >= von && a.ts < von + 86400000).length });
+    const tagQual = qual.filter((r) => r.ts >= von && r.ts < von + 86400000);
+    tage14.push({ ts: von, n: log.filter((a) => a.ts >= von && a.ts < von + 86400000).length,
+      // Tages-Punktequote nur, wenn genug echte Versuche fuer eine Aussage da sind
+      quote: tagQual.length >= 5 ? Math.round(100 * avg(tagQual.map((r) => r.punkte / r.max))) : null });
   }
   return {
     beantwortet: log.length,
@@ -334,6 +427,7 @@ export function statistik() {
     proThema, tage14,
     analyse: bewerteRows(rows),
     trend: trend(),
+    entwicklung: entwicklung(),
   };
 }
 
@@ -467,8 +561,10 @@ function waehleFragen(reps, n, strat) {
 // Schnell-Taps (< 3 s) zählen nicht, sie sind kein echter Versuch (Plausibilitäts-Filter).
 function schwacheUnterthemen() {
   const agg = {};
+  const spam = spamAids();
   for (const a of state().antwortLog) {
     if (a.zeit != null && a.zeit < 3) continue;
+    if (spam.has(a.aid || antwortId(a))) continue;
     const q = frage(a.qid); if (!q) continue;
     const k = q.oberthema + "/" + q.unterthema;
     const s = agg[k] || (agg[k] = { n: 0, voll: 0 });
@@ -532,6 +628,7 @@ export function werteAus(runde, meta) {
     id: meta.sessionId || "s-" + Date.now(), ts: Date.now(), erstellt: meta.erstellt || Date.now(),
     fertig: true, status: meta.status || "fertig",
     modus: meta.modus, timerModus: meta.timerModus, dauerSek: meta.dauerSek, sprache: meta.sprache || "schwer",
+    versuchVon: meta.versuchVon || null, versuchNr: meta.versuchNr || null,
     anzahl: runde.length, beantwortet: proFrage.length,
     punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: meta.status !== "abgebrochen" && punkte >= bestehenBei,
     proFrage,

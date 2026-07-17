@@ -488,16 +488,28 @@ export function sicherheit() {
   });
 }
 
-// Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten
+// Fortschritt immer getrennt nach Originalfragen (OG) und KI-generierten.
+// Zusätzlich Stufen für die Anzeige: gemeistert (Lvl ≥3) / auf gutem Weg (Lvl 1–2) /
+// angefangen (beantwortet, Lvl ≤0) / neu (nie gesehen) — damit Fortschritt sichtbar
+// wird, lange bevor die erste Frage "gemeistert" ist.
 export function splitFortschritt(qs) {
   const og = qs.filter((q) => q.quelle !== "generiert");
   const ki = qs.filter((q) => q.quelle === "generiert");
   const mo = og.filter((q) => gemeistert(q.id)).length;
   const mk = ki.filter((q) => gemeistert(q.id)).length;
+  const L = state().leitner;
+  const st = { gem: 0, weg: 0, ang: 0, neu: 0 };
+  for (const q of qs) {
+    const e = L[q.id];
+    if (!e) st.neu++;
+    else if ((e.lvl || 0) >= 3) st.gem++;
+    else if ((e.lvl || 0) >= 1) st.weg++;
+    else st.ang++;
+  }
   return {
     n: qs.length, m: mo + mk,
     pct: qs.length ? Math.round((100 * (mo + mk)) / qs.length) : 0,
-    og: { m: mo, n: og.length }, ki: { m: mk, n: ki.length },
+    og: { m: mo, n: og.length }, ki: { m: mk, n: ki.length }, st,
   };
 }
 // Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original)

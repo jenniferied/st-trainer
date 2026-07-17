@@ -51,10 +51,15 @@ function frag(text, opts = {}) {
 }
 const sag = (text) => frag(text, { nurOk: true, ja: "Ok" });
 const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-// „gemeistert"-Anzeige: Originalfragen und KI-Fragen getrennt ausweisen
-const fmtMN = (f) => f.ki.n
-  ? `<span title="Originalfragen">${f.og.m}/${f.og.n}</span><small style="display:block;opacity:.75">KI ${f.ki.m}/${f.ki.n}</small>`
-  : `${f.og.m}/${f.og.n}`;
+// Fortschritts-Anzeige in Stufen: kräftig = gemeistert, mittel = auf gutem Weg,
+// hell = angefangen. Zahl daneben = Fragen in Arbeit (alles außer "neu") — die
+// waechst mit jeder Antwort, statt bis zur ersten Meisterung 0 zu zeigen.
+const stufenTitle = (f) => `${f.st.gem} gemeistert · ${f.st.weg} auf gutem Weg · ${f.st.ang} angefangen · ${f.st.neu} noch neu`;
+const stufenBar = (f, thin) => {
+  const w = (x) => (f.n ? (100 * x) / f.n : 0);
+  return `<span class="bar${thin ? " thin" : ""} stufen"><i class="s-gem" style="width:${w(f.st.gem)}%"></i><i class="s-weg" style="width:${w(f.st.weg)}%"></i><i class="s-ang" style="width:${w(f.st.ang)}%"></i></span>`;
+};
+const fmtMN = (f) => `${f.st.gem + f.st.weg + f.st.ang}/${f.n}`;
 
 // Sticker-Feedback: Roses & Jennifers meistgenutzte WhatsApp-Sticker (animiertes
 // WebP), je nach Ergebnis zufällig gewählt — überall, auch im Exam.UP-Klausurlook
@@ -228,14 +233,14 @@ function home() {
     const subs = C.unterthemen(slug).map(([u], ui) => {
       const sf = C.splitFortschritt(C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar && (q.sprache || "schwer") !== "einfach"));
       if (!sf.n) return "";
-      return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}">
+      return `<div class="progress-row" style="--tc:${C.subColor(slug, ui)}" title="${stufenTitle(sf)}">
         <span class="lbl" style="font-weight:500;font-size:.87rem">${esc(labelU(u))}</span>
-        <span class="bar thin"><i style="width:${sf.pct}%"></i></span>
+        ${stufenBar(sf, true)}
         <span class="val">${fmtMN(sf)}</span></div>`;
     }).join("");
     return `<details style="--tc:${t.color}">
-      <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}">
-        <span class="lbl">${t.name}</span><span class="bar"><i style="width:${f.pct}%"></i></span><span class="val">${fmtMN(f)}</span></div></summary>
+      <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}" title="${stufenTitle(f)}">
+        <span class="lbl">${t.name}</span>${stufenBar(f)}<span class="val">${fmtMN(f)}</span></div></summary>
       <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
 
@@ -246,7 +251,6 @@ function home() {
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${tageszielHtml(tz, sich)}
-    ${sicherheitHtml(sich)}
 
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
@@ -273,7 +277,10 @@ function home() {
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
       </div>
-      <p class="muted" style="margin:0 0 6px">Gemeistert: ${(() => { const g = C.gesamtFortschritt(); return `${g.og.m}/${g.og.n} Originalfragen` + (g.ki.n ? ` · ${g.ki.m}/${g.ki.n} KI-Fragen` : ""); })()}</p>
+      <p class="muted" style="margin:0 0 6px">${(() => {
+        const g = C.gesamtFortschritt(); const inA = g.st.gem + g.st.weg + g.st.ang;
+        return `In Arbeit: <b>${inA}</b> von ${g.n} Fragen · ${g.st.weg} auf gutem Weg${g.st.gem ? ` · ${g.st.gem} gemeistert ✓` : ""}`;
+      })()}</p>
       <div class="progress-row" style="--tc:var(--ok)">
         <span class="lbl">Prüfungsreife</span>
         <span class="streak inline">${[0,1,2,3,4].map((i) => `<i class="${i < streak ? "hit" : ""}">${i < streak ? "✓" : ""}</i>`).join("")}</span>
@@ -281,7 +288,10 @@ function home() {
       </div>
       <p class="muted" style="margin:4px 0 12px">5 bestandene Klausur-Simulationen in Folge = bereit. Du schaffst das.</p>
       ${themenDetail}
+      <p class="muted tz-note" style="margin-top:10px">Balken: kräftig = gemeistert · mittel = auf gutem Weg · hell = angefangen. Die Zahl = Fragen, an denen du schon dran warst — sie wächst mit jeder Antwort.</p>
     </div>
+
+    ${sicherheitHtml(sich)}
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));

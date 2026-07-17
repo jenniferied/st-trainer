@@ -165,6 +165,14 @@ button { font: inherit; cursor: pointer; }
 .bar { height: 12px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
 .bar > i { display: block; height: 100%; border-radius: 999px; background: var(--tc, var(--accent)); transition: width .5s ease; }
 .bar.thin { height: 7px; }
+/* Gestufter Balken: gemeistert (kräftig) → auf gutem Weg (mittel) → angefangen (hell).
+   Segmente liegen nebeneinander; nur die Außenkanten sind rund. */
+.bar.stufen { display: flex; }
+.bar.stufen > i { border-radius: 0; flex: 0 0 auto; }
+.bar.stufen > i:first-child { border-radius: 999px 0 0 999px; }
+.bar.stufen > i:last-child { border-radius: 0 999px 999px 0; }
+.bar.stufen > .s-weg { opacity: .55; }
+.bar.stufen > .s-ang { opacity: .22; }
 /* Label | Balken | Wert — der Balken sitzt in einer eigenen Spalte mit Luft nach
    beiden Seiten, damit er auf schmalen Screens nicht am Text klebt */
 .progress-row { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-2) 0; }

@@ -758,5 +758,11 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
 .stern-schritt { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .88rem; }
 .stern-schritt span { flex: 1; min-width: 0; }
 @keyframes stern-puls { 0% { transform: scale(1); } 45% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
-.sich-row.neu .sterne .an { animation: stern-puls .8s ease 2; }
-@media (prefers-reduced-motion: reduce) { .sich-row.neu .sterne .an { animation: none; } }
+[data-stern].neu .sterne .an { animation: stern-puls .8s ease 2; }
+@media (prefers-reduced-motion: reduce) { [data-stern].neu .sterne .an { animation: none; } }
+
+/* Mini-Sterne in den Themenzeilen (Fortschritt-Karte) */
+.sterne.mini { font-size: .8rem; gap: 1px; vertical-align: 1px; }
+/* Schwaechen-Chips in der Statistik sind jetzt Buttons (antippen = ueben) */
+button.tag-hebel { border: 0; font: inherit; cursor: pointer; }
+button.tag-hebel:active { transform: scale(.96); }

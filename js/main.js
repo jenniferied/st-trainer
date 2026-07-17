@@ -180,29 +180,25 @@ function tageszielHtml(tz, sich) {
 
 // ---- Sicherheits-Sterne je Thema. Sprachregel: nie "schwach" — Stufen heissen
 // "im Aufbau / auf dem Weg / sicher / pruefungsreif" (Wachstums-Framing).
-const sterneHtml = (n) => `<span class="sterne">${[0, 1, 2].map((i) => `<span class="${i < n ? "an" : ""}">${i < n ? "★" : "☆"}</span>`).join("")}</span>`;
+const sterneHtml = (n, mini) => `<span class="sterne${mini ? " mini" : ""}">${[0, 1, 2].map((i) => `<span class="${i < n ? "an" : ""}">${i < n ? "★" : "☆"}</span>`).join("")}</span>`;
 const STERN_STATUS = ["im Aufbau", "auf dem Weg", "sicher", "prüfungsreif ✨"];
-function sicherheitHtml(sich) {
-  const sicher = sich.filter((t) => t.stars >= 2).length;
-  const rows = sich.map((t) => {
-    const th = C.THEMEN[t.slug];
-    return `<div class="progress-row sich-row" data-stern="${t.slug}" style="--tc:${th.color}">
-      <span class="lbl">${th.name}</span>${sterneHtml(t.stars)}<span class="val">${STERN_STATUS[t.stars]}</span></div>`;
-  }).join("");
-  // Ein konkreter kleinster Schritt statt sechs Baustellen: das Thema, dem am
-  // wenigsten zum naechsten Stern fehlt (Entscheidungslast rausnehmen).
+// Ein konkreter kleinster Schritt statt sechs Baustellen: das Thema, dem am
+// wenigsten zum naechsten Stern fehlt (Entscheidungslast rausnehmen).
+function sternSchrittHtml(sich) {
   const offen = sich.filter((t) => t.stars < 3);
+  if (!offen.length) return `<p class="tz-msg" style="margin:10px 0 0"><b>Alle 6 Themen prüfungsreif ⭐⭐⭐</b> — du bist bereit. Ab hier nur noch frisch halten.</p>`;
   const kandidat = offen.filter((t) => t.fehlt?.karten).sort((a, b) => a.fehlt.karten - b.fehlt.karten)[0] || offen[0];
-  const alle3 = !offen.length;
-  const schritt = alle3
-    ? `<p class="tz-msg" style="margin:10px 0 0"><b>Alle 6 Themen prüfungsreif ⭐⭐⭐</b> — du bist bereit. Ab hier nur noch frisch halten.</p>`
-    : kandidat ? `<div class="stern-schritt"><span>Nächster Stern: <b>${C.THEMEN[kandidat.slug].name}</b>${kandidat.fehlt?.karten ? ` — noch ~${kandidat.fehlt.karten} Karten` : " — Wiederholen hebt die Quote"}</span>
-        <button class="btn small" id="sternRunde" data-thema="${kandidat.slug}">10 Karten üben</button></div>` : "";
-  return `<div class="card sicherheit">
-    <div class="tz-head"><b>⭐ Sicherheit pro Thema</b><span class="tz-count"><b>${sicher}</b> / 6 sicher</span></div>
-    ${rows}${schritt}
-    <p class="muted tz-note">Sterne = deine letzten Antworten je Thema + wie viel davon du schon gesehen hast. ⭐⭐ = sicher, ⭐⭐⭐ = prüfungsreif.</p>
-  </div>`;
+  return `<div class="stern-schritt"><span>Nächster Stern: <b>${C.THEMEN[kandidat.slug].name}</b>${kandidat.fehlt?.karten ? ` — noch ~${kandidat.fehlt.karten} Karten` : " — Wiederholen hebt die Quote"}</span>
+    <button class="btn small" data-uebe="${kandidat.slug}">10 Karten üben</button></div>`;
+}
+// Direkt-Ueben-Buttons (Naechster Stern, Schwaechen-Chips in der Statistik):
+// ein Tipp startet 10 smarte Karten nur aus dem passenden Thema.
+function bindUebe() {
+  app.querySelectorAll("[data-uebe]").forEach((b) => b.onclick = () => starte({
+    modus: "schnell", anzahl: 10, auswahl: "smart", themen: [b.dataset.uebe],
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+    sprache: C.state().settings.sprache || "schwer",
+  }));
 }
 
 function home() {
@@ -228,8 +224,10 @@ function home() {
 
   const score = C.lernscore();
   const streak = C.pruefungsStreak();
+  const sterneMap = Object.fromEntries(sich.map((t) => [t.slug, t]));
   const themenDetail = Object.entries(C.THEMEN).map(([slug, t]) => {
     const f = C.themaFortschritt(slug);
+    const stars = (sterneMap[slug] || {}).stars || 0;
     const subs = C.unterthemen(slug).map(([u], ui) => {
       const sf = C.splitFortschritt(C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && q.quizbar && (q.sprache || "schwer") !== "einfach"));
       if (!sf.n) return "";
@@ -239,8 +237,8 @@ function home() {
         <span class="val">${fmtMN(sf)}</span></div>`;
     }).join("");
     return `<details style="--tc:${t.color}">
-      <summary style="list-style:none;cursor:pointer"><div class="progress-row" style="--tc:${t.color}" title="${stufenTitle(f)}">
-        <span class="lbl">${t.name}</span>${stufenBar(f)}<span class="val">${fmtMN(f)}</span></div></summary>
+      <summary style="list-style:none;cursor:pointer"><div class="progress-row" data-stern="${slug}" style="--tc:${t.color}" title="${stufenTitle(f)} · Sicherheit: ${STERN_STATUS[stars]}">
+        <span class="lbl">${t.name} ${sterneHtml(stars, true)}</span>${stufenBar(f)}<span class="val">${fmtMN(f)}</span></div></summary>
       <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
 
@@ -254,10 +252,7 @@ function home() {
 
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
-    ${letzte ? `<h2 class="${offene.length ? "mt" : ""}">Zuletzt</h2><div class="card">${letzte}
-      <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
-
-    <h2 class="${offene.length || letzte ? "mt" : ""}">Neue Session</h2>
+    <h2 class="mt">Neue Session</h2>
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="halbe"><b>🕧 Halbe Klausur</b><span>21 Fragen · Exam.UP-Look · pausierbar</span></button>
@@ -271,7 +266,7 @@ function home() {
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
     ${C.begriffe().length ? `<button class="mode-card wide mt" data-go="begriffe" style="width:100%"><b>🃏 Begriffe-Blitz</b><span>Paragrafen, Zuständigkeiten & Fachbegriffe zuordnen — perfekt für 2 Minuten zwischendurch</span></button>` : ""}
 
-    <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Dein Fortschritt</h2>
+    <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Wo du stehst</h2>
       <button class="btn ghost small" data-go="statistik" style="margin-left:auto">📊 Statistik ›</button></div>
     <div class="card mt" style="margin-top:8px">
       <div class="progress-row" style="--tc:var(--accent)">
@@ -288,10 +283,12 @@ function home() {
       </div>
       <p class="muted" style="margin:4px 0 12px">5 bestandene Klausur-Simulationen in Folge = bereit. Du schaffst das.</p>
       ${themenDetail}
-      <p class="muted tz-note" style="margin-top:10px">Balken: kräftig = gemeistert · mittel = auf gutem Weg · hell = angefangen. Die Zahl = Fragen, an denen du schon dran warst — sie wächst mit jeder Antwort.</p>
+      ${sternSchrittHtml(sich)}
+      <p class="muted tz-note" style="margin-top:10px">Balken: kräftig = gemeistert · mittel = auf gutem Weg · hell = angefangen; die Zahl = Fragen in Arbeit. ★-Sterne = Sicherheit aus deinen letzten Antworten je Thema (⭐⭐ sicher, ⭐⭐⭐ prüfungsreif) — aktuell <b>${sich.filter((t) => t.stars >= 2).length}/6</b> sicher.</p>
     </div>
 
-    ${sicherheitHtml(sich)}
+    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card">${letzte}
+      <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
@@ -304,13 +301,7 @@ function home() {
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
 
-  // Ein-Tipp-Runde zum naechsten Stern: 10 smarte Karten nur aus diesem Thema
-  const sr = document.getElementById("sternRunde");
-  if (sr) sr.onclick = () => starte({
-    modus: "schnell", anzahl: 10, auswahl: "smart", themen: [sr.dataset.thema],
-    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
-    sprache: s.settings.sprache || "schwer",
-  });
+  bindUebe(); // Ein-Tipp-Runde zum naechsten Stern
 
   // Feiern (einmalig, geraetelokal): Tagesziel erreicht -> Konfetti einmal pro Tag;
   // Sternaufstieg -> Konfetti + Puls auf der Zeile. Abstiege werden bewusst NIE
@@ -1135,6 +1126,7 @@ function ergebnis(session, runde, opts = {}) {
     document.getElementById("homeBtn").onclick = home;
     document.getElementById("nochmal").onclick = home;
   }
+  bindUebe(); // "Wo du stehst"-Hebel direkt aus der Auswertung ueben
   // Auswertung beleben: Punktzahl zählt hoch, Themen-Balken wachsen rein.
   belebeStats(app.querySelector(".fade-in"));
   // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf.
@@ -1295,18 +1287,18 @@ function analyseHtml(a, scope = "global") {
     const w = a.schwaechen[0];
     const bp = w.brennpunkt ? `, vor allem bei ${esc(labelU(w.brennpunkt.u))}` : "";
     let s = `<b>Dein größter Hebel gerade:</b> ${esc(tn(w.thema))}${bp} — im Schnitt ${w.quote}% bei ${w.n} ${w.n === 1 ? "Frage" : "Fragen"}. `;
-    s += scope === "runde"
-      ? `Nimm dir als Nächstes eine kurze Runde nur dazu und geh die Erklärungen mit den 📄-Folien durch.`
-      : `Kleinster Schritt: eine 10er-Runde nur zu ${esc(tn(w.thema))} — beim Nachlesen führen die 📄-Sprungmarken direkt zur Folie.`;
+    s += `Beim Nachlesen führen die 📄-Sprungmarken direkt zur Folie.`;
     if (w.tempo) s += ` Du gehst da oft schnell ran; einmal bewusst langsamer lesen bringt hier am meisten.`;
+    s += `<div style="margin-top:8px"><button class="btn small" data-uebe="${w.thema}">⚡ 10 Karten ${esc(tn(w.thema))} üben</button></div>`;
     p.push(`<div class="fokus">${s}</div>`);
   }
   if (a.staerken.length)
     p.push(`<p class="an-zeile"><b>Das sitzt schon:</b> ${a.staerken.map((x) => `<span class="tag-gut">${esc(tn(x.thema))} ${x.quote}%</span>`).join(" ")} — deine Basis, da kannst du dir sicher sein. 💪</p>`);
   if (a.schwaechen.length)
-    p.push(`<p class="an-zeile"><b>Hier ist am meisten drin:</b> ${a.schwaechen.map((x) => `<span class="tag-hebel">${esc(tn(x.thema))} ${x.quote}%</span>`).join(" ")}</p>`);
+    p.push(`<p class="an-zeile"><b>Hier ist am meisten drin</b> (antippen = direkt üben): ${a.schwaechen.map((x) => `<button class="tag-hebel" data-uebe="${x.thema}" title="10 Karten ${esc(tn(x.thema))} üben">${esc(tn(x.thema))} ${x.quote}% ›</button>`).join(" ")}</p>`);
   if (a.verwechslung?.length)
     p.push(`<p class="muted an-zeile">Leicht zu verwechseln: ${a.verwechslung.slice(0, 3).map((v) => esc(v.paar)).join(" · ")}.</p>`);
+  p.push(`<p class="muted an-zeile" style="font-size:.78rem">Basis: deine echten Versuche${scope === "runde" ? " dieser Runde" : ""} (min. 3 s Lesezeit, keine Sofort-Wiederholung), gruppiert nach Thema — Aussagen erst ab 4 Antworten pro Thema.</p>`);
   return p.join("");
 }
 
@@ -1318,18 +1310,17 @@ function statistik() {
   // Pro Thema: aufklappbar bis auf die Unterthemen (Beherrschung + Ø Punkte + Ø Zeit)
   const themenRows = st.proThema.map((tt) => {
     const t = C.THEMEN[tt.slug] || { name: tt.slug, color: "var(--ink-soft)" };
-    const subRows = tt.unterthemen.map((s, ui) => {
-      const beherrsch = s.tot ? Math.round((100 * s.m) / s.tot) : 0;
-      return `<div class="progress-row sub" style="--tc:${C.subColor(tt.slug, ui)}">
+    // Balken = Punktequote, exakt wie die Zahl daneben (frueher zeigte er die
+    // Beherrschung Level >= 3 und stand deshalb fast immer auf leer — verwirrend)
+    const subRows = tt.unterthemen.map((s, ui) => `<div class="progress-row sub" style="--tc:${C.subColor(tt.slug, ui)}">
         <span class="lbl">${esc(labelU(s.u))} <small class="muted">${s.n}×</small></span>
-        <span class="bar thin"><i style="width:${beherrsch}%"></i></span>
-        <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`;
-    }).join("");
+        <span class="bar thin"><i style="width:${s.quote}%"></i></span>
+        <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`).join("");
     return `<details class="topic" style="--tc:${t.color}">
       <summary><span class="lbl">${t.name}</span>
         <span class="bar"><i style="width:${tt.quote ?? 0}%"></i></span>
         <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span></summary>
-      <div class="sub-wrap"><p class="muted sub-head">Balken = beherrschte Fragen (Level ≥ 3) · Zahl = Ø Punktequote · dann Ø Punkte & Ø Zeit</p>${subRows}</div>
+      <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte, n× = Versuche, dann Ø Punkte & Ø Zeit. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}</div>
     </details>`;
   }).join("");
   // Trend: Punktequote der letzten Sitzungen als Mini-Verlauf
@@ -1347,7 +1338,8 @@ function statistik() {
     const satz = tr.richtung === "hoch" ? `Aufwärts — zuletzt +${tr.delta} Punkte gegenüber vorher. Weiter so! 🎉`
       : tr.richtung === "runter" ? `Zuletzt ${tr.delta} Punkte unter dem Schnitt davor — erst ${tr.proSession.length} Runden, das schwankt noch. Kein Grund zur Sorge.`
       : `Stabil um die ${Math.round(tr.proSession.reduce((a, s) => a + s.quote, 0) / tr.proSession.length)} %.`;
-    trendHtml = `<div class="card"><h3>Trend 📈</h3><div class="trend-chart">${bars}</div><p class="muted" style="margin-bottom:0">${satz}</p></div>`;
+    trendHtml = `<div class="card"><h3>Trend 📈</h3><div class="trend-chart">${bars}</div><p class="muted" style="margin-bottom:0">${satz}</p>
+      <p class="muted tz-note" style="margin:6px 0 0">Jede Säule = eine abgeschlossene Runde (älteste links): Höhe & Zahl = Punktequote, grün = bestanden.</p></div>`;
   } else if (st.sessions >= 1) {
     trendHtml = `<div class="card"><h3>Trend 📈</h3><p class="muted" style="margin:0">Nach der zweiten abgeschlossenen Runde zeigt sich hier dein Verlauf.</p></div>`;
   }
@@ -1375,8 +1367,11 @@ function statistik() {
     ewHtml = `<div class="card"><h3>Werde ich besser? 📈</h3>${teile.join("")}</div>`;
   }
   const maxTag = Math.max(1, ...st.tage14.map((d) => d.n));
-  const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Antworten${d.quote != null ? `, ${d.quote} % Punktequote` : ""}">
-    ${d.quote != null ? `<span class="akt-q">${d.quote}%</span>` : ""}<i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
+  const karten14 = st.tage14.reduce((a, d) => a + d.n, 0);
+  // Zahl UEBER der Saeule = Karten an dem Tag (Jennifers Wunsch: Totale sichtbar,
+  // nicht nur im Hover-Tooltip, das es am Handy nicht gibt); Quote nur im Tooltip.
+  const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Karten${d.quote != null ? `, ${d.quote} % Punktequote` : ""}">
+    ${d.n ? `<span class="akt-q">${d.n}</span>` : ""}<i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
     ${st.beantwortet ? `
@@ -1387,15 +1382,17 @@ function statistik() {
       ${kachel(st.avgZeit != null ? fmtSek(st.avgZeit) : "–", "Ø Zeit pro Frage")}
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
-    </div></div>
+    </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     ${ewHtml}
-    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen — Ø Punktequote, Anzahl, Ø Zeit; innen die Unterthemen mit Beherrschung.</p>${themenRows}</div>
+    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote (Anteil der Punkte, die du holst) · n× = Versuche · dann Ø Punkte pro Frage & Ø Zeit.</p>${themenRows}</div>
     ${trendHtml}
-    <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div></div>`
+    <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
+      <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & Begriffe-Blitz.</p></div>`
     : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
   </div>`);
   belebeStats(app.querySelector(".fade-in"));
+  bindUebe(); // Schwaechen-Chips & Hebel-Button starten direkt eine Themen-Runde
   document.getElementById("back").onclick = home;
 }
 

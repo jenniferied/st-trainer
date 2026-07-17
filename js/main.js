@@ -151,7 +151,7 @@ function home() {
     const timed = o.cfg.timerModus && o.cfg.timerModus !== "aus";
     return `<div class="card" style="display:flex;align-items:center;gap:12px">
       <div style="flex:1;min-width:0">
-        <b>${MODUS_LBL[o.cfg.modus] || o.cfg.modus}</b>
+        <b>${MODUS_LBL[o.cfg.modus] || o.cfg.modus}</b>${o.versuchNr ? ` <span class="badge-src">${o.versuchNr}. Versuch</span>` : ""}
         <div class="muted">erstellt ${datum(o.erstellt)} · ${done}/${o.runde.length} beantwortet${timed ? ` · ⏱ ${o.restSek != null ? Math.ceil(o.restSek / 60) + " min übrig" : C.timerMinuten(o.runde.length, o.cfg.timerModus) + " min"}` : ""}</div>
         <div class="bar thin mt"><i style="width:${(100 * done) / o.runde.length}%"></i></div>
       </div>

@@ -42,16 +42,22 @@ export function folienSeite(thema, folie) {
   return Math.min(TOTAL, Math.max(1, folie + off));
 }
 
-// Relevante Folien einer Frage: alle "Folie N"-Anker aus den Options-Erklaerungen,
-// als absolute Bildseiten, meistreferenzierte zuerst. Grundlage fuer die
-// Foliensicht im Klausurmodus (nur die zur Frage passende Folie einblenden).
+// Relevante Folien einer Frage: alle "Folie N"-/"Folien N-M"-Anker aus den
+// Options-Erklaerungen UND dem Konzept-Feld, als absolute Bildseiten,
+// meistreferenzierte zuerst. Grundlage fuer die Foliensicht im Klausurmodus.
+// (Konzept mitlesen ist wichtig: manche Fragen tragen ihren Beleg nur dort —
+// sonst zeigt das Panel "keine Folie", obwohl es eine gibt.)
 export function relevanteFolien(q) {
   const zaehl = new Map();
-  for (const o of q.optionen || []) {
-    if (!o.erklaerung) continue;
-    for (const m of String(o.erklaerung).matchAll(/Folien?\s?(\d{1,3})/g)) {
-      const seite = folienSeite(q.oberthema, +m[1]);
-      if (seite) zaehl.set(seite, (zaehl.get(seite) || 0) + 1);
+  const texte = [q.konzept || "", ...(q.optionen || []).map((o) => o.erklaerung || "")];
+  for (const t of texte) {
+    for (const m of String(t).matchAll(/Folien?\s?(\d{1,3})(?:\s?[–-]\s?(\d{1,3}))?/g)) {
+      const von = +m[1], bis = m[2] ? +m[2] : von;
+      // Ranges expandieren, aber nur plausible (kleine) Spannen
+      for (let f = von; f <= Math.min(bis, von + 6); f++) {
+        const seite = folienSeite(q.oberthema, f);
+        if (seite) zaehl.set(seite, (zaehl.get(seite) || 0) + (f === von ? 1 : 0.5));
+      }
     }
   }
   return [...zaehl.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map((e) => e[0]);
@@ -173,6 +179,59 @@ export function oeffneFolie(seite, cap) {
   const ov = baueOverlay();
   vState = { seite, quelle: cap || "", zoom: 1, ov, img: ov.querySelector("#fvImg"), capEl: ov.querySelector("#fvCap") };
   zeige();
+}
+
+// ---- Skript-Panel: die GANZE Folien-PDF neben der Klausur ------------------
+// In der echten Klausur liegt die komplette PDF offen (scrollen, Strg+F) —
+// nicht die passende Folie. Das Panel lebt direkt im <body> und uebersteht
+// damit das Neu-Rendern beim Fragenblaettern: Scrollposition/Suchtreffer
+// bleiben stehen ("last opened stays"). Desktop: echte PDF im Browser-Viewer
+// (mit Suche). Mobil rendern Browser keine PDFs inline -> Fallback ist eine
+// scrollbare Bilderliste aller 317 Folien (lazy geladen); umschaltbar.
+const KANN_PDF = !/iPhone|iPod|iPad|Android/i.test(navigator.userAgent);
+export const SKRIPT_URL = "data/folien/skript.pdf";
+let sk = null; // { el, modus: "pdf"|"bilder", onClose }
+
+export function skriptOffen() { return !!sk; }
+
+function malSkript() {
+  const body = sk.el.querySelector("#skBody");
+  if (sk.modus === "pdf") {
+    body.innerHTML = `<iframe class="sk-pdf" src="${SKRIPT_URL}#view=FitH" title="Vorlesungsfolien (PDF)"></iframe>`;
+  } else {
+    // Bilderliste: identischer Inhalt, laeuft ueberall; nur getippte/gescrollte
+    // Folien werden geladen (loading=lazy)
+    body.innerHTML = Array.from({ length: TOTAL }, (_, i) =>
+      `<div class="sk-folie"><img loading="lazy" src="${bildUrl(i + 1)}" alt="Folie ${i + 1}"><span>${i + 1}</span></div>`).join("");
+  }
+  const mb = sk.el.querySelector("#skModus");
+  mb.textContent = sk.modus === "pdf" ? "als Bilder" : (KANN_PDF ? "als PDF" : "");
+  mb.hidden = !KANN_PDF && sk.modus === "bilder";
+}
+
+export function oeffneSkript(opts = {}) {
+  if (sk) { sk.onClose = opts.onClose || sk.onClose; return; }
+  const el = document.createElement("aside");
+  el.className = "skript-panel";
+  el.innerHTML = `
+    <div class="sk-bar"><b>📕 Skript</b><span class="sk-sub">alle ${TOTAL} Folien${KANN_PDF ? " · Suche: Strg/Cmd+F im PDF" : ""}</span>
+      <span class="fv-sp"></span>
+      <button class="fv-btn" id="skModus" title="Ansicht wechseln"></button>
+      <button class="fv-btn" id="skClose" title="Skript schließen" aria-label="Skript schließen">✕</button></div>
+    <div class="sk-body" id="skBody"></div>`;
+  document.body.appendChild(el);
+  document.body.classList.add("skript-offen");
+  sk = { el, modus: KANN_PDF ? "pdf" : "bilder", onClose: opts.onClose || null };
+  malSkript();
+  el.querySelector("#skModus").onclick = () => { sk.modus = sk.modus === "pdf" ? "bilder" : "pdf"; malSkript(); };
+  el.querySelector("#skClose").onclick = () => { const cb = sk.onClose; schliesseSkript(); if (cb) cb(); };
+}
+
+export function schliesseSkript() {
+  if (!sk) return;
+  sk.el.remove();
+  document.body.classList.remove("skript-offen");
+  sk = null;
 }
 
 // Delegierter Klick-Handler fuer alle Folien-Chips (einmalig installiert).

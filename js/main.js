@@ -149,8 +149,8 @@ function tageszielHtml(tz, sich) {
   if (tz.tage === 0) {
     const sicher = sich.filter((t) => t.stars >= 2).length;
     return `<div class="card tagesziel klausurtag">
-      <b>🍀 Heute ist dein Tag</b>
-      <p style="margin:6px 0 0">Du hast <b>${C.state().antwortLog.length}</b> Antworten trainiert und ${sicher} von 6 Themen sicher. Das Wissen ist da — ruhig atmen (4 Sek. ein, 6 Sek. aus), erst die sicheren Fragen, dann die kniffligen. Du kannst das. 💛</p>
+      <b style="font-size:1.15rem">💛 Du schaffst das.</b>
+      <p style="margin:6px 0 0"><b>${C.state().antwortLog.length}</b> Antworten trainiert, ${sicher} von 6 Themen sicher — das Wissen ist da. Ruhig atmen (4 Sek. ein, 6 Sek. aus), erst die sicheren Fragen, dann die kniffligen. 🍀</p>
     </div>`;
   }
   const pct = Math.min(100, Math.round((100 * tz.n) / tz.ziel));

@@ -51,7 +51,7 @@ export function relevanteFolien(q) {
   const zaehl = new Map();
   const texte = [q.konzept || "", ...(q.optionen || []).map((o) => o.erklaerung || "")];
   for (const t of texte) {
-    for (const m of String(t).matchAll(/Folien?\s?(\d{1,3})(?:\s?[–-]\s?(\d{1,3}))?/g)) {
+    for (const m of String(t).matchAll(/(?:Folien?|F\.)\s?(\d{1,3})(?:\s?[–-]\s?(\d{1,3}))?/g)) {
       const von = +m[1], bis = m[2] ? +m[2] : von;
       // Ranges expandieren, aber nur plausible (kleine) Spannen
       for (let f = von; f <= Math.min(bis, von + 6); f++) {
@@ -75,8 +75,8 @@ export function render(text, thema) {
     s = s.replace(/§\s?(\d+)([a-z])?/g, (m, n) =>
       `<a class="beleg law" target="_blank" rel="noopener" href="https://bravors.brandenburg.de/gesetze/bbgschulg#${n}">📖 ${m}</a>`);
   }
-  // 3) Folien ("Folie 46", "Folien 44-46") -> In-App-Folien-Viewer
-  s = s.replace(/Folien?\s?(\d{1,3})(\s?[–-]\s?\d{1,3})?/g, (m, n) => {
+  // 3) Folien ("Folie 46", "Folien 44-46", Zitierkuerzel "F. 24") -> In-App-Folien-Viewer
+  s = s.replace(/(?:Folien?|F\.)\s?(\d{1,3})(\s?[–-]\s?\d{1,3})?/g, (m, n) => {
     const seite = folienSeite(thema, +n);
     if (!seite) return m;
     const cap = `${SITZUNG[thema] || ""} · ${m}`;

@@ -201,6 +201,7 @@ function home() {
 
     <h2 class="mt">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
+    ${C.begriffe().length ? `<button class="mode-card wide mt" data-go="begriffe" style="width:100%"><b>🃏 Begriffe-Blitz</b><span>Paragrafen, Zuständigkeiten & Fachbegriffe zuordnen — perfekt für 2 Minuten zwischendurch</span></button>` : ""}
 
     <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Dein Fortschritt</h2>
       <button class="btn ghost small" data-go="statistik" style="margin-left:auto">📊 Statistik ›</button></div>
@@ -232,10 +233,12 @@ function home() {
 
 function histRow(s) {
   const status = s.status === "abgebrochen" ? `<span class="badge-src badge-unsicher">abgebrochen</span>` : s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">fertig</span>`;
-  return `<div class="hist-item click" data-open="${s.id}"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${status}
+  const versuch = s.versuchNr > 1 ? `<span class="badge-src badge-versuch">${s.versuchNr}. Versuch</span> ` : "";
+  return `<div class="hist-item click" data-open="${s.id}"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${versuch}${status}
     <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
     <span class="sc">${s.punkte}/${s.max}</span>
-    ${s.runde && s.beantwortet < s.anzahl ? `<button class="btn small" data-reopen="${s.id}" title="Offene Fragen weitermachen">Fortsetzen</button>` : ""}
+    ${s.runde && !s.bestanden && s.beantwortet < s.anzahl ? `<button class="btn small" data-reopen="${s.id}" title="Offene Fragen weitermachen">Fortsetzen</button>` : ""}
+    ${(s.runde?.length || s.proFrage?.length) ? `<button class="btn ghost small" data-retry="${s.id}" title="Gleiche Fragen nochmal üben — als neuer Versuch, der alte Eintrag bleibt">🔁</button>` : ""}
     <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
 // Einzeln geübte Fragen (Stöbern) als Tages-Eintrag im Verlauf — vollwertige
@@ -257,8 +260,12 @@ function histEintraege() {
 // „Fortsetzen" holt eine Session mit offenen Fragen zurück (jeweils mit Neuberechnung)
 function bindHist(rerender) {
   app.querySelectorAll("[data-open]").forEach((el) => el.onclick = (ev) => {
-    if (ev.target.closest("[data-del],[data-reopen]")) return;
+    if (ev.target.closest("[data-del],[data-reopen],[data-retry]")) return;
     sessionDetail(el.dataset.open, rerender);
+  });
+  app.querySelectorAll("[data-retry]").forEach((b) => b.onclick = (ev) => {
+    ev.stopPropagation();
+    retrySession(b.dataset.retry);
   });
   app.querySelectorAll("[data-einzel]").forEach((el) => el.onclick = (ev) => {
     if (ev.target.closest("[data-del-einzel]")) return;
@@ -284,7 +291,20 @@ function bindHist(rerender) {
     reopenSession(b.dataset.reopen);
   });
 }
+// Gleiche Fragen als NEUER Versuch: alter Eintrag bleibt stehen, der neue
+// Durchgang wird als 2./3./4. Versuch gezählt und in der Auswertung verglichen.
+async function retrySession(id) {
+  if (!await frag("Diese Runde mit denselben Fragen nochmal üben? Die Fragen kommen neu gemischt, der alte Eintrag bleibt — dein neuer Durchgang zählt als weiterer Versuch mit Vergleich.", { ja: "Nochmal üben", nein: "Lieber nicht" })) return;
+  const sess = C.wiederholeSession(id);
+  if (sess) resumeSession(sess.id);
+  else sag("Zu dieser Session gibt es keinen Fragen-Snapshot mehr (ältere App-Version).");
+}
 async function reopenSession(id) {
+  // Bestandene Runden nicht fortsetzen: das Fortsetzen würde die Wertung
+  // zurückrechnen und das bestandene Ergebnis bei Nicht-Abgabe verlieren.
+  // Für einen neuen Anlauf gibt es „Wiederholen".
+  const s = C.state().sessions.find((x) => x.id === id);
+  if (s?.bestanden) { sag("Diese Runde ist schon bestanden 🎉 - fuer einen neuen Anlauf nimm 'Wiederholen'."); return; }
   if (!await frag("Session fortsetzen? Sie wandert zurück zu den offenen Sessions, die bisherige Wertung wird zurückgerechnet und beim Abschluss neu gemacht.", { ja: "Fortsetzen", nein: "Lieber nicht" })) return;
   const sess = C.reaktiviereSession(id);
   if (sess) resumeSession(sess.id);
@@ -320,6 +340,7 @@ function route(ziel) {
   if (ziel === "explore") explore();
   else if (ziel === "verlauf") verlauf();
   else if (ziel === "statistik") statistik();
+  else if (ziel === "begriffe") begriffeHome();
   else builder({ preset: ziel });
 }
 
@@ -449,7 +470,8 @@ function builder({ preset }) {
 
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>${P.titel}</h1></div>
-    ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall.</p></div>` : ""}
+    ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall. Das 📕-Skript (alle Folien als PDF) liegt dabei offen, wie in der echten Klausur.</p>
+      <p class="muted" style="margin:8px 0 0"><b>Taktik fürs Scoring:</b> Keine Frage leer lassen (unter 0 P. geht eine Frage nie). Erst sicher falsche Optionen streichen, dann kreuzen, sobald du dir besser als 1-zu-3 sicher bist. Zwei Durchgänge: erst die sicheren Fragen, dann die kniffligen.</p></div>` : ""}
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
     ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
@@ -561,6 +583,7 @@ function resumeSession(id) {
   else zeigFrage();
 }
 function pausiere() {
+  Beleg.schliesseSkript();
   bankZeit();
   if (R.deadline) R.restSek = Math.max(0, Math.round((R.deadline - Date.now()) / 1000));
   R.dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - R.startTs) / 1000);
@@ -601,8 +624,9 @@ function beende(status = "fertig") {
   if (!R) return; // z.B. Timer lief ab, während der Abbrechen-Dialog noch offen war
   stopTimer();
   bankZeit();
+  Beleg.schliesseSkript();
   const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
-  const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status, cfg: R.cfg };
+  const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status, cfg: R.cfg, versuchVon: R.versuchVon, versuchNr: R.versuchNr };
   const rundeKopie = R.runde;
   C.verwerfeOffene(R.id, false); // kein Grabstein: gleich kommt die gewertete Session mit derselben Id
   const session = C.werteAus(rundeKopie, meta);
@@ -728,11 +752,14 @@ function zeigMoodle() {
   // Übungsmodus). Geprüfte Fragen sind festgelegt und zeigen ihre Erklärungen.
   const locked = !!r.geprueft;
   const erg = locked ? C.scoreFrage(q, r.gewaehlt || []) : null;
-  // Foliensicht (wie in der echten Klausur, dort liegen die Vorlesungsfolien neben
-  // dem Test): Toggle in der Kopfleiste, zeigt immer nur die zur Frage relevante
-  // Folie (aus den Beleg-Ankern der Erklärungen), blätter- und zoombar.
+  // Folien-Ansicht: In der ECHTEN Klausur liegt die komplette Folien-PDF offen
+  // (scrollen/suchen), nicht die passende Folie. Darum ist in der vollen
+  // Klausur-Simulation das 📕-Skript der Standard; in Übungs-Klausuransichten
+  // startet alles zu (ohne Hilfen), beides bleibt aber jederzeit zuschaltbar —
+  // auch die 📄-Folie zur Frage (aus den Beleg-Ankern der Erklärungen).
+  if (R.folienSicht === undefined) R.folienSicht = R.folienAuf ? "folie" : R.cfg.modus === "klausur" ? "pdf" : "aus";
   const folSeiten = Beleg.relevanteFolien(q);
-  const folienPanel = !R.folienAuf ? "" : folSeiten.length ? `
+  const folienPanel = R.folienSicht !== "folie" ? "" : folSeiten.length ? `
         <div class="moodle-folien" id="mfPanel">
           <div class="mf-bar">
             <button class="fv-btn" id="mfPrev" title="Vorige Folie" aria-label="Vorige Folie">‹</button>
@@ -748,7 +775,8 @@ function zeigMoodle() {
   h(`<div class="fade-in">
     <div class="moodle">
       <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span>
-        <button class="mf-toggle${R.folienAuf ? " on" : ""}" id="folienBtn" title="Vorlesungsfolie zur Frage ein-/ausblenden">📄 Folien</button>
+        <button class="mf-toggle${R.folienSicht === "pdf" ? " on" : ""}" id="skriptBtn" title="Ganze Folien-PDF wie in der echten Klausur (scrollen & suchen)">📕 Skript</button>
+        <button class="mf-toggle${R.folienSicht === "folie" ? " on" : ""}" id="folienBtn" title="Passende Vorlesungsfolie zur Frage ein-/ausblenden">📄 Folie</button>
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
@@ -788,8 +816,15 @@ function zeigMoodle() {
     </div></div>`);
   qStart = locked ? null : Date.now(); // geprüfte Frage: Zeit steht, nur noch lesen
   startTick();
-  document.getElementById("folienBtn").onclick = () => { bankZeit(); R.folienAuf = !R.folienAuf; zeigMoodle(); };
-  if (R.folienAuf && folSeiten.length) {
+  const setzSicht = (s) => { bankZeit(); R.folienSicht = R.folienSicht === s ? "aus" : s; delete R.folienAuf; C.save(); zeigMoodle(); };
+  document.getElementById("skriptBtn").onclick = () => setzSicht("pdf");
+  document.getElementById("folienBtn").onclick = () => setzSicht("folie");
+  // Skript-Panel lebt im <body> und wird beim Fragenblättern NICHT neu gebaut —
+  // Scrollposition/PDF-Suche bleiben stehen (wie das offene PDF im Ernstfall).
+  if (R.folienSicht === "pdf") {
+    Beleg.oeffneSkript({ onClose: () => { if (R) { R.folienSicht = "aus"; C.save(); document.getElementById("skriptBtn")?.classList.remove("on"); } } });
+  } else Beleg.schliesseSkript();
+  if (R.folienSicht === "folie" && folSeiten.length) {
     // Blättern nur lokal für diese Frage — beim Weiterblättern zur nächsten Frage
     // startet die Sicht wieder auf deren relevanter Folie.
     let mfSeite = folSeiten[0];
@@ -903,6 +938,27 @@ function reviewQ(r, erg) {
     }).join("")}</div></div>`;
 }
 
+// Versuchs-Vergleich: frühere Versuche derselben Fragen-Kette als Verlauf mit
+// Punktezuwachs — der alte Eintrag bleibt, jeder Versuch ist sichtbar.
+function versuchsHtml(session) {
+  const vorher = C.vorVersuche(session);
+  if (!vorher.length) return "";
+  const kette = [...vorher, session];
+  const zeilen = kette.map((s, i) => {
+    const dies = s.id === session.id;
+    const dPrev = i > 0 ? Math.round((s.punkte - kette[i - 1].punkte) * 2) / 2 : null;
+    const delta = dPrev == null ? "" : dPrev > 0 ? `<span class="delta up">+${dPrev} P. 📈</span>` : dPrev < 0 ? `<span class="delta down">${dPrev} P.</span>` : `<span class="delta">±0</span>`;
+    return `<div class="versuch-row${dies ? " dies" : ""}"><span>${i + 1}. Versuch${dies ? " (dieser)" : ""}</span>
+      <span class="muted">${datum(s.ts)}</span><span class="sc">${s.punkte}/${s.max}</span>${delta}</div>`;
+  }).join("");
+  const letzter = vorher[vorher.length - 1];
+  const d = Math.round((session.punkte - letzter.punkte) * 2) / 2;
+  const satz = d > 0 ? `<b>+${d} Punkte besser als beim letzten Versuch!</b> Genau so sieht Lernen aus. 🎉`
+    : d === 0 ? `Gleich viele Punkte wie beim letzten Versuch — das Wissen hält.`
+    : `Diesmal ${Math.abs(d)} P. weniger — Tagesform. Die Erklärungen unten sind der schnellste Weg zurück.`;
+  return `<div class="card"><h3>🔁 Deine Versuche im Vergleich</h3>${zeilen}<p class="an-zeile" style="margin-bottom:0">${satz}</p></div>`;
+}
+
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
@@ -935,10 +991,23 @@ function ergebnis(session, runde, opts = {}) {
     return erg ? reviewQ(r, erg) : "";
   }).join("");
 
+  // "Werde ich besser?": diese Runde gegen den Schnitt der frueheren Runden
+  let trendZeile = "";
+  if (!abgebrochen && session.max) {
+    const fr = C.state().sessions.filter((s) => s.id !== session.id && s.status !== "abgebrochen" && s.max && (s.ts || 0) < (session.ts || Infinity));
+    if (fr.length >= 2) {
+      const mittel = Math.round(fr.reduce((a, s) => a + (100 * s.punkte) / s.max, 0) / fr.length);
+      const dq = Math.round((100 * session.punkte) / session.max) - mittel;
+      trendZeile = dq >= 5 ? `<p class="trend-zeile up">📈 ${dq} Punkte über deinem bisherigen Schnitt (${mittel} %) — du wirst besser!</p>`
+        : dq <= -5 ? `<p class="trend-zeile">Dein Schnitt liegt bei ${mittel} % — eine Runde sagt wenig, der Trend zählt.</p>`
+        : `<p class="trend-zeile">Stabil auf deinem Niveau (Schnitt ${mittel} %).</p>`;
+    }
+  }
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Auswertung</h1>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Auswertung${session.versuchNr > 1 ? ` <span class="badge-src badge-versuch">${session.versuchNr}. Versuch</span>` : ""}</h1>
       <span style="margin-left:auto;display:inline-flex;gap:4px">
-        ${session.runde && session.beantwortet < session.anzahl ? `<button class="btn small" id="reopenBtn">Fortsetzen</button>` : ""}
+        ${session.runde && !session.bestanden && session.beantwortet < session.anzahl ? `<button class="btn small" id="reopenBtn">Fortsetzen</button>` : ""}
+        ${(session.runde?.length || session.proFrage?.length) && session.id !== "test-bestanden" ? `<button class="btn ghost small" id="retryBtn" title="Gleiche Fragen nochmal üben (neuer Versuch)">🔁</button>` : ""}
         <button class="btn ghost small" id="delBtn" title="Session löschen">🗑</button></span></div>
     <div class="card result-big">
       ${abgebrochen ? `<img class="sticker big" src="${reactSrc("monkey_side")}" alt="">` : sticker(pass ? "good" : "sanft", true)}
@@ -946,7 +1015,9 @@ function ergebnis(session, runde, opts = {}) {
       <div class="pts"><span class="js-count" data-to="${session.punkte}">${session.punkte}</span><span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
       <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
       <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
+      ${trendZeile}
     </div>
+    ${versuchsHtml(session)}
     <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
     <div class="card"><h3>Nach Thema & Unterthema</h3>${themenRows}</div>
@@ -959,6 +1030,7 @@ function ergebnis(session, runde, opts = {}) {
     if (await frag("Diese Session aus dem Verlauf löschen? Dein Lernstand (Dots & Fortschritt) wird dann ohne sie neu berechnet.", { ja: "Löschen", nein: "Behalten" })) { C.loescheSession(session.id); zurueck(); }
   };
   const rb = document.getElementById("reopenBtn"); if (rb) rb.onclick = () => reopenSession(session.id);
+  const ry = document.getElementById("retryBtn"); if (ry) ry.onclick = () => retrySession(session.id);
   if (!opts.ausVerlauf) {
     document.getElementById("homeBtn").onclick = home;
     document.getElementById("nochmal").onclick = home;
@@ -1175,9 +1247,32 @@ function statistik() {
   } else if (st.sessions >= 1) {
     trendHtml = `<div class="card"><h3>Trend 📈</h3><p class="muted" style="margin:0">Nach der zweiten abgeschlossenen Runde zeigt sich hier dein Verlauf.</p></div>`;
   }
+  // "Werde ich besser?" — frueher vs. jetzt, je Thema. Immer ermutigend gerahmt.
+  const ew = st.entwicklung;
+  let ewHtml = "";
+  if (ew.gesamt || ew.proThema.length) {
+    const teile = [];
+    if (ew.gesamt) {
+      const g = ew.gesamt;
+      const satz = g.delta >= 5 ? `<b>Du wirst messbar besser:</b> früher ${g.vorher} %, zuletzt ${g.jetzt} % — <span class="delta up">+${g.delta} Punkte</span>. Weiter genau so! 🎉`
+        : g.delta <= -5 ? `Zuletzt ${g.jetzt} % nach ${g.vorher} % davor. Meist heißt das: du übst gerade mutig die schweren Themen — genau richtig vor der Klausur.`
+        : `<b>Stabil:</b> ${g.vorher} % → ${g.jetzt} %. Sicherheit, auf die du bauen kannst.`;
+      teile.push(`<p class="an-zeile">${satz}</p>`);
+    }
+    const rows = ew.proThema.map((t) => {
+      const n = (C.THEMEN[t.thema] || { name: t.thema }).name;
+      const cls = t.delta >= 5 ? "up" : t.delta <= -5 ? "down" : "";
+      const pfeil = t.delta >= 5 ? "▲" : t.delta <= -5 ? "▽" : "→";
+      return `<div class="ew-row"><span class="lbl" style="--tc:${(C.THEMEN[t.thema] || {}).color || "var(--ink-soft)"}">${esc(n)}</span>
+        <span class="muted">${t.vorher} % → ${t.jetzt} %</span>
+        <span class="delta ${cls}">${pfeil} ${t.delta > 0 ? "+" : ""}${t.delta}</span></div>`;
+    }).join("");
+    if (rows) teile.push(`<p class="muted" style="margin:8px 0 4px">Je Thema: deine ältere Hälfte der Antworten gegen die neuere — steigt der Wert, sitzt das Thema zunehmend.</p>${rows}`);
+    ewHtml = `<div class="card"><h3>Werde ich besser? 📈</h3>${teile.join("")}</div>`;
+  }
   const maxTag = Math.max(1, ...st.tage14.map((d) => d.n));
-  const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Antworten">
-    <i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
+  const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Antworten${d.quote != null ? `, ${d.quote} % Punktequote` : ""}">
+    ${d.quote != null ? `<span class="akt-q">${d.quote}%</span>` : ""}<i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
     ${st.beantwortet ? `
@@ -1190,6 +1285,7 @@ function statistik() {
       ${kachel(st.sessions, "Sessions")}
     </div></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
+    ${ewHtml}
     <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen — Ø Punktequote, Anzahl, Ø Zeit; innen die Unterthemen mit Beherrschung.</p>${themenRows}</div>
     ${trendHtml}
     <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div></div>`
@@ -1197,6 +1293,119 @@ function statistik() {
   </div>`);
   belebeStats(app.querySelector(".fade-in"));
   document.getElementById("back").onclick = home;
+}
+
+// ================= BEGRIFFE-BLITZ =================
+// Kleiner Zuordnungs-Modus für Begriffe, §§ und Zuständigkeiten (Roses größte
+// Baustelle: Schulrecht-Begriffe). Bewusst kurze Runden à 5 Paare — schnelle
+// Erfolgserlebnisse, mobil mit zwei Tipps bedienbar. Antworten landen als
+// normale antwortLog-Einträge (sid "begriffe"), syncen also über alle Geräte.
+// Lern-Logik: Runden abwechselnd in beide Abrufrichtungen (Begriff→Antwort und
+// Antwort→Begriff) — die Rückrichtung wird sonst nicht mitgelernt.
+function begriffeHome() {
+  const alle = C.begriffe();
+  if (!alle.length) return home();
+  const stats = C.begriffStats();
+  const sicher = (p) => (stats[p.id]?.ok || 0) >= 2;
+  const kats = [...new Map(alle.map((p) => [p.kategorie, p])).values()].map((p) => {
+    const paare = alle.filter((x) => x.kategorie === p.kategorie);
+    const s = paare.filter(sicher).length;
+    const t = C.THEMEN[p.oberthema] || {};
+    return { kat: p.kategorie, label: p.kategorieLabel || p.kategorie, n: paare.length, s, color: t.color || "var(--ink-soft)", kurz: t.kurz || "" };
+  }).sort((a, b) => a.s / a.n - b.s / b.n);
+  const rows = kats.map((k) => `<button class="mode-card wide bg-kat" data-kat="${esc(k.kat)}" style="--tc:${k.color}">
+    <b>${k.kurz ? `<span class="chip" style="--tc:${k.color}">${k.kurz}</span> ` : ""}${esc(k.label)}</b>
+    <span style="display:flex;align-items:center;gap:8px;width:100%"><span class="bar thin" style="flex:1"><i style="width:${Math.round((100 * k.s) / k.n)}%"></i></span><span class="muted">${k.s}/${k.n} sicher</span></span>
+  </button>`).join("");
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Begriffe-Blitz 🃏</h1></div>
+    <div class="card"><p style="margin:0">Tippe links einen Begriff an, dann rechts die passende Antwort. 5 Paare pro Runde — sicher ist ein Paar, wenn du es 2× beim ersten Anlauf triffst. Die wackligsten Kategorien stehen oben.</p></div>
+    <button class="btn" id="schwach" style="width:100%;margin-bottom:10px">⚡ Schwächste Runde starten</button>
+    ${rows}
+  </div>`);
+  document.getElementById("back").onclick = home;
+  document.getElementById("schwach").onclick = () => begriffeRunde(kats[0].kat);
+  app.querySelectorAll("[data-kat]").forEach((b) => b.onclick = () => begriffeRunde(b.dataset.kat));
+}
+
+function begriffeRunde(kat) {
+  const alle = C.begriffe().filter((p) => p.kategorie === kat);
+  if (!alle.length) return begriffeHome();
+  const stats = C.begriffStats();
+  // Gewichtete Auswahl: nie geübt und zuletzt gepatzt zuerst, Sicheres seltener
+  const gew = (p) => { const s = stats[p.id]; if (!s) return 3; return s.ok >= 2 ? 1 : 4; };
+  const paare = alle.map((p) => ({ p, s: gew(p) * (0.4 + Math.random()) }))
+    .sort((a, b) => b.s - a.s).slice(0, Math.min(5, alle.length)).map((x) => x.p);
+  // Abrufrichtung pro Runde wechseln (Begriff→Antwort / Antwort→Begriff)
+  const st = C.state();
+  st.bgRichtung = !st.bgRichtung; C.save();
+  const drehen = !!st.bgRichtung && paare.every((p) => (p.antwort || "").length < 60);
+  const links = C.shuffle([...paare]);
+  const rechts = C.shuffle([...paare]);
+  const t0 = Date.now();
+  const offen = new Set(paare.map((p) => p.id));
+  const fehler = new Set();     // Paare mit mindestens einem Fehlgriff
+  const gewertet = new Set();   // Paare, deren erster Anlauf schon geloggt ist
+  let aktiv = null;
+  const lbl = C.begriffe()[0] ? (C.begriffe().find((p) => p.kategorie === kat)?.kategorieLabel || kat) : kat;
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1 style="font-size:1.15rem">${esc(lbl)}</h1></div>
+    <p class="muted" style="margin:0 0 10px">${drehen ? "Umgekehrte Richtung: links die Beschreibung, rechts der Begriff." : "Links Begriff antippen, rechts die passende Antwort."}</p>
+    <div class="bg-spiel">
+      <div class="bg-col" id="bgLinks">${links.map((p) => `<button class="bg-card links" data-id="${p.id}">${esc(drehen ? p.antwort : p.begriff)}</button>`).join("")}</div>
+      <div class="bg-col" id="bgRechts">${rechts.map((p) => `<button class="bg-card rechts" data-id="${p.id}">${esc(drehen ? p.begriff : p.antwort)}</button>`).join("")}</div>
+    </div>
+    <div id="bgFazit"></div>
+  </div>`);
+  document.getElementById("back").onclick = begriffeHome;
+  const alleLinks = [...app.querySelectorAll(".bg-card.links")];
+  app.querySelectorAll(".bg-card.links").forEach((b) => b.onclick = () => {
+    if (b.classList.contains("done")) return;
+    alleLinks.forEach((x) => x.classList.remove("sel"));
+    b.classList.add("sel"); aktiv = b.dataset.id;
+  });
+  app.querySelectorAll(".bg-card.rechts").forEach((b) => b.onclick = () => {
+    if (b.classList.contains("done") || !aktiv) return;
+    const p = paare.find((x) => x.id === aktiv);
+    const erster = !gewertet.has(aktiv);
+    if (b.dataset.id === aktiv) {
+      // Treffer: Paar abhaken; nur der ERSTE Anlauf zählt für den Lernstand
+      if (erster) {
+        gewertet.add(aktiv);
+        const voll = !fehler.has(aktiv);
+        C.logAntwort({ qid: aktiv, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: Math.round((Date.now() - t0) / 1000) });
+        C.syncEvent({ frage_id: aktiv, gewaehlt: null, punkte: voll ? 1 : 0, max_punkte: 1, voll, modus: "begriffe", ts: new Date().toISOString() });
+      }
+      offen.delete(aktiv);
+      b.classList.add("done");
+      app.querySelector(`.bg-card.links[data-id="${CSS.escape(aktiv)}"]`)?.classList.add("done");
+      aktiv = null;
+      if (!offen.size) begriffeFazit(kat, paare, fehler, drehen);
+    } else {
+      // Fehlgriff: merken (macht das Paar "nicht voll"), kurz schütteln
+      if (erster && !fehler.has(aktiv)) fehler.add(aktiv);
+      b.classList.add("shake");
+      setTimeout(() => b.classList.remove("shake"), 450);
+    }
+  });
+}
+
+function begriffeFazit(kat, paare, fehler, drehen) {
+  const n = paare.length, ok = n - fehler.size;
+  const cls = ok === n ? "good" : ok >= n - 1 ? "part" : "bad";
+  const erkl = paare.filter((p) => fehler.has(p.id)).map((p) => `<div class="review-q" style="padding:10px 0">
+    <b>${esc(p.begriff)}</b> → ${esc(p.antwort)}
+    ${p.erklaerung ? `<div class="explain good">${Beleg.render(p.erklaerung, p.oberthema)}</div>` : ""}</div>`).join("");
+  document.getElementById("bgFazit").innerHTML = `
+    <div class="fb-banner ${cls}" style="margin-top:12px">${sticker(cls)}<span>${ok}/${n} beim ersten Anlauf${ok === n ? " — alle! 🎉" : ""}</span></div>
+    ${erkl ? `<div class="card mt"><h3>Kurz nachlesen</h3>${erkl}</div>` : ""}
+    <div class="btn-row mt">
+      <button class="btn" id="bgNochmal">Nächste Runde ›</button>
+      <button class="btn secondary" id="bgZurueck">Kategorien</button>
+    </div>`;
+  document.getElementById("bgNochmal").onclick = () => begriffeRunde(kat);
+  document.getElementById("bgZurueck").onclick = begriffeHome;
+  if (ok === n) konfetti({ n: 40, ms: 2200 });
 }
 
 // ================= VERLAUF =================
@@ -1214,6 +1423,7 @@ function verlauf() {
   h(`<div class="card center mt"><h2>Lade Fragen …</h2></div>`);
   try {
     await C.ladeFragen();
+    await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

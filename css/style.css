@@ -677,3 +677,47 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   max-width: 98vw; max-height: 96vh; width: auto;
   cursor: zoom-out; box-shadow: 0 0 0 100vmax rgba(0,0,0,.65);
 }
+
+/* ---- Skript-Panel: ganze Folien-PDF neben der Klausur (persistiert im body) ---- */
+.skript-panel { position: fixed; z-index: 70; background: var(--card); border: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: 0 6px 30px rgba(0,0,0,.25); }
+.sk-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.sk-sub { color: var(--ink-soft); font-size: .78rem; }
+.sk-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--paper-2); }
+.sk-pdf { width: 100%; height: 100%; border: 0; }
+.sk-folie { position: relative; }
+.sk-folie img { width: 100%; display: block; margin-bottom: 3px; background: #fff; }
+.sk-folie span { position: absolute; right: 6px; bottom: 10px; font-size: .7rem; background: rgba(0,0,0,.55); color: #fff; border-radius: 6px; padding: 1px 6px; }
+@media (min-width: 1000px) {
+  .skript-panel { top: 0; right: 0; width: 44vw; height: 100vh; border-left: 2px solid var(--line); }
+  body.skript-offen #app { margin-right: 45vw; }
+}
+@media (max-width: 999px) {
+  .skript-panel { left: 0; right: 0; bottom: 0; height: 48vh; border-top: 2px solid var(--line); border-radius: 14px 14px 0 0; }
+  body.skript-offen #app { padding-bottom: 52vh; }
+}
+
+/* ---- Versuchs-Vergleich & Trends ---- */
+.badge-versuch { background: var(--sel-accent-bg, var(--paper-2)); color: var(--accent); }
+.delta { font-weight: 700; font-size: .85rem; color: var(--ink-soft); white-space: nowrap; }
+.delta.up { color: var(--ok); }
+.versuch-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+.versuch-row:last-of-type { border-bottom: none; }
+.versuch-row.dies { font-weight: 700; }
+.versuch-row .sc { margin-left: auto; font-variant-numeric: tabular-nums; }
+.trend-zeile { margin: 8px 0 0; font-size: .9rem; color: var(--ink-soft); }
+.trend-zeile.up { color: var(--ok); font-weight: 600; }
+.ew-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: .9rem; }
+.ew-row:last-child { border-bottom: none; }
+.ew-row .lbl { font-weight: 600; color: var(--tc, var(--ink)); }
+.ew-row .delta { margin-left: auto; }
+.akt-q { font-size: .6rem; color: var(--ink-soft); }
+
+/* ---- Begriffe-Blitz ---- */
+.bg-spiel { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; align-items: start; }
+.bg-col { display: flex; flex-direction: column; gap: 8px; }
+.bg-card { text-align: left; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); padding: 10px 12px; font-size: .9rem; line-height: 1.35; color: var(--ink); }
+.bg-card.sel { border-color: var(--accent); background: var(--sel-accent-bg, var(--paper-2)); box-shadow: inset 3px 0 0 var(--accent); }
+.bg-card.done { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); opacity: .75; pointer-events: none; }
+.bg-card.shake { animation: bgshake .4s; border-color: var(--bad); background: var(--bad-bg); }
+@keyframes bgshake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+.bg-kat { margin-bottom: 10px; }

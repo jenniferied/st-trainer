@@ -553,6 +553,7 @@ const U_LABELS = {
   "informations-beteiligungsrechte": "Informations- & Beteiligungsrechte",
   "rechte-pflichten-lehrkraefte": "Rechte & Pflichten der Lehrkräfte", "rechte-pflichten-sus": "Rechte & Pflichten der SuS",
   "schulaufsicht": "Schulaufsicht", "schulpflicht": "Schulpflicht", "selbststaendigkeit": "Selbstständigkeit der Schule",
+  "schulstruktur": "Schulstruktur & Abschlüsse", "zeugnisse": "Zeugnisse & Leistungsbewertung",
   // Motivation
   "attribution": "Attribution", "motivationsfoerderliche-merkmale": "Motivationsförderliche Merkmale",
   "selbstbestimmungstheorie": "Selbstbestimmungstheorie", "zieltheorien": "Zieltheorien",
@@ -1156,6 +1157,10 @@ function tryInline(qid, btn) {
   btn.classList.add("hidden");
   const t0 = Date.now();
   document.getElementById(`chk-${qid}`).onclick = () => {
+    // Guard gegen Tasten-Repeat/Event-Stuerme: eine gedrueckt gehaltene Enter-Taste
+    // hat einmal 113 identische Antworten in 14 s geloggt (8/s = Key-Repeat-Rate)
+    if (wrap.dataset.locked) return;
+    wrap.dataset.locked = "1";
     const gewaehlt = [...wrap.querySelectorAll("input:checked")].map((x) => +x.dataset.oi);
     const erg = C.scoreFrage(q, gewaehlt);
     const zeit = Math.round((Date.now() - t0) / 1000);

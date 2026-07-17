@@ -57,9 +57,9 @@ const fmtMN = (f) => f.ki.n
   : `${f.og.m}/${f.og.n}`;
 
 // Sticker-Feedback: Roses & Jennifers meistgenutzte WhatsApp-Sticker (animiertes
-// WebP), je nach Ergebnis zufällig gewählt. Nur im Trainer-Look — der Exam.UP-
-// Klausurmodus bleibt bewusst nüchtern. Bei prefers-reduced-motion wird das
-// Standbild (.png, erster Frame) statt der Animation geladen.
+// WebP), je nach Ergebnis zufällig gewählt — überall, auch im Exam.UP-Klausurlook
+// (Jennifer 17.07.: Motivation schlägt Nüchternheit). Bei prefers-reduced-motion
+// wird das Standbild (.png, erster Frame) statt der Animation geladen.
 const STICKER = {
   good: ["pepe_drool", "troll_grin", "patrick_happy", "laugh_cam", "happy_dog", "laughcry", "rat_dance", "kitten_lift"],
   part: ["emoji_eye", "seal_blob", "patrick_slime", "monkey_side", "cat_grass", "fish_drink"],
@@ -705,10 +705,10 @@ function zeigeFeedback(q, r) {
   });
   document.getElementById("fbzone").innerHTML = fbBanner(q, erg);
 }
-function fbBanner(q, erg, mitSticker = true) {
+function fbBanner(q, erg) {
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
   const txt = erg.voll ? `Voll richtig! +${erg.punkte} P. 🎉` : erg.punkte > 0 ? `Teilweise: ${erg.punkte} von ${q.maxPunkte} P.` : `Diesmal 0 Punkte — die Erklärungen sollten helfen.`;
-  return `<div class="fb-banner ${cls}">${mitSticker ? sticker(cls) : ""}<span>${txt}</span></div>`;
+  return `<div class="fb-banner ${cls}">${sticker(cls)}<span>${txt}</span></div>`;
 }
 function naechste() {
   if (R.idx + 1 < R.runde.length) {
@@ -799,7 +799,7 @@ function zeigMoodle() {
           const t = C.THEMEN[q.oberthema] || {};
           return `<div class="q-head" style="margin-top:12px"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
             <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}
-            <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg, false); // Exam.UP bleibt nüchtern: kein Sticker
+            <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg);
         })() : ""}
         ${!locked && R.cfg.feedback === "sofort" ? `<button class="btn small" id="check" style="margin-top:10px">Überprüfen</button>` : ""}
       </div>

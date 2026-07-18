@@ -16,5 +16,5 @@ window.ST_CONFIG = {
   // Endspurt: Klausurtag (Freitag morgens) + Tagesziel fuer die Zonen-Bar auf der Startseite.
   // Am Vortag faehrt die App das Ziel automatisch runter (locker wiederholen statt pauken).
   klausurTag: "2026-07-24",
-  tagesziel: 100,
+  tagesziel: 200, // hochgesetzt 18.07. — Rose zieht locker durch ("she got this")
 };

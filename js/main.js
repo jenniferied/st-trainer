@@ -8,7 +8,13 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
 // Fallvignetten aus der Vorlesung (Sachverhalt) — steht ueber der Frage, wie im Original-PDF
 const fallHtml = (q) => q.sachverhalt ? `<div class="q-fall"><b>Sachverhalt</b>${esc(q.sachverhalt)}</div>` : "";
-const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde" };
+const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde", probeklausur: "🏆 Probeklausur" };
+// Probeklausuren tragen ihre Nummer (I-V) im Label; alles andere wie gehabt
+const pkLbl = (nr) => `🏆 Probeklausur ${C.PK_ROEM[nr] || nr || ""}`.trim();
+const sessLbl = (s) => {
+  const m = s.modus || s.cfg?.modus;
+  return m === "probeklausur" ? pkLbl(s.cfg?.pk) : MODUS_LBL[m] || m;
+};
 
 // Night Mode: settings.theme = "auto" | "hell" | "dunkel" — auto folgt dem System.
 // index.html setzt data-theme schon vor dem CSS (kein Aufblitzen beim Laden).
@@ -87,15 +93,24 @@ const standSticker = (quote) => sticker(quote == null ? "part" : quote >= 70 ? "
 // ---- Kleine Feier-Effekte: Konfetti-Regen, nicht-blockierend, respektiert reduzierte Bewegung ----
 const KONFETTI = ["🎉", "🎊", "💗", "💖", "⭐", "✨", "🌟", "🥳"];
 function konfetti({ n = 55, ms = 2800 } = {}) {
-  if (REDUCE_MOTION) return;
+  // Bei reduzierter Bewegung nicht ausfallen lassen, sondern sanft: verteilte
+  // Emojis blenden nur ein und aus (kein Regen) — belohnt wird trotzdem.
   const ov = document.createElement("div");
   ov.className = "konfetti";
-  ov.innerHTML = Array.from({ length: n }, () => {
-    const sym = KONFETTI[Math.floor(Math.random() * KONFETTI.length)];
-    const sw = (8 + Math.random() * 22).toFixed(0);
-    const spin = (Math.random() * 720 - 360).toFixed(0);
-    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.8 + Math.random() * 1.4).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2).toFixed(2)}s;animation-delay:${(Math.random() * 0.7).toFixed(2)}s">${sym}</span>`;
-  }).join("");
+  if (REDUCE_MOTION) {
+    ms = 2600;
+    ov.innerHTML = Array.from({ length: Math.min(n, 16) }, () => {
+      const sym = KONFETTI[Math.floor(Math.random() * KONFETTI.length)];
+      return `<span class="herz still" style="left:${(Math.random() * 92).toFixed(1)}%;top:${(6 + Math.random() * 74).toFixed(1)}%;font-size:${(1 + Math.random() * 1.2).toFixed(2)}rem;animation-delay:${(Math.random() * 0.5).toFixed(2)}s">${sym}</span>`;
+    }).join("");
+  } else {
+    ov.innerHTML = Array.from({ length: n }, () => {
+      const sym = KONFETTI[Math.floor(Math.random() * KONFETTI.length)];
+      const sw = (8 + Math.random() * 22).toFixed(0);
+      const spin = (Math.random() * 720 - 360).toFixed(0);
+      return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.8 + Math.random() * 1.4).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2).toFixed(2)}s;animation-delay:${(Math.random() * 0.7).toFixed(2)}s">${sym}</span>`;
+    }).join("");
+  }
   document.body.appendChild(ov);
   setTimeout(() => ov.remove(), ms);
 }
@@ -128,7 +143,8 @@ function belebeStats(root) {
 // erst NACH der Antwort zeigen, vorher wären sie ein Hinweis (Klausurnähe)
 const qBadges = (q) =>
   (q.loesungSicherheit === "unsicher" ? `<span class="badge-src badge-unsicher">Lösung unbestätigt</span>` : "") +
-  (q.quelle === "generiert" ? `<span class="badge-src badge-generiert">KI-generiert</span>` : "");
+  (q.quelle === "generiert" ? `<span class="badge-src badge-generiert">KI-generiert</span>` : "") +
+  (q.persoenlich ? `<span class="badge-src badge-pers">💛 aus deiner Welt</span>` : "");
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
@@ -158,21 +174,27 @@ function tageszielHtml(tz, sich) {
       <p style="margin:6px 0 0"><b>${C.state().antwortLog.length}</b> Antworten trainiert, ${sicher} von 6 Themen sicher — das Wissen ist da. Ruhig atmen (4 Sek. ein, 6 Sek. aus), erst die sicheren Fragen, dann die kniffligen. 🍀</p>
     </div>`;
   }
-  const pct = Math.min(100, Math.round((100 * tz.n) / tz.ziel));
-  const zone = tz.n >= tz.ziel ? "fertig" : pct >= 80 ? "g" : pct >= 40 ? "y" : "o";
-  const msg = tz.n >= tz.ziel ? "Tagesziel geschafft 🎉 Alles ab jetzt ist Bonus — und Pause ist auch Lernen."
+  // Drei dynamische Stufen (aus dem echten Restbedarf, taeglich eingefroren):
+  // Minimum (Boden fuer zaehe Tage) -> Tagespensum (der Plan) -> Streckziel (Gold).
+  // Die Bar endet am Streckziel; Zonengrenzen wandern mit den Tageswerten.
+  const minP = Math.round((100 * tz.minimum) / tz.stretch);
+  const zielP = Math.round((100 * tz.ziel) / tz.stretch);
+  const pct = Math.min(100, Math.round((100 * tz.n) / tz.stretch));
+  const zone = tz.n >= tz.stretch ? "gold" : tz.n >= tz.ziel ? "g" : tz.n >= tz.minimum ? "y" : "o";
+  const msg = zone === "gold" ? "Streckziel! 🌟 Du bist dem Plan voraus — Pause ist mehr als verdient."
+    : zone === "g" ? "Tagespensum geschafft 🎉 Alles ab hier ist Vorsprung für morgen."
     : tz.n === 0 ? "Frischer Tag, frische Bar. Die erste Karte ist der ganze Trick — eine ⚡ 10er reicht zum Ankommen."
-    : zone === "o" ? "Warmlaufen — jede Karte zählt."
-    : zone === "y" ? "Gut im Fluss — schon ein ordentliches Stück geschafft."
-    : "Endspurt in Sicht — nach Gefühl, kein Muss.";
+    : zone === "y" ? `Minimum steht ✓ — ab hier geht's Richtung Tagespensum (${tz.ziel}).`
+    : `Warmlaufen — erstes Etappenziel: ${tz.minimum}. Jede Karte zählt, Begriffe-Blitz auch.`;
   const note = tz.tage == null ? ""
     : tz.tage === 1 ? `<p class="muted tz-note">Morgen früh ist es so weit. Heute reichen lockere ${tz.ziel} zum Festigen — und dann Feierabend und früh schlafen. 💛</p>`
-    : `<p class="muted tz-note">Noch ${tz.tage} Übungstage · mit ~${tz.ziel} Karten am Tag hast du bis Freitag den ganzen Stoff nochmal in der Hand.</p>`;
+    : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit.</p>`;
+  const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
   return `<div class="card tagesziel">
     <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
-    <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute">
+    <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
       <i class="fill ${zone}" style="width:${pct}%"></i>
-      <span class="mark" style="left:40%"></span><span class="mark" style="left:80%"></span>
+      <span class="mark" style="left:${minP}%"></span><span class="mark" style="left:${zielP}%"></span>
     </div>
     <p class="muted tz-msg">${msg}</p>${note}
   </div>`;
@@ -201,6 +223,40 @@ function bindUebe() {
   }));
 }
 
+// ---- Klausurtraining-Karte: die 5 Probeklausuren als freischaltbarer Pfad.
+// Alle Kaesten sind klickbar (auch gesperrte -> Info, was zum Freischalten fehlt).
+function klausurtrainingHtml() {
+  const pks = C.pkStatus();
+  if (!pks.length) return "";
+  const boxen = pks.map((p) => {
+    const roem = C.PK_ROEM[p.nr];
+    let cls = "zu", icon = "🔒", sub = "gesperrt";
+    if (p.bestanden) { cls = "ok"; icon = "✓"; sub = `${p.beste} P.`; }
+    else if (p.offen) { cls = "auf"; icon = "▶"; sub = "offen"; }
+    else if (p.fertige.length) { cls = "auf"; icon = "🔁"; sub = `${p.beste} P.`; }
+    else if (!p.bereit) { cls = "zu"; icon = "🔧"; sub = "bald"; }
+    else if (p.frei) { cls = "auf neu"; icon = "★"; sub = "bereit"; }
+    else if (p.vorherFertig && p.fehltKarten != null) { sub = `${C.PK_FREI_KARTEN - p.fehltKarten}/${C.PK_FREI_KARTEN}`; }
+    return `<button class="pk-box ${cls}" data-pk="${p.nr}" aria-label="Probeklausur ${roem}">
+      <b>${roem}</b><i>${icon}</i><span>${sub}</span></button>`;
+  }).join("");
+  // Eine konkrete naechste-Schritt-Zeile statt fuenf Statusmeldungen
+  const naechste = pks.find((p) => !p.bestanden);
+  let zeile;
+  if (!naechste) zeile = "Alle fünf bestanden — du hast den kompletten Stoff unter Klausurbedingungen geschafft. 👑";
+  else if (naechste.offen) zeile = `${pkLbl(naechste.nr)} liegt angefangen bereit — einfach weitermachen.`;
+  else if (naechste.fertige.length) zeile = `${pkLbl(naechste.nr)} nochmal? Beim 2. Durchlauf gibt's auf Wunsch Feedback direkt nach jeder Frage.`;
+  else if (!naechste.bereit) zeile = `${pkLbl(naechste.nr)} ist in Vorbereitung — bis dahin: weiter üben, jede Karte zählt schon fürs Freischalten.`;
+  else if (naechste.frei) zeile = `${pkLbl(naechste.nr)} ist offen: 42 Fragen, die du so noch nie gesehen hast.`;
+  else if (!naechste.vorherFertig) zeile = `Erst ${pkLbl(naechste.nr - 1)} abschließen, dann geht's hier weiter.`;
+  else zeile = `${pkLbl(naechste.nr)} schaltet sich frei: noch ${naechste.fehltKarten} Karten üben — egal in welchem Modus.`;
+  return `<div class="card pk-card">
+    <div class="pk-head"><b>🏆 Klausurtraining</b><span class="muted">5 Probeklausuren · zusammen der ganze Stoff</span></div>
+    <div class="pk-track">${boxen}</div>
+    <p class="pk-zeile">${zeile}</p>
+  </div>`;
+}
+
 function home() {
   stopTimer(); R = null;
   const s = C.state();
@@ -213,7 +269,7 @@ function home() {
     const timed = o.cfg.timerModus && o.cfg.timerModus !== "aus";
     return `<div class="card" style="display:flex;align-items:center;gap:12px">
       <div style="flex:1;min-width:0">
-        <b>${MODUS_LBL[o.cfg.modus] || o.cfg.modus}</b>${o.versuchNr ? ` <span class="badge-src">${o.versuchNr}. Versuch</span>` : ""}
+        <b>${sessLbl(o)}</b>${o.versuchNr ? ` <span class="badge-src">${o.versuchNr}. Versuch</span>` : ""}
         <div class="muted">erstellt ${datum(o.erstellt)} · ${done}/${o.runde.length} beantwortet${timed ? ` · ⏱ ${o.restSek != null ? Math.ceil(o.restSek / 60) + " min übrig" : C.timerMinuten(o.runde.length, o.cfg.timerModus) + " min"}` : ""}</div>
         <div class="bar thin mt"><i style="width:${(100 * done) / o.runde.length}%"></i></div>
       </div>
@@ -249,6 +305,8 @@ function home() {
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${tageszielHtml(tz, sich)}
+
+    ${klausurtrainingHtml()}
 
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
@@ -292,6 +350,7 @@ function home() {
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
+  app.querySelectorAll("[data-pk]").forEach((b) => b.onclick = () => pkScreen(+b.dataset.pk));
   app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = async () => {
     if (await frag("Diese offene Session verwerfen? (wird nicht gewertet)", { ja: "Verwerfen", nein: "Behalten" })) { C.verwerfeOffene(b.dataset.discard); home(); }
@@ -303,14 +362,18 @@ function home() {
 
   bindUebe(); // Ein-Tipp-Runde zum naechsten Stern
 
-  // Feiern (einmalig, geraetelokal): Tagesziel erreicht -> Konfetti einmal pro Tag;
-  // Sternaufstieg -> Konfetti + Puls auf der Zeile. Abstiege werden bewusst NIE
-  // kommentiert — die Anzeige ist ehrlich, aber wir reiben es nicht rein.
+  // Feiern (einmalig, geraetelokal): Tagespensum erreicht -> Konfetti einmal pro Tag,
+  // Streckziel -> zweites, groesseres Konfetti; Sternaufstieg -> Konfetti + Puls.
+  // Abstiege werden bewusst NIE kommentiert — ehrlich anzeigen, nicht reinreiben.
   const heuteKey = new Date().toDateString();
   let gefeiert = false;
   if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.ziel && s.settings.tzFeier !== heuteKey) {
     s.settings.tzFeier = heuteKey; C.save();
     konfetti(); gefeiert = true;
+  }
+  if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.stretch && s.settings.tzFeierGold !== heuteKey) {
+    s.settings.tzFeierGold = heuteKey; C.save();
+    if (!gefeiert) { konfetti({ n: 90, ms: 3600 }); gefeiert = true; }
   }
   const alteSterne = s.settings.sterneStand;
   if (alteSterne) for (const t of sich) if (t.stars > (alteSterne[t.slug] || 0)) {
@@ -324,7 +387,7 @@ function home() {
 function histRow(s) {
   const status = s.status === "abgebrochen" ? `<span class="badge-src badge-unsicher">abgebrochen</span>` : s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">fertig</span>`;
   const versuch = s.versuchNr > 1 ? `<span class="badge-src badge-versuch">${s.versuchNr}. Versuch</span> ` : "";
-  return `<div class="hist-item click" data-open="${s.id}"><div><b>${MODUS_LBL[s.modus] || s.modus}</b> ${versuch}${status}
+  return `<div class="hist-item click" data-open="${s.id}"><div><b>${sessLbl(s)}</b> ${versuch}${status}
     <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
     <span class="sc">${s.punkte}/${s.max}</span>
     ${s.runde && !s.bestanden && s.beantwortet < s.anzahl ? `<button class="btn small" data-reopen="${s.id}" title="Offene Fragen weitermachen">Fortsetzen</button>` : ""}
@@ -650,6 +713,82 @@ const U_LABELS = {
 };
 const labelU = (u) => U_LABELS[u] || u.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+// ================= PROBEKLAUSUR (Klausurtraining) =================
+// Ein Screen fuer jeden Zustand: in Vorbereitung / gesperrt (mit Fortschritt zum
+// Freischalten) / bereit (Start wie echt) / gemacht (Wiederholen, beim 2. Durchlauf
+// mit Sofort-Feedback-Option). Die Fragen der Probeklausur sind bis zum Bestehen
+// im Training gesperrt — sie messen echtes Themenwissen an unbekannten Fragen.
+function pkScreen(nr) {
+  const p = C.pkStatus().find((x) => x.nr === nr);
+  if (!p) return home();
+  const roem = C.PK_ROEM[nr];
+  const nta = C.state().settings.nta;
+  const wiederholung = p.fertige.length > 0;
+
+  let body;
+  if (!p.bereit) {
+    body = `<div class="card"><p style="margin:0"><b>Diese Probeklausur wird gerade zusammengestellt.</b> 🔧</p>
+      <p class="muted" style="margin:8px 0 0">Jede der fünf Probeklausuren bekommt 42 eigene Fragen — keine doppelt, zusammen decken sie den ganzen Stoff ab. Bis es so weit ist: einfach weiter üben, alles zählt schon fürs Freischalten.</p></div>`;
+  } else if (!p.frei) {
+    const grund = !p.vorherFertig
+      ? `<p style="margin:0"><b>🔒 Noch gesperrt.</b> Erst ${pkLbl(nr - 1)} abschließen — dann öffnet sich diese hier Stück für Stück.</p>`
+      : `<p style="margin:0"><b>🔒 Fast offen!</b> Noch <b>${p.fehltKarten}</b> Karten üben (egal in welchem Modus), dann schaltet sich ${pkLbl(nr)} frei.</p>
+        <div class="bar mt"><i style="width:${Math.round((100 * (C.PK_FREI_KARTEN - p.fehltKarten)) / C.PK_FREI_KARTEN)}%"></i></div>
+        <p class="muted" style="margin:8px 0 0">${C.PK_FREI_KARTEN - p.fehltKarten}/${C.PK_FREI_KARTEN} seit ${pkLbl(nr - 1)} — der Sinn dahinter: zwischen zwei Probeklausuren einmal frisch üben, damit die nächste wirklich zeigt, was sitzt.</p>`;
+    body = `<div class="card">${grund}</div>
+      <button class="btn" id="uebeJetzt" style="width:100%">⚡ 10 Karten üben — bringt dich näher ran</button>`;
+  } else {
+    const versuche = p.fertige.map((s, i) => `<div class="hist-item click" data-open="${s.id}">
+      <div><b>${i + 1}. Versuch</b> ${s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">${s.punkte} P.</span>`}
+      <div class="when">${datum(s.ts)} · ${Math.round(s.dauerSek / 60)} min</div></div>
+      <span class="sc">${s.punkte}/${s.max}</span></div>`).join("");
+    body = `
+    <div class="card">
+      <p style="margin:0">42 Fragen, die du in der App noch nie beantwortet hast — im Exam.UP-Look, mit echtem Scoring und dem 📕-Skript daneben, genau wie im Ernstfall. ${p.bestanden ? "Schon bestanden 🎉 — jeder weitere Durchlauf festigt." : "Bestehst du sie, wandern die Fragen danach in dein Training."}</p>
+      <p class="muted" style="margin:8px 0 0"><b>Taktik:</b> Keine Frage leer lassen (unter 0 P. geht keine Frage). Erst sicher falsche Optionen streichen, dann kreuzen, sobald du dir besser als 1-zu-3 sicher bist. Zwei Durchgänge: erst die sicheren, dann die kniffligen.</p>
+    </div>
+    ${p.offen ? `<div class="card" style="display:flex;align-items:center;gap:12px"><div style="flex:1"><b>Angefangener Durchlauf</b><div class="muted">${p.offen.runde.filter((r) => r.gewaehlt).length}/${p.offen.runde.length} beantwortet</div></div><button class="btn small" id="pkWeiter">Weiter</button></div>` : `
+    <div class="field"><span class="flabel">Timer</span><div class="seg" id="pkTimer">
+      <button data-v="nta" class="${nta ? "on" : ""}">120 min (dein Nachteilsausgleich)</button>
+      <button data-v="normal" class="${nta ? "" : "on"}">90 min</button>
+      <button data-v="aus">Ohne</button></div></div>
+    ${wiederholung ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="pkFb">
+      <button data-v="sofort" class="on">Sofort je Frage</button>
+      <button data-v="ende">Erst am Ende (wie echt)</button></div>
+      <p class="muted">2. Durchlauf: Mit Sofort-Feedback gibt's unter jeder Frage einen Überprüfen-Button mit Erklärungen — zum Lernen aus dem ersten Anlauf.</p></div>` : ""}
+    <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pkPause">
+      <button data-v="ja" class="${wiederholung ? "on" : ""}">Ja</button>
+      <button data-v="nein" class="${wiederholung ? "" : "on"}">Nein (wie echt)</button></div></div>
+    <button class="btn" id="pkLos">${wiederholung ? "Nochmal antreten" : "Probeklausur starten"} ›</button>`}
+    ${versuche ? `<div class="card mt"><h3>Deine Versuche</h3>${versuche}</div>` : ""}`;
+  }
+
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>🏆 Probeklausur ${roem}</h1></div>
+    ${body}
+  </div>`);
+  document.getElementById("back").onclick = home;
+  app.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
+    seg.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on");
+  }));
+  app.querySelectorAll("[data-open]").forEach((el) => el.onclick = () => sessionDetail(el.dataset.open, () => pkScreen(nr)));
+  const uj = document.getElementById("uebeJetzt");
+  if (uj) uj.onclick = () => starte({ modus: "schnell", anzahl: 10, auswahl: "smart", timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: C.state().settings.sprache || "schwer" });
+  const pw = document.getElementById("pkWeiter");
+  if (pw) pw.onclick = () => resumeSession(p.offen.id);
+  const los = document.getElementById("pkLos");
+  if (los) los.onclick = () => {
+    const segVal = (id) => app.querySelector(`#${id} button.on`)?.dataset.v;
+    const sess = C.erstelleProbeklausur(p, {
+      timerModus: segVal("pkTimer") || "nta",
+      pausierbar: segVal("pkPause") === "ja",
+      feedback: wiederholung ? (segVal("pkFb") || "sofort") : "ende",
+    });
+    if (!sess) { sag("Die Probeklausur konnte nicht geladen werden — einmal neu laden versuchen."); return; }
+    laufLos(sess);
+  };
+}
+
 // ================= RUNDE =================
 function starte(cfg) {
   const sess = C.erstelleSession(cfg);
@@ -657,9 +796,13 @@ function starte(cfg) {
     if (sess) C.verwerfeOffene(sess.id);
     sag("Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
   }
+  laufLos(sess);
+}
+// Frisch erstellte Session (Preset, Baukasten oder Probeklausur) sofort loslegen
+function laufLos(sess) {
   R = sess;
   R.startTs = Date.now();
-  const min = C.timerMinuten(R.runde.length, cfg.timerModus);
+  const min = C.timerMinuten(R.runde.length, R.cfg.timerModus);
   if (min) R.deadline = Date.now() + min * 60000;
   C.save();
   zeigFrage();
@@ -831,6 +974,27 @@ function bereit() {
 
 // ================= EXAM.UP-KLAUSURMODUS =================
 // (Exam.UP = Moodle-basierte Prüfungsplattform der Uni Potsdam — Look bewusst nah dran)
+// Confidence-Zeile in der Probeklausur: ehrlich, nie Panik. Rechnet das eigene
+// Tempo gegen die Restzeit — "du hast Zeit" ist fast immer die wahre Botschaft.
+function pkPaceHtml() {
+  if (R.cfg.modus !== "probeklausur") return "";
+  const beantwortet = R.runde.filter((x) => x.gewaehlt?.length).length;
+  let txt;
+  if (beantwortet < 5) txt = "💛 Ruhig ankommen: erst die sicheren Fragen, die kniffligen im zweiten Durchgang. Du hast Zeit.";
+  else if (!R.deadline) txt = `💪 ${beantwortet} von ${R.runde.length} beantwortet — Stück für Stück.`;
+  else {
+    const budget = C.timerMinuten(R.runde.length, R.cfg.timerModus) * 60;
+    const rest = Math.max(0, Math.round((R.deadline - Date.now()) / 1000));
+    const proFrage = (budget - rest) / beantwortet;
+    const brauchtNoch = (R.runde.length - beantwortet) * proFrage;
+    txt = brauchtNoch < rest * 0.7
+      ? `⏱ Du hast Zeit: In deinem Tempo (~${Math.round(proFrage)} s pro Frage) bist du klar vor Schluss durch — ${beantwortet}/${R.runde.length} geschafft.`
+      : brauchtNoch < rest
+        ? `⏱ Dein Tempo passt genau — ${beantwortet}/${R.runde.length}, einfach so weiter.`
+        : "💛 Lieber gründlich als hastig: Unbeantwortet kostet nie Minuspunkte. Erst alle sicheren Punkte holen.";
+  }
+  return `<div class="pk-pace">${txt}</div>`;
+}
 function zeigMoodle() {
   stopTimer();
   const r = R.runde[R.idx];
@@ -848,7 +1012,7 @@ function zeigMoodle() {
   // Klausur-Simulation das 📕-Skript der Standard; in Übungs-Klausuransichten
   // startet alles zu (ohne Hilfen), beides bleibt aber jederzeit zuschaltbar —
   // auch die 📄-Folie zur Frage (aus den Beleg-Ankern der Erklärungen).
-  if (R.folienSicht === undefined) R.folienSicht = R.folienAuf ? "folie" : R.cfg.modus === "klausur" ? "pdf" : "aus";
+  if (R.folienSicht === undefined) R.folienSicht = R.folienAuf ? "folie" : ["klausur", "probeklausur"].includes(R.cfg.modus) ? "pdf" : "aus";
   const folSeiten = Beleg.relevanteFolien(q);
   const folienPanel = R.folienSicht !== "folie" ? "" : folSeiten.length ? `
         <div class="moodle-folien" id="mfPanel">
@@ -900,6 +1064,7 @@ function zeigMoodle() {
       <div class="moodle-grid" id="grid">
         ${R.runde.map((x, i) => `<button data-i="${i}" class="${x.gewaehlt?.length ? "answered" : ""} ${i === R.idx ? "now" : ""}">${i + 1}</button>`).join("")}
       </div>
+      ${pkPaceHtml()}
     </div>
     <div class="btn-row mt">
       ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn secondary" id="pauseBtn">⏸ Pausieren</button>` : ""}
@@ -973,14 +1138,21 @@ function klausurJubel(stufe = 1) {
     ["👑", "💎"],
     ["🌟", "🥇", "🎓"],
   ].slice(0, stufe).flat();
-  const regenStart = stufe === 5 ? 1.4 : 2.4; // im Finale geht's früher los
-  // Mehr Bewegung je Stufe: stärkeres Pendeln (--sw) und mehr Eigendrehung (--spin)
-  const regen = Array.from({ length: 28 + stufe * 22 }, () => {
-    const sym = symbole[Math.floor(Math.random() * symbole.length)];
-    const sw = (6 + stufe * 5 + Math.random() * 12).toFixed(0);
-    const spin = (stufe * 110 + Math.random() * 140).toFixed(0);
-    return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(regenStart + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
-  }).join("");
+  // Regen frueh starten (0.5-0.9s) — vorher kam er erst nach 2.4s und wer schnell
+  // tippte (Handy!), hat nie Emojis fallen sehen. Bei reduzierter Bewegung gibt es
+  // statt Regen sanft einblendende, verteilte Emojis (statisch, aber festlich).
+  const regenStart = stufe === 5 ? 0.5 : 0.9;
+  const regen = REDUCE_MOTION
+    ? Array.from({ length: 18 }, () => {
+      const sym = symbole[Math.floor(Math.random() * symbole.length)];
+      return `<span class="herz still" style="left:${(Math.random() * 92).toFixed(1)}%;top:${(4 + Math.random() * 80).toFixed(1)}%;font-size:${(1 + Math.random() * 1.5).toFixed(2)}rem;animation-delay:${(0.4 + Math.random() * 0.8).toFixed(2)}s">${sym}</span>`;
+    }).join("")
+    : Array.from({ length: 28 + stufe * 22 }, () => {
+      const sym = symbole[Math.floor(Math.random() * symbole.length)];
+      const sw = (6 + stufe * 5 + Math.random() * 12).toFixed(0);
+      const spin = (stufe * 110 + Math.random() * 140).toFixed(0);
+      return `<span class="herz" style="left:${(Math.random() * 100).toFixed(1)}%;font-size:${(0.9 + Math.random() * 1.7).toFixed(2)}rem;--sw:${sw}px;--spin:${spin}deg;animation-duration:${(2.4 + Math.random() * 2.6).toFixed(2)}s;animation-delay:${(regenStart + Math.random() * 3).toFixed(2)}s">${sym}</span>`;
+    }).join("");
   // Tänzer: Sprunghöhe (--amp) wächst mit der Stufe, ab Stufe 3 drehen sich
   // einzelne komplett um sich selbst, im Finale die Hälfte — und alle schneller
   const nTaenzer = stufe === 5 ? 8 : stufe - 1;
@@ -1050,6 +1222,39 @@ function versuchsHtml(session) {
   return `<div class="card"><h3>🔁 Deine Versuche im Vergleich</h3>${zeilen}<p class="an-zeile" style="margin-bottom:0">${satz}</p></div>`;
 }
 
+// Special-Karte in der Probeklausur-Auswertung: was das Ergebnis WIRKLICH heisst
+// (unbekannte Fragen = echtes Themenwissen), Zeit-Realitaet, und der eine
+// konkrete Hebel mit realistischer Rechnung — Confidence, aber ehrlich.
+function pkErgebnisHtml(session) {
+  if (session.modus !== "probeklausur" || !session.cfg?.pk) return "";
+  const nr = session.cfg.pk;
+  const teile = [];
+  teile.push(`<p class="an-zeile">Diese 42 Fragen hattest du vorher <b>nie gesehen</b> — hier zählt Themenwissen, kein Wiedererkennen. Genau das misst auch die echte Klausur. Was du hier holst, holst du auch dort.</p>`);
+  if (session.timerModus && session.timerModus !== "aus" && session.beantwortet >= session.anzahl * 0.8) {
+    const budget = C.timerMinuten(session.anzahl, session.timerModus);
+    const min = Math.round(session.dauerSek / 60);
+    if (min <= budget * 0.85) teile.push(`<p class="an-zeile">⏱ <b>${min} von ${budget} Minuten</b> gebraucht — die Zeit ist auf deiner Seite. Im Ernstfall bleibt dir sogar Luft für einen zweiten Durchgang.</p>`);
+    else teile.push(`<p class="an-zeile">⏱ ${min} von ${budget} Minuten — gut eingeteilt.</p>`);
+  }
+  if (session.bestanden) {
+    teile.push(`<p class="an-zeile">🎉 <b>Die ${session.anzahl} Fragen sind jetzt für dein Training freigeschaltet</b> — sie tauchen ab sofort beim Üben & Stöbern auf.</p>`);
+    const next = C.pkStatus().find((x) => x.nr === nr + 1);
+    if (next && !next.bereit) teile.push(`<p class="an-zeile muted">${pkLbl(nr + 1)} ist in Vorbereitung — bis dahin zählt jede geübte Karte schon fürs Freischalten.</p>`);
+    else if (next && !next.frei) teile.push(`<p class="an-zeile muted">${pkLbl(nr + 1)} schaltet sich frei, sobald du noch ~${next.fehltKarten} Karten geübt hast.</p>`);
+  } else {
+    const fehlt = Math.max(0.5, Math.round((session.bestehenBei - session.punkte) * 2) / 2);
+    const themen = C.gruppiere(session.proFrage || [], (x) => x.thema);
+    const hebel = Object.entries(themen)
+      .map(([slug, arr]) => ({ slug, verloren: arr.reduce((a, x) => a + (x.max - x.punkte), 0) }))
+      .sort((a, b) => b.verloren - a.verloren)[0];
+    const nah = fehlt <= 6;
+    teile.push(`<p class="an-zeile">${nah ? `<b>Du warst nah dran:</b> nur ${fehlt} P. unter der Grenze — das ist eine Handvoll Kreuze.` : `Noch <b>${fehlt} P.</b> bis zur Grenze — machbar, und du weißt jetzt genau wo.`}${hebel && hebel.verloren >= fehlt ? ` Allein in <b>${(C.THEMEN[hebel.slug] || {}).name || hebel.slug}</b> lagen ${hebel.verloren} P. — dieses eine Thema kann den Unterschied machen:` : ""}</p>`);
+    if (hebel) teile.push(`<div style="margin:4px 0 2px"><button class="btn small" data-uebe="${hebel.slug}">⚡ 10 Karten ${(C.THEMEN[hebel.slug] || {}).name || hebel.slug} üben</button></div>`);
+    teile.push(`<p class="an-zeile muted">Tipp für den nächsten Anlauf: Beim 2. Durchlauf kannst du <b>Sofort-Feedback</b> einschalten und aus jeder Frage direkt lernen. Bestehen schaltet die Fragen fürs Training frei.</p>`);
+  }
+  return `<div class="card pk-card"><h3>🏆 ${pkLbl(nr).replace("🏆 ", "")} — was das heißt</h3>${teile.join("")}</div>`;
+}
+
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
   const abgebrochen = session.status === "abgebrochen";
@@ -1108,6 +1313,7 @@ function ergebnis(session, runde, opts = {}) {
       <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
       ${trendZeile}
     </div>
+    ${pkErgebnisHtml(session)}
     ${versuchsHtml(session)}
     <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
@@ -1131,7 +1337,7 @@ function ergebnis(session, runde, opts = {}) {
   belebeStats(app.querySelector(".fade-in"));
   // Nur beim frischen Bestehen einer Klausur-Simulation, nicht beim Stöbern im Verlauf.
   // Stufe = aktuelle Bestanden-Serie (die frische Session zählt schon mit).
-  if (pass && !abgebrochen && session.modus === "klausur" && !opts.ausVerlauf)
+  if (pass && !abgebrochen && ["klausur", "probeklausur"].includes(session.modus) && !opts.ausVerlauf)
     klausurJubel(opts.testStufe || C.pruefungsStreak());
   // Bestandene Übungsrunde (nicht Klausur — die hat ihr eigenes großes Finale):
   // ein kurzer, gut sichtbarer Konfetti-Regen. Im Verlauf-Blättern nicht.
@@ -1162,6 +1368,9 @@ const exFilter = (q) => {
   return true;
 };
 function explore() {
+  // Fragen aus noch nicht bestandenen Probeklausuren sind hier unsichtbar —
+  // wer sie stoebern koennte, wuerde die Probeklausur spoilern.
+  const sperr = C.pkGesperrt();
   const seg = (id, opts) => `<div class="seg" data-exf="${id}">${opts.map(([v, l]) =>
     `<button data-v="${v}" class="${EXF[id] === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
   const filterRow = `<div class="card" style="padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -1172,7 +1381,7 @@ function explore() {
   const bloecke = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
     const inner = subs.map(([u], ui) => {
-      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach" && exFilter(q))
+      const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach" && !sperr.has(q.id) && exFilter(q))
         .sort((a, b) => C.quelleRank(a.quelle) - C.quelleRank(b.quelle));
       if (!qs.length) return "";
       const items = qs.map((q) => `<div class="q-item" data-qid="${q.id}">
@@ -1193,7 +1402,9 @@ function explore() {
     const f = C.themaFortschritt(slug);
     return `<details class="topic" style="--tc:${t.color}"><summary>${t.name} <span class="muted" style="font-family:Karla;font-size:.85rem">· OG ${f.og.m}/${f.og.n}${f.ki.n ? ` · KI ${f.ki.m}/${f.ki.n}` : ""} gemeistert</span></summary>${inner}</details>`;
   }).join("");
-  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${filterRow}${bloecke || `<p class="muted" style="text-align:center">Kein Treffer mit diesen Filtern.</p>`}</div>`);
+  const sperrOrig = sperr.size ? C.pool().filter((q) => sperr.has(q.id) && (q.sprache || "schwer") !== "einfach").length : 0;
+  const sperrHinweis = sperrOrig ? `<p class="muted" style="margin:4px 2px 10px;font-size:.82rem">🏆 ${sperrOrig} Fragen sind gerade für deine Probeklausuren reserviert — nach dem Bestehen tauchen sie hier auf.</p>` : "";
+  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${filterRow}${sperrHinweis}${bloecke || `<p class="muted" style="text-align:center">Kein Treffer mit diesen Filtern.</p>`}</div>`);
   document.getElementById("back").onclick = home;
   app.querySelectorAll("[data-exf]").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
     EXF[seg.dataset.exf] = b.dataset.v; explore();
@@ -1525,6 +1736,7 @@ function verlauf() {
   try {
     await C.ladeFragen();
     await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
+    await C.ladeProbeklausuren(); // optional — ohne Datei fehlt nur die Klausurtraining-Karte
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

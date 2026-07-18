@@ -79,6 +79,106 @@ export function begriffStats() {
   return o;
 }
 
+// ---------- Klausurtraining (Probeklausur I-V) ----------
+// Feste, kuratierte 42er-Sets (data/probeklausuren.json, von scripts/baue-
+// probeklausuren.py): global unique ueber die ganze Serie, alle Unterthemen
+// abgedeckt, lowkey auf Roses Schwaechen gewichtet. I ist offen; jede weitere
+// schaltet sich frei durch Abschluss der vorigen + PK_FREI_KARTEN Karten Ueben.
+let PKS = [];
+export const probeklausuren = () => PKS;
+export const PK_ROEM = ["", "I", "II", "III", "IV", "V"];
+export const PK_FREI_KARTEN = 100;
+export async function ladeProbeklausuren() {
+  try {
+    const r = await fetch("data/probeklausuren.json");
+    const d = r.ok ? await r.json() : null;
+    // Klausuren ohne (fertiges) Set bleiben als "in Vorbereitung" sichtbar & klickbar
+    PKS = (d?.klausuren || []).map((k) => {
+      const qids = (k.qids || []).filter((id) => { const q = frage(id); return q && q.quizbar; });
+      return { nr: k.nr, qids, bereit: qids.length >= 30 };
+    });
+  } catch { PKS = []; }
+  return PKS;
+}
+
+// Quarantaene: Fragen einer noch NICHT bestandenen Probeklausur sind im Training
+// gesperrt (inkl. aller Formulierungs- und Einfache-Sprache-Varianten) — die
+// Probeklausur soll echtes Themenwissen an unbekannten Fragen messen, nicht
+// Wiedererkennen. Nach dem Bestehen wandern die Fragen in den Uebungs-Korpus.
+let sperrCache = null, sperrKey = "";
+export function pkGesperrt() {
+  const st = state();
+  const bestanden = new Set(st.sessions
+    .filter((s) => s.modus === "probeklausur" && s.bestanden && s.cfg?.pk).map((s) => s.cfg.pk));
+  const key = PKS.map((p) => p.nr + ":" + p.qids.length).join(",") + "|" + [...bestanden].sort().join(",");
+  if (sperrCache && sperrKey === key) return sperrCache;
+  const direkt = new Set();
+  for (const pk of PKS) if (!bestanden.has(pk.nr)) for (const id of pk.qids) direkt.add(id);
+  const out = new Set();
+  if (direkt.size) {
+    const byId = new Map(POOL.map((q) => [q.id, q]));
+    const rootOf = (q) => {
+      const orig = q.sprachVarianteVon ? (byId.get(q.sprachVarianteVon) || q) : q;
+      return orig.variantenVon || orig.id;
+    };
+    const roots = new Set();
+    for (const id of direkt) { const q = byId.get(id); if (q) roots.add(rootOf(q)); }
+    for (const q of POOL) if (roots.has(rootOf(q))) out.add(q.id);
+  }
+  sperrCache = out; sperrKey = key;
+  return out;
+}
+// Status je Probeklausur: frei/gesperrt, bisherige Durchgaenge, Freischalt-Fortschritt.
+// Alles aus sessions + antwortLog abgeleitet -> synct automatisch ueber Geraete.
+export function pkStatus() {
+  const st = state();
+  const spam = spamAids();
+  const faellige = (nr) => st.sessions
+    .filter((s) => s.modus === "probeklausur" && s.cfg?.pk === nr && s.status !== "abgebrochen")
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return PKS.map((pk) => {
+    const fertige = faellige(pk.nr);
+    let frei = pk.nr === 1, fehltKarten = null, vorherFertig = true;
+    if (pk.nr > 1) {
+      const prev = faellige(pk.nr - 1);
+      vorherFertig = prev.length > 0;
+      if (!vorherFertig) frei = false;
+      else {
+        // Karten seit dem ERSTEN Abschluss der vorigen Probeklausur (deren eigene
+        // Antworten zaehlen nicht mit; Spam-Wiederholungen auch nicht)
+        const p0 = prev[0];
+        let n = 0;
+        for (const a of st.antwortLog)
+          if (a.ts > (p0.ts || 0) && a.sid !== p0.id && !spam.has(a.aid || antwortId(a))) n++;
+        fehltKarten = Math.max(0, PK_FREI_KARTEN - n);
+        frei = fehltKarten === 0;
+      }
+    }
+    const offen = st.offen.find((o) => o.cfg?.modus === "probeklausur" && o.cfg?.pk === pk.nr);
+    return { ...pk, frei, fertige, vorherFertig, fehltKarten,
+      beste: fertige.length ? Math.max(...fertige.map((s) => s.punkte)) : null,
+      bestanden: fertige.some((s) => s.bestanden), offen };
+  });
+}
+// Probeklausur starten: festes Fragenset, nur Reihenfolgen werden gemischt.
+// Wiederholungen zaehlen als 2./3. Versuch derselben Kette (Versuchs-Vergleich).
+export function erstelleProbeklausur(pk, { timerModus = "nta", pausierbar = false, feedback = "ende" } = {}) {
+  const qs = pk.qids.map(frage).filter(Boolean);
+  if (!qs.length) return null;
+  const runde = shuffle([...qs]).map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));
+  const cfg = { modus: "probeklausur", pk: pk.nr, anzahl: runde.length, timerModus, pausierbar, feedback, examLook: true, sprache: "schwer", auswahl: "fest" };
+  const sess = { id: neueId(), erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0 };
+  const fruehere = state().sessions.filter((s) => s.modus === "probeklausur" && s.cfg?.pk === pk.nr);
+  if (fruehere.length) {
+    const root = fruehere[0].versuchVon || fruehere[0].id;
+    sess.versuchVon = root;
+    sess.versuchNr = 1 + state().sessions.filter((x) => x.id === root || x.versuchVon === root).length;
+  }
+  state().offen.push(sess); save();
+  syncLernstand();
+  return sess;
+}
+
 export function unterthemen(thema) {
   const set = new Map();
   for (const q of POOL) if (q.oberthema === thema) set.set(q.unterthema, (set.get(q.unterthema) || 0) + 1);
@@ -444,9 +544,48 @@ export function tagesStand() {
     if (a.ts >= heute.getTime() && !spam.has(a.aid || antwortId(a))) n++;
   let tage = null;
   if (cfg.klausurTag) tage = Math.round((new Date(cfg.klausurTag + "T00:00:00") - heute) / 86400000);
-  // Vortag der Klausur: bewusst kleineres Ziel — locker wiederholen, frueh schlafen
-  const ziel = tage === 1 ? Math.min(60, cfg.tagesziel || 100) : (cfg.tagesziel || 100);
-  return { n, ziel, tage };
+  return { n, tage, ...tagesPlan(heute, tage) };
+}
+
+// Dynamischer Tagesplan (Jennifer 18.07.): drei Stufen statt fester Zahl.
+//   ziel    = Tagespensum: echter Restbedarf bis "wirklich alles gemeistert",
+//             durch die verbleibenden Uebungstage geteilt (bewusst ambitioniert)
+//   minimum = geschuetzter Boden fuer zaehe Tage — erreichbar, nie beschaemend
+//   stretch = Streckziel/Vorsprung fuer starke Tage (Bar-Ende, Gold)
+// Restbedarf: je MC-Karte fehlende Voll-richtig-Antworten bis Level 3 (neu/wacklig 3,
+// Lvl 1 -> 2, Lvl 2 -> 1), geteilt durch Roses persoenliche Voll-Quote der letzten
+// 100 echten Versuche (x1,15 Wiederholungs-Bonus: bekannte Karten gelingen oefter,
+// geklemmt 55-85%). Begriffe-Paare zaehlen mit (2 Treffer = sitzt, ~85% Trefferrate).
+// Der Plan wird EINMAL pro Tag eingefroren (settings.tzPlan, geraetelokal) — ein Ziel,
+// das mittags schrumpft oder waechst, waere Psycho-Gift. Kappung bei 350/Tag: mehr
+// zeigen wir nie an, auch wenn der Rest groesser ist (Panik-Schutz); Vortag der
+// Klausur fest locker (80) — festigen und frueh schlafen statt pauken.
+function tagesPlan(heute, tage) {
+  const st = state();
+  const key = heute.toDateString();
+  const alt = st.settings.tzPlan;
+  if (alt && alt.tag === key) return alt;
+  let vollBedarf = 0;
+  for (const q of POOL) {
+    if (!(q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach")) continue;
+    const lvl = (st.leitner[q.id] || {}).lvl || 0;
+    vollBedarf += lvl >= 3 ? 0 : lvl === 2 ? 1 : lvl === 1 ? 2 : 3;
+  }
+  const bs = begriffStats();
+  let bgBedarf = 0;
+  for (const p of BEGRIFFE) bgBedarf += Math.max(0, 2 - (bs[p.id]?.ok || 0));
+  const mc = st.antwortLog.filter((a) => a.max && plausibel(a) && !String(a.qid).startsWith("bg-")).slice(-100);
+  const basisRate = mc.length >= 20 ? mc.filter((a) => a.voll).length / mc.length : 0.6;
+  const rate = Math.min(0.85, Math.max(0.55, basisRate * 1.15));
+  const restBedarf = Math.ceil(vollBedarf / rate) + Math.ceil(bgBedarf / 0.85);
+  const restTage = Math.max(1, tage == null ? 6 : tage);
+  const r10 = (x) => Math.round(x / 10) * 10;
+  let ziel = Math.max(100, Math.min(350, r10(restBedarf / restTage)));
+  if (tage === 1) ziel = Math.min(ziel, 80);
+  const plan = { tag: key, ziel, minimum: Math.max(40, r10(ziel * 0.35)),
+    stretch: Math.min(420, r10(ziel * 1.15)), restBedarf };
+  st.settings.tzPlan = plan; save();
+  return plan;
 }
 
 // Sicherheits-Sterne je Oberthema (0-3, ehrliche Momentaufnahme):
@@ -512,8 +651,9 @@ export function splitFortschritt(qs) {
     og: { m: mo, n: og.length }, ki: { m: mk, n: ki.length }, st,
   };
 }
-// Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original)
-const zaehlt = (q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach";
+// Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original);
+// Quarantäne-Fragen (in offener Probeklausur) zählen erst, wenn sie freigespielt sind.
+const zaehlt = (q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach" && !pkGesperrt().has(q.id);
 export function themaFortschritt(thema) {
   return splitFortschritt(POOL.filter((q) => q.oberthema === thema && zaehlt(q)));
 }
@@ -528,7 +668,8 @@ export function lernscore() {
 }
 export function pruefungsStreak() {
   let n = 0;
-  const sims = state().sessions.filter((s) => s.modus === "klausur" && s.fertig);
+  // Probeklausuren sind vollwertige Klausur-Simulationen — zaehlen fuer die Serie mit
+  const sims = state().sessions.filter((s) => (s.modus === "klausur" || s.modus === "probeklausur") && s.fertig);
   for (let i = sims.length - 1; i >= 0; i--) { if (sims[i].bestanden) n++; else break; }
   return n;
 }
@@ -537,6 +678,9 @@ export function pruefungsStreak() {
 export function baueRunde(cfg) {
   let qs = POOL.filter((q) => q.quizbar);
   if (!cfg.inklNichtRelevant) qs = qs.filter((q) => q.relevanz !== "laut-rose-nicht-relevant");
+  // Probeklausur-Quarantaene: diese Fragen kommen erst nach bestandener PK ins Training
+  const sperr = pkGesperrt();
+  if (sperr.size) qs = qs.filter((q) => !sperr.has(q.id));
   // Sprache: bei "einfach" ersetzt die einfache Variante ihr schweres Original (Fallback: Original,
   // wenn keine Variante existiert); Standard "schwer" blendet einfache Varianten aus
   if (cfg.sprache === "einfach") {
@@ -615,7 +759,9 @@ function waehleFragen(reps, n, strat) {
   // bekommen bevorzugt UNGESEHENE Fragen. Die echte Klausur besteht aus lauter neuen
   // Fragen — gekonnt sein muss das Thema, nicht die (auswendig gelernte) Frage.
   const boost = schwacheUnterthemen();
-  const neuSortiert = zieheGewichtet(neu, neu.length, (x) => boost[x.q.oberthema + "/" + x.q.unterthema] || 1);
+  // Persoenliche Fragen (an Roses Lebenswelt angedockt, persoenlich:true) kommen
+  // bevorzugt frueh dran — Relevanz ist der staerkste Motivations-Hebel.
+  const neuSortiert = zieheGewichtet(neu, neu.length, (x) => (boost[x.q.oberthema + "/" + x.q.unterthema] || 1) * (x.q.persoenlich ? 2 : 1));
   neu.length = 0; neu.push(...neuSortiert);
   const out = [];
   const nimm = (arr, limit) => { for (const x of arr) { if (out.length >= limit) return; if (!out.includes(x.q)) out.push(x.q); } };

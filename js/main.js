@@ -1352,7 +1352,15 @@ const lvlDots = (qid) => {
   return [0, 1, 2].map((i) => `<i class="${l > i ? "on" : -l > i ? "neg" : ""}"></i>`).join("");
 };
 // Explore-Filter (bleibt beim Hin- und Herwechseln erhalten)
-const EXF = { quelle: "alle", typ: "alle", status: "alle" };
+const EXF = { ansicht: "themen", quelle: "alle", typ: "alle", status: "alle" };
+// Drei Ansichten im Stoebern: klassischer Themen-Browser, flache Nach-Stand-Liste
+// (rot -> gruen), und die Lernlandkarte (Scatter mit Themen-Blasen).
+const ANSICHTEN = [["themen", "Themen"], ["stand", "Nach Stand"], ["karte", "🗺 Karte"]];
+const ansichtSegHtml = () => `<div class="seg" data-exf="ansicht" style="margin-bottom:10px">${ANSICHTEN.map(([v, l]) =>
+  `<button data-v="${v}" class="${EXF.ansicht === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+const bindAnsicht = () => app.querySelectorAll('[data-exf="ansicht"] button').forEach((b) => b.onclick = () => {
+  EXF.ansicht = b.dataset.v; explore();
+});
 const exFilter = (q) => {
   if (EXF.quelle === "og" && q.quelle === "generiert") return false;
   if (EXF.quelle === "ki" && q.quelle !== "generiert") return false;
@@ -1371,6 +1379,8 @@ function explore() {
   // Fragen aus noch nicht bestandenen Probeklausuren sind hier unsichtbar —
   // wer sie stoebern koennte, wuerde die Probeklausur spoilern.
   const sperr = C.pkGesperrt();
+  if (EXF.ansicht === "stand") return exploreStand(sperr);
+  if (EXF.ansicht === "karte") return lernkarte(sperr);
   const seg = (id, opts) => `<div class="seg" data-exf="${id}">${opts.map(([v, l]) =>
     `<button data-v="${v}" class="${EXF[id] === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
   const filterRow = `<div class="card" style="padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -1404,13 +1414,166 @@ function explore() {
   }).join("");
   const sperrOrig = sperr.size ? C.pool().filter((q) => sperr.has(q.id) && (q.sprache || "schwer") !== "einfach").length : 0;
   const sperrHinweis = sperrOrig ? `<p class="muted" style="margin:4px 2px 10px;font-size:.82rem">🏆 ${sperrOrig} Fragen sind gerade für deine Probeklausuren reserviert — nach dem Bestehen tauchen sie hier auf.</p>` : "";
-  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${filterRow}${sperrHinweis}${bloecke || `<p class="muted" style="text-align:center">Kein Treffer mit diesen Filtern.</p>`}</div>`);
+  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${ansichtSegHtml()}${filterRow}${sperrHinweis}${bloecke || `<p class="muted" style="text-align:center">Kein Treffer mit diesen Filtern.</p>`}</div>`);
   document.getElementById("back").onclick = home;
   app.querySelectorAll("[data-exf]").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
     EXF[seg.dataset.exf] = b.dataset.v; explore();
   }));
   app.querySelectorAll("[data-try]").forEach((b) => b.onclick = () => tryInline(b.dataset.try, b));
   app.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => toggleInfo(b.dataset.info, b));
+}
+
+// ---- Nach Stand: flache Liste aller schon geuebten Fragen, gruppiert rot/gelb/gruen,
+// Schwaechstes zuoberst — direkt uebbar. (Nie Geuebtes steht im Themen-Browser.)
+function exploreStand(sperr) {
+  const daten = C.karteDaten().filter((d) => !sperr.has(d.qid)).sort((a, b) => a.quote - b.quote || b.n - a.n);
+  const buckets = [
+    { key: "rot", titel: "🔴 Wackelt noch", hint: "unter 50 % der Punkte — hier ist am meisten drin", test: (d) => d.quote < 50 },
+    { key: "gelb", titel: "🟡 Auf dem Weg", hint: "50–79 %", test: (d) => d.quote < 80 },
+    { key: "gruen", titel: "🟢 Sitzt", hint: "ab 80 %", test: () => true },
+  ];
+  const inBucket = { rot: [], gelb: [], gruen: [] };
+  for (const d of daten) inBucket[buckets.find((b) => b.test(d)).key].push(d);
+  const row = (d) => {
+    const q = C.frage(d.qid); if (!q) return "";
+    const t = C.THEMEN[d.thema] || {};
+    return `<div class="q-item" data-qid="${d.qid}">
+      <div class="qq">${esc(q.frage)}</div>
+      <div class="meta">
+        <span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+        <span class="chip outline" style="--tc:${t.color}">${esc(labelU(d.unter))}</span>
+        <span class="q-quote" style="background:color-mix(in srgb, var(--ok) ${d.quote}%, var(--bad))">${d.quote} %</span>
+        <span class="badge-src">${d.n}× geübt</span>
+        <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(d.qid)}</span>
+        <button class="btn ghost small" style="margin-left:auto" data-info="${d.qid}" title="Statistik & Lösung">ℹ️</button>
+        <button class="btn ghost small" data-try="${d.qid}">Üben ›</button>
+      </div><div class="info-zone"></div><div class="try-zone"></div></div>`;
+  };
+  const bloecke = buckets.map((b) => inBucket[b.key].length
+    ? `<details class="topic" open><summary>${b.titel} <span class="muted" style="font-family:Karla;font-size:.85rem">· ${inBucket[b.key].length} Fragen (${b.hint})</span></summary>${inBucket[b.key].map(row).join("")}</details>`
+    : "").join("");
+  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${ansichtSegHtml()}
+    ${daten.length ? `<p class="muted" style="margin:0 2px 10px;font-size:.82rem">Alle ${daten.length} Fragen, die du schon geübt hast — sortiert nach Punktequote (echte Versuche, Schnelltipps gefiltert).</p>${bloecke}`
+      : `<div class="card"><p class="muted" style="margin:0">Hier landet alles, was du schon geübt hast — nach der ersten Runde wird's bunt. 💪</p></div>`}
+  </div>`);
+  document.getElementById("back").onclick = home;
+  bindAnsicht();
+  app.querySelectorAll("[data-try]").forEach((b) => b.onclick = () => tryInline(b.dataset.try, b));
+  app.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => toggleInfo(b.dataset.info, b));
+}
+
+// ---- Lernlandkarte: jede geuebte Frage als Punkt (x = wie oft geuebt, y = Punktequote,
+// Farbe = Thema). Punkt antippen -> Unterthema & Thema als halbtransparente Blasen,
+// Detail-Panel mit Ein-Tipp-Runde. Bestehens-Linie bei 50 % zeigt die Ziel-Zone.
+function lernkarte(sperr) {
+  const daten = C.karteDaten().filter((d) => !sperr.has(d.qid));
+  const W = 720, H = 400, padL = 40, padR = 14, padT = 14, padB = 34;
+  const maxN = Math.max(4, ...daten.map((d) => d.n));
+  const px = (n) => padL + ((Math.min(n, maxN) - 1) / (maxN - 1)) * (W - padL - padR);
+  const py = (q) => padT + (1 - q / 100) * (H - padT - padB);
+  // Deterministischer Jitter, damit gleiche (n, quote)-Punkte nicht exakt uebereinander liegen
+  const jit = (s, r) => { let hsh = 0; for (const c of s) hsh = (hsh * 31 + c.charCodeAt(0)) % 997; return (hsh / 997 - 0.5) * r; };
+  for (const d of daten) { d.cx = px(d.n) + jit(d.qid, 16); d.cy = py(d.quote) + jit(d.qid + "y", 12); }
+  const dots = daten.map((d) => `<circle data-dot="${d.qid}" data-sub="${d.thema}/${d.unter}" data-th="${d.thema}"
+    cx="${d.cx.toFixed(1)}" cy="${d.cy.toFixed(1)}" r="6.5" fill="${(C.THEMEN[d.thema] || {}).hex || "#777"}"/>`).join("");
+  const xTicks = [1, Math.round((maxN + 1) / 2), maxN].filter((v, i, a) => a.indexOf(v) === i)
+    .map((n) => `<text x="${px(n)}" y="${H - padB + 16}" text-anchor="middle" class="kt-tick">${n}${n === maxN ? "+" : ""}</text>`).join("");
+  const chips = Object.entries(C.THEMEN).map(([slug, t]) =>
+    `<button class="chip" style="--tc:${t.color}" data-hl="${slug}">${t.kurz}</button>`).join(" ");
+  h(`<div class="fade-in"><div class="topbar"><button class="back" id="back">‹</button><h1>Explore</h1></div>${ansichtSegHtml()}
+    ${!daten.length ? `<div class="card"><p class="muted" style="margin:0">Die Karte füllt sich mit allem, was du übst — nach der ersten Runde tauchen hier Punkte auf. 💪</p></div>` : `
+    <div class="card karte-wrap">
+      <p class="muted" style="margin:0 0 8px;font-size:.82rem">Jeder Punkt = eine geübte Frage. Rechts = oft geübt, oben = sitzt. <b>Punkt antippen</b> zeigt seine Themen-Blase — alles über der Linie ist Bestehens-Gebiet.</p>
+      <div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px">${chips}</div>
+      <svg id="karteSvg" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+        <rect x="${padL}" y="${padT}" width="${W - padL - padR}" height="${py(50) - padT}" fill="var(--ok)" opacity="0.06"/>
+        <g id="blobs"></g>
+        <line x1="${padL}" y1="${py(50)}" x2="${W - padR}" y2="${py(50)}" stroke="var(--ok)" stroke-dasharray="6 5" stroke-width="1.5" opacity=".7"/>
+        <text x="${W - padR - 4}" y="${py(50) - 6}" text-anchor="end" class="kt-tick" fill="var(--ok)">Bestehens-Linie (50 %)</text>
+        ${[0, 50, 100].map((q) => `<text x="${padL - 6}" y="${py(q) + 4}" text-anchor="end" class="kt-tick">${q}</text>`).join("")}
+        ${xTicks}
+        <text x="${W - padR}" y="${H - 4}" text-anchor="end" class="kt-tick">wie oft geübt →</text>
+        <text x="${padL - 28}" y="${padT + 10}" class="kt-tick" transform="rotate(-90 ${padL - 28} ${padT + 10})" text-anchor="end">↑ Punktequote</text>
+        ${dots}
+      </svg>
+      <div id="kartePanel"><p class="muted" style="margin:8px 0 0;font-size:.85rem">Tippe einen Punkt oder einen Themen-Chip an.</p></div>
+    </div>`}
+  </div>`);
+  document.getElementById("back").onclick = home;
+  bindAnsicht();
+  if (!daten.length) return;
+  const svg = document.getElementById("karteSvg");
+  const blobs = document.getElementById("blobs");
+  const panel = document.getElementById("kartePanel");
+  const kreise = [...svg.querySelectorAll("circle[data-dot]")];
+  const wisch = () => { blobs.innerHTML = ""; kreise.forEach((c) => c.classList.remove("dim", "mid", "sel")); };
+  // Halbtransparente Blase (Ellipse) um eine Punktmenge — visualisiert, welcher
+  // Bereich als Ganzes Richtung Bestehens-Zone wandern soll
+  const blob = (arr, farbe, op, pad) => {
+    if (!arr.length) return;
+    const xs = arr.map((d) => d.cx), ys = arr.map((d) => d.cy);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    blobs.insertAdjacentHTML("beforeend",
+      `<ellipse cx="${(x0 + x1) / 2}" cy="${(y0 + y1) / 2}" rx="${(x1 - x0) / 2 + pad}" ry="${(y1 - y0) / 2 + pad}" fill="${farbe}" opacity="${op}"/>`);
+  };
+  const uebenBtn = (unterthemen, label) => `<button class="btn small" data-kt-uebe='${JSON.stringify(unterthemen)}'>⚡ 10 Karten ${esc(label)} üben</button>`;
+  const bindKtUebe = () => panel.querySelectorAll("[data-kt-uebe]").forEach((b) => b.onclick = () => starte({
+    modus: "schnell", anzahl: 10, auswahl: "smart", unterthemen: JSON.parse(b.dataset.ktUebe),
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: C.state().settings.sprache || "schwer",
+  }));
+  const statZeile = (arr) => {
+    const q = Math.round(arr.reduce((s, d) => s + d.quote, 0) / arr.length);
+    return `${arr.length} geübte ${arr.length === 1 ? "Frage" : "Fragen"} · Ø <b>${q} %</b>${q >= 50 ? " — über der Linie 🎉" : " — die Blase will nach oben"}`;
+  };
+  const waehlePunkt = (c) => {
+    wisch();
+    const qid = c.dataset.dot, sub = c.dataset.sub, th = c.dataset.th;
+    const d = daten.find((x) => x.qid === qid);
+    const hex = (C.THEMEN[th] || {}).hex || "#777";
+    const themaPts = daten.filter((x) => x.thema === th);
+    const subPts = daten.filter((x) => x.thema + "/" + x.unter === sub);
+    blob(themaPts, hex, 0.07, 26);
+    blob(subPts, hex, 0.15, 14);
+    kreise.forEach((k) => {
+      if (k.dataset.sub === sub) k.classList.add("sel");
+      else if (k.dataset.th === th) k.classList.add("mid");
+      else k.classList.add("dim");
+    });
+    const t = C.THEMEN[th] || {};
+    panel.innerHTML = `<div class="kt-detail">
+      <div class="meta" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+        <span class="chip outline" style="--tc:${t.color}">${esc(labelU(d.unter))}</span>
+        <span class="q-quote" style="background:color-mix(in srgb, var(--ok) ${d.quote}%, var(--bad))">${d.quote} %</span>
+        <span class="badge-src">${d.n}× geübt</span>
+        <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(qid)}</span>
+      </div>
+      <p style="margin:8px 0;font-size:.92rem">${esc(d.frage)}</p>
+      <p class="muted" style="margin:0 0 8px;font-size:.82rem">${esc(labelU(d.unter))} gesamt: ${statZeile(subPts)}</p>
+      ${uebenBtn([sub], labelU(d.unter))}
+    </div>`;
+    bindKtUebe();
+  };
+  const waehleThema = (slug) => {
+    wisch();
+    const t = C.THEMEN[slug] || {};
+    const pts = daten.filter((x) => x.thema === slug);
+    if (!pts.length) { panel.innerHTML = `<p class="muted" style="margin:8px 0 0;font-size:.85rem">Zu ${t.name} ist noch nichts geübt.</p>`; return; }
+    blob(pts, t.hex, 0.1, 24);
+    kreise.forEach((k) => k.classList.add(k.dataset.th === slug ? "sel" : "dim"));
+    const subs = [...new Set(pts.map((x) => x.unter))];
+    panel.innerHTML = `<div class="kt-detail">
+      <p style="margin:4px 0 8px"><b>${t.name}</b> — ${statZeile(pts)}</p>
+      ${uebenBtn(subs.map((u) => slug + "/" + u), t.name)}
+    </div>`;
+    bindKtUebe();
+  };
+  svg.addEventListener("click", (e) => {
+    const c = e.target.closest("circle[data-dot]");
+    if (c) waehlePunkt(c);
+    else { wisch(); panel.innerHTML = `<p class="muted" style="margin:8px 0 0;font-size:.85rem">Tippe einen Punkt oder einen Themen-Chip an.</p>`; }
+  });
+  app.querySelectorAll("[data-hl]").forEach((b) => b.onclick = () => waehleThema(b.dataset.hl));
 }
 // ℹ️ je Frage: Versuche, Punktequote, Ø Zeit + die letzten Antworten im Detail
 // Beleg-Anker (Folien, §§, GG-Artikel) aus Konzept + allen Erklärungen sammeln —

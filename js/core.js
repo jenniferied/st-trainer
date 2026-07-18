@@ -531,6 +531,26 @@ export function statistik() {
   };
 }
 
+// Datenpunkte fuer die Lernlandkarte & die Nach-Stand-Ansicht im Stoebern:
+// je Frage mit mindestens einem echten Versuch (Plausibilitaets- + Spam-Filter)
+// Anzahl Wiederholungen und mittlere Punktequote. Nie Geuebtes bleibt draussen.
+export function karteDaten() {
+  const spam = spamAids();
+  const agg = new Map();
+  for (const a of state().antwortLog) {
+    if (!a.max || !plausibel(a) || spam.has(a.aid || antwortId(a))) continue;
+    const q = frage(a.qid); if (!q) continue;
+    const e = agg.get(a.qid) || { qid: a.qid, n: 0, sum: 0 };
+    e.n++; e.sum += a.punkte / a.max;
+    agg.set(a.qid, e);
+  }
+  return [...agg.values()].map((e) => {
+    const q = frage(e.qid);
+    return { qid: e.qid, n: e.n, quote: Math.round((100 * e.sum) / e.n),
+      thema: q.oberthema, unter: q.unterthema, frage: q.frage };
+  });
+}
+
 // ---------- Tagesziel & Sicherheits-Sterne (Endspurt) ----------
 // Tages-Aktivitaet: alle heutigen Antworten (inkl. Begriffe-Blitz) ausser
 // Spam-Wiederholungen. Bewusst OHNE 3s-Filter: die Bar misst Einsatz, nicht

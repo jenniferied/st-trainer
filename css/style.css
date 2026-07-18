@@ -352,6 +352,19 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
   animation-name: herzregen; animation-timing-function: linear; animation-iteration-count: 1;
 }
 
+/* ---------- Stöbern: Nach-Stand-Liste & Lernlandkarte ---------- */
+.q-quote {
+  font-size: .72rem; font-weight: 800; color: #fff;
+  border-radius: 6px; padding: 2px 7px; font-variant-numeric: tabular-nums;
+}
+.kt-tick { font-size: 11px; fill: var(--ink-soft); font-family: Karla, sans-serif; }
+#karteSvg circle { cursor: pointer; transition: opacity .2s ease, r .15s ease; stroke: var(--card); stroke-width: 1; }
+#karteSvg circle.dim { opacity: .18; }
+#karteSvg circle.mid { opacity: .5; }
+#karteSvg circle.sel { stroke: var(--ink); stroke-width: 2; r: 7.5px; }
+.karte-wrap .chip { border: none; cursor: pointer; }
+.kt-detail { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+
 /* Persönliche Fragen (aus Roses Lebenswelt) — Badge erscheint erst nach der Antwort */
 .badge-pers { background: #fbe3ec; color: #a83a6b; }
 [data-theme="dunkel"] .badge-pers { background: #4a2438; color: #f0a9c9; }

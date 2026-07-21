@@ -62,9 +62,12 @@ export const hatOperatoren = () => !!OPS;
 // ---------- Tages-Status je Game (Karte farbig = heute noch nicht gemacht) ----------
 export function spieleHeute() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
-  const s = { vp: 0, op: 0, detektiv: 0, begriffe: 0 };
-  for (const a of C.state().antwortLog)
-    if (a.ts >= heute.getTime() && s[a.modus] !== undefined) s[a.modus]++;
+  const s = { vp: 0, opu: 0, opz: 0, detektiv: 0, begriffe: 0 };
+  for (const a of C.state().antwortLog) {
+    if (a.ts < heute.getTime()) continue;
+    if (a.modus === "op") s[String(a.qid).startsWith("opz-") ? "opz" : "opu"]++;
+    else if (s[a.modus] !== undefined) s[a.modus]++;
+  }
   return s;
 }
 
@@ -87,13 +90,14 @@ export function hubHtml() {
       </div>` : "";
   const karten = [
     kachel("vp", "🔀", "Paare", "interleaving", heute.vp, !!VIG),
-    kachel("op", "🔎", "Operatoren", "operatoren", heute.op, !!OPS),
+    kachel("opu", "🔎", "Signalwörter", "operatoren", heute.opu, !!OPS?.uebungen?.length),
+    kachel("opz", "↔️", "Zuordnen", "operatoren", heute.opz, !!OPS),
     kachel("dt", "🕵️", "Detektiv", "paraphrasieren", heute.detektiv, true),
     kachel("bg", "🃏", "Begriffe", "retrieval", heute.begriffe, C.begriffe().length > 0),
   ].filter(Boolean);
   if (!karten.length) return "";
   return `<h2 class="mt">Tägliches Training</h2>
-    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Vier kleine Runden, je ~2 Minuten. Farbig = heute noch offen, ✓ = heute schon geübt. Alles zählt für dein Tagesziel.</p>
+    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Farbig = heute noch offen, ✓ = heute schon geübt. Alles zählt für dein Tagesziel.</p>
     <div class="spiel-grid">${karten.join("")}</div>`;
 }
 // extra.begriffe: Begriffe-Blitz lebt in main.js — der Hub bekommt den Einstieg gereicht
@@ -102,7 +106,8 @@ export function bindHub(zurueck, extra = {}) {
     const oeffne = () => {
       const k = b.dataset.spiel;
       if (k === "vp") vpSpiel(zurueck);
-      else if (k === "op") opHome(zurueck);
+      else if (k === "opu") opUeben(zurueck);
+      else if (k === "opz") opZuordnen(zurueck);
       else if (k === "bg") extra.begriffe?.();
       else dtSpiel(zurueck);
     };
@@ -270,50 +275,49 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
 }
 
 // ============ GAME 2: Operatoren-Wortschatz ============
-export function opHome(zurueckFn) {
-  if (!OPS) return zurueckFn();
-  const heute = spieleHeute();
-  app().innerHTML = `<div class="fade-in">
-    ${kopf("🔎 Operatoren", zurueckFn)}
-    <div class="card"><p style="margin:0">Prüfungsfragen sprechen ihre eigene Sprache: ‚trifft NICHT zu', ‚kennzeichnet', ‚im Sinne von'. Wer die Wendungen automatisch erkennt, spart Zeit und tappt in weniger Fallen. ${M.infoBtn("operatoren")}</p></div>
-    <button class="mode-card wide" data-op="ueben" style="width:100%"><b>⚡ Erkennen üben</b><span>Echte Klausur-Stämme: Was will die Frage? (${OPS.uebungen?.length || 0} Aufgaben)</span></button>
-    <button class="mode-card wide mt" data-op="zuordnen" style="width:100%"><b>🃏 Zuordnen</b><span>Wendung ↔ was sie verlangt — wie Begriffe-Blitz</span></button>
-    <button class="mode-card wide mt" data-op="karten" style="width:100%"><b>📖 Alle Wendungen ansehen</b><span>${OPS.operatoren.length} Karten mit Tipp & echten Beispielen</span></button>
-  </div>`;
-  document.getElementById("spielBack").onclick = zurueckFn;
-  app().querySelector("[data-op='ueben']").onclick = () => opUeben(zurueckFn);
-  app().querySelector("[data-op='zuordnen']").onclick = () => opZuordnen(zurueckFn);
-  app().querySelector("[data-op='karten']").onclick = () => opKarten(zurueckFn);
-}
-
-function opKarten(zurueckFn) {
+// Beide Minigames haengen direkt im Hub (Jennifer 21.07.: keine Zwischenseite).
+// Die Wendungs-Liste (Nachschlagewerk) liegt als 📖-Sheet ueber der Runde —
+// aufklappen ohne den Rundenstand zu verlieren.
+function wendungenSheet() {
+  if (!OPS) return;
   const rows = OPS.operatoren.map((o) => `<details class="sub op-karte"><summary><b>${esc(o.wendung)}</b><span class="muted"> — ${esc(o.verlangt)}</span></summary>
     ${o.tipp ? `<div class="explain good"><span class="bt">💪 ${esc(o.tipp)}</span></div>` : ""}
     ${(o.beispiele || []).map((b) => `<p class="op-beispiel">„${esc(b.text)}"</p>`).join("")}
   </details>`).join("");
-  app().innerHTML = `<div class="fade-in">${kopf("📖 Wendungen", () => opHome(zurueckFn))}
-    <p class="muted" style="margin:0 0 10px">Antippen zum Aufklappen — mit Strategie-Tipp und echten Beispielen aus deinem Fragen-Korpus.</p>
-    <div class="card">${rows}</div></div>`;
-  document.getElementById("spielBack").onclick = () => opHome(zurueckFn);
+  const ov = document.createElement("div");
+  ov.className = "sheet-ov";
+  ov.innerHTML = `<div class="sheet" role="dialog" aria-label="Alle Wendungen" style="max-height:82vh;display:flex;flex-direction:column">
+    <div class="sheet-grip"></div>
+    <h3>📖 Alle Wendungen ${M.infoBtn("operatoren")}</h3>
+    <p class="muted" style="font-size:.82rem;margin:0 0 8px">Antippen zum Aufklappen — mit Strategie-Tipp und echten Beispielen aus deinem Fragen-Korpus.</p>
+    <div style="overflow-y:auto;min-height:0">${rows}</div>
+    <button class="btn small" data-sheet-close style="margin-top:10px">Zurück zur Runde</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener("click", (e) => { if (e.target === ov || e.target.closest("[data-sheet-close]")) ov.remove(); });
 }
+const wendungenBtn = `<button class="btn ghost small" id="opWendungen" title="Alle Wendungen nachschlagen" style="margin-left:auto">📖</button>`;
+const bindWendungen = () => { const b = document.getElementById("opWendungen"); if (b) b.onclick = wendungenSheet; };
 
 const OP_RUNDE = 6;
-function opUeben(zurueckFn) {
+export function opUeben(zurueckFn) {
+  if (!OPS?.uebungen?.length) return zurueckFn();
   const fehler = {};
   for (const a of C.state().antwortLog) if (a.modus === "op" && !a.voll) fehler[a.qid] = (fehler[a.qid] || 0) + 1;
   const aufgaben = zieh(OPS.uebungen, Math.min(OP_RUNDE, OPS.uebungen.length), (u) => 1 + Math.min(3, fehler[u.id] || 0));
   let idx = 0, richtig = 0, t0 = Date.now();
   const mal = () => {
     const u = aufgaben[idx];
-    app().innerHTML = `<div class="fade-in">${kopf("⚡ Erkennen üben", () => opHome(zurueckFn))}
+    app().innerHTML = `<div class="fade-in">${kopf("🔎 Signalwörter", zurueckFn, wendungenBtn)}
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / aufgaben.length}%"></i></span><span>${idx + 1}/${aufgaben.length}</span></div>
       <div class="card">
         <div class="q-fall" style="font-style:italic">„${esc(u.stamm)}"</div>
-        <div class="q-text" style="font-size:1rem">${u.frage === "operator" ? "Welches Signalwort steuert hier die Aufgabe?" : "Was verlangt diese Frage von dir?"}</div>
+        <div class="q-text" style="font-size:1rem">${u.frage === "operator" ? "Welches Signalwort steuert hier die Aufgabe?" : "Was verlangt diese Frage von dir?"} ${M.infoBtn("operatoren")}</div>
         <div class="answers">${u.optionen.map((o, i) => `<button class="ans op-opt" data-i="${i}"><span>${esc(o)}</span></button>`).join("")}</div>
         <div id="opFb"></div>
       </div></div>`;
-    document.getElementById("spielBack").onclick = () => opHome(zurueckFn);
+    document.getElementById("spielBack").onclick = zurueckFn;
+    bindWendungen();
     app().querySelectorAll(".op-opt").forEach((b) => b.onclick = () => {
       const i = +b.dataset.i, ok = i === u.richtig;
       if (ok) richtig++;
@@ -323,19 +327,20 @@ function opUeben(zurueckFn) {
         if (+x.dataset.i === u.richtig) x.classList.add("correct");
         else if (x === b) x.classList.add("wrong");
       });
-      document.getElementById("opFb").innerHTML = `<div class="explain ${ok ? "good" : "bad"}"><span class="bt">${esc(u.erklaerung || "")}</span></div>
+      document.getElementById("opFb").innerHTML = `<div class="fb-banner ${ok ? "good" : "part"}">${sticker(ok ? "good" : "sanft")}<span>${ok ? "Erkannt! 🎯" : "Knapp daneben — genau dafür ist das Training da."}</span></div>
+        <div class="explain ${ok ? "good" : "bad"}"><span class="bt">${esc(u.erklaerung || "")}</span></div>
         <button class="btn" id="opWeiter" style="width:100%;margin-top:10px">${idx + 1 < aufgaben.length ? "Weiter ›" : "Runde abschließen"}</button>`;
       document.getElementById("opWeiter").onclick = () => {
         idx++;
         if (idx < aufgaben.length) { t0 = Date.now(); mal(); }
-        else fazit(document.getElementById("opFb"), richtig, aufgaben.length, () => opUeben(zurueckFn), () => opHome(zurueckFn));
+        else fazit(document.getElementById("opFb"), richtig, aufgaben.length, () => opUeben(zurueckFn), zurueckFn);
       };
     });
   };
   mal();
 }
 
-function opZuordnen(zurueckFn) {
+export function opZuordnen(zurueckFn) {
   const paare = zieh(OPS.operatoren.filter((o) => o.verlangt), 5);
   const links = zieh([...paare], paare.length);
   const rechts = zieh([...paare], paare.length);
@@ -343,14 +348,15 @@ function opZuordnen(zurueckFn) {
   const offen = new Set(paare.map((p) => p.id));
   const fehler = new Set(), gewertet = new Set();
   let aktiv = null;
-  app().innerHTML = `<div class="fade-in">${kopf("🃏 Zuordnen", () => opHome(zurueckFn))}
+  app().innerHTML = `<div class="fade-in">${kopf("↔️ Zuordnen", zurueckFn, wendungenBtn)}
     <p class="muted" style="margin:0 0 10px">Links die Wendung antippen, rechts, was sie verlangt.</p>
     <div class="bg-spiel">
       <div class="bg-col">${links.map((p) => `<button class="bg-card links" data-id="${esc(p.id)}">${esc(p.wendung)}</button>`).join("")}</div>
       <div class="bg-col">${rechts.map((p) => `<button class="bg-card rechts" data-id="${esc(p.id)}">${esc(p.verlangt)}</button>`).join("")}</div>
     </div>
     <div id="opzFazit"></div></div>`;
-  document.getElementById("spielBack").onclick = () => opHome(zurueckFn);
+  document.getElementById("spielBack").onclick = zurueckFn;
+  bindWendungen();
   const alleL = [...app().querySelectorAll(".bg-card.links")];
   alleL.forEach((b) => b.onclick = () => {
     if (b.classList.contains("done")) return;
@@ -373,7 +379,7 @@ function opZuordnen(zurueckFn) {
       if (!offen.size) {
         const ok = paare.length - fehler.size;
         const erkl = paare.filter((p) => fehler.has(p.id)).map((p) => `<div class="review-q" style="padding:8px 0"><b>${esc(p.wendung)}</b> → ${esc(p.verlangt)}${p.tipp ? `<div class="explain good"><span class="bt">${esc(p.tipp)}</span></div>` : ""}</div>`).join("");
-        fazit(document.getElementById("opzFazit"), ok, paare.length, () => opZuordnen(zurueckFn), () => opHome(zurueckFn),
+        fazit(document.getElementById("opzFazit"), ok, paare.length, () => opZuordnen(zurueckFn), zurueckFn,
           erkl ? `<div class="card mt"><h3>Kurz nachlesen</h3>${erkl}</div>` : "");
       }
     } else {

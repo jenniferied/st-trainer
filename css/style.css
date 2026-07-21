@@ -1049,3 +1049,18 @@ button.ans:disabled { cursor: default; }
   color: var(--ink-soft); margin: 22px 2px 8px; font-family: "Karla", sans-serif; font-weight: 700;
 }
 .stat-sek:first-of-type { margin-top: 8px; }
+
+/* Hub mit 5 Karten (Operatoren-Minigames direkt + Begriffe): kompakter */
+.spiel-grid { grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 7px; }
+.spiel-card { padding: 14px 3px 10px; gap: 6px; }
+.spiel-card .spiel-icon { font-size: 1.65rem; }
+.spiel-card b { font-size: .7rem; hyphens: auto; overflow-wrap: anywhere; }
+.spiel-info { top: 1px; right: 4px; font-size: .78rem; }
+.spiel-done { top: 3px; left: 6px; font-size: .76rem; }
+
+/* Kompakte Zuletzt-Liste auf der Startseite: mehr Eintraege sichtbar */
+.hist-kompakt .hist-item { padding: 7px 0; gap: 8px; }
+.hist-kompakt .hist-item b { font-size: .86rem; }
+.hist-kompakt .when { font-size: .7rem; }
+.hist-kompakt .sc { font-size: .82rem; }
+.hist-kompakt .btn.small { padding: 4px 9px; font-size: .76rem; }

@@ -294,12 +294,18 @@ export function loescheSession(id) {
   syncLernstand();
 }
 
-// Einzelantworten (Stöbern) löschen: die aids wandern als Grabsteine in die
-// geloescht-Liste, sonst holt der Merge sie vom nächsten Gerät zurück.
+// Pseudo-Sessions: Spiel- und Begriffe-Antworten tragen eine feste sid
+// ("spiel"/"begriffe") statt einer echten Session-Id. Fuer Verlauf, Loeschen
+// und Merge zaehlen sie wie Einzelantworten (aid-Grabsteine, keine Session).
+const PSEUDO_SIDS = new Set(["spiel", "begriffe"]);
+export const istEinzelAntwort = (a) => !a.sid || PSEUDO_SIDS.has(a.sid);
+
+// Einzelantworten (Stöbern, Spiele, Begriffe) löschen: die aids wandern als
+// Grabsteine in die geloescht-Liste, sonst holt der Merge sie zurück.
 export function loescheEinzel(aids) {
   const st = state();
   const weg = new Set(aids);
-  st.antwortLog = st.antwortLog.filter((a) => a.sid || !weg.has(a.aid || antwortId(a)));
+  st.antwortLog = st.antwortLog.filter((a) => !istEinzelAntwort(a) || !weg.has(a.aid || antwortId(a)));
   for (const aid of aids) if (!st.geloescht.includes(aid)) st.geloescht.push(aid);
   rebuildLeitner();
   syncLernstand();
@@ -949,19 +955,29 @@ export function werteAus(runde, meta) {
   return session;
 }
 
-// Einzeln beantwortete Fragen (Stöbern, ohne Session) als Tages-Gruppen für den
-// Verlauf — sie sind vollwertige Übung und sollen dort sichtbar sein.
+// Einzeln beantwortete Fragen (Stöbern) UND Spiel-/Begriffe-Runden als
+// Tages-Gruppen für den Verlauf — vollwertige Übung, sichtbar und (mit
+// aid-Grabsteinen) einzeln löschbar, z. B. nach Test-Antworten.
+const EINZEL_ARTEN = {
+  explore: { icon: "🗂", label: "Einzelfragen", badge: "Stöbern" },
+  vp: { icon: "🔀", label: "Verwechslungspaare", badge: "Training" },
+  op: { icon: "🔎", label: "Operatoren", badge: "Training" },
+  detektiv: { icon: "🕵️", label: "Fragen-Detektiv", badge: "Training" },
+  begriffe: { icon: "🃏", label: "Begriffe-Blitz", badge: "Training" },
+};
 export function einzelGruppen() {
-  const tage = {};
+  const gruppen = {};
   for (const a of state().antwortLog) {
-    if (a.sid) continue;
-    const tag = new Date(a.ts).toDateString();
-    (tage[tag] = tage[tag] || []).push(a);
+    if (!istEinzelAntwort(a)) continue;
+    const art = EINZEL_ARTEN[a.modus] ? a.modus : "explore";
+    const key = new Date(a.ts).toDateString() + "|" + art;
+    (gruppen[key] = gruppen[key] || { art, arr: [] }).arr.push(a);
   }
-  return Object.values(tage).map((arr) => {
+  return Object.values(gruppen).map(({ art, arr }) => {
     const mitMax = arr.filter((x) => x.max);
     return {
-      einzel: true, id: "einzel-" + arr[0].ts,
+      einzel: true, art, ...EINZEL_ARTEN[art],
+      id: "einzel-" + art + "-" + arr[0].ts,
       erstellt: arr[0].ts, ts: arr[arr.length - 1].ts,
       n: arr.length,
       punkte: Math.round(mitMax.reduce((s, x) => s + x.punkte, 0) * 2) / 2,
@@ -1050,9 +1066,10 @@ export function mergeLernstand(remote) {
   for (const a of [...(remote.antwortLog || []), ...st.antwortLog]) {
     if (!a?.qid) continue;
     if (a.sid && tot.has(a.sid)) continue;
-    // Einzelantworten (ohne sid) tragen ihre aid als Grabstein in derselben Liste —
-    // alte App-Versionen reichen unbekannte Ids einfach mit weiter (Union)
-    if (!a.sid && tot.has(a.aid || antwortId(a))) continue;
+    // Einzelantworten (ohne sid — und Spiel-/Begriffe-Antworten mit Pseudo-sid)
+    // tragen ihre aid als Grabstein in derselben Liste — alte App-Versionen
+    // reichen unbekannte Ids einfach mit weiter (Union)
+    if (istEinzelAntwort(a) && tot.has(a.aid || antwortId(a))) continue;
     log.set(a.aid || antwortId(a), a);
   }
   st.antwortLog = [...log.values()].sort((a, b) => a.ts - b.ts);

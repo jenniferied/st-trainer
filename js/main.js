@@ -270,11 +270,16 @@ function sternSchrittHtml(sich) {
 }
 // Direkt-Ueben-Buttons (Naechster Stern, Schwaechen-Chips in der Statistik):
 // ein Tipp startet 10 smarte Karten nur aus dem passenden Thema.
+// Empfehlungs-Runden arbeiten mit den Verstehens-Methoden (Jennifer 21.07.):
+// Paraphrasieren ("Was will die Frage von mir?") ist an, und bei Fehlern folgt
+// die Selbsterklaerung ("Warum, glaubst du, war das falsch?") wie eingestellt —
+// locker mit Skip-Link (Standard) oder streng ohne (Einstellungen).
 function bindUebe() {
   app.querySelectorAll("[data-uebe]").forEach((b) => b.onclick = () => starte({
-    modus: "schnell", anzahl: 10, auswahl: "smart", themen: [b.dataset.uebe],
+    modus: "eigene", anzahl: 10, auswahl: "smart", themen: [b.dataset.uebe],
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
     sprache: C.state().settings.sprache || "schwer",
+    paraphrase: true,
   }));
 }
 
@@ -335,35 +340,50 @@ function heatmapHtml(tz) {
     return s.reduce((a, t) => a + t[feld], 0) / s.length;
   });
   const gN = glatt("n"), gV = glatt("voll");
-  const W = 340, H = 116, spanne = Math.max(1, ende.getTime() - tage[0].ts);
-  const maxY = Math.max(tz.ziel * 1.25, ...gN, 10);
-  const px = (ts) => 8 + ((ts - tage[0].ts) / spanne) * (W - 16);
+  const W = 340, H = 128, spanne = Math.max(1, ende.getTime() - tage[0].ts);
+  const maxY = Math.max(92, ...gN, ...gV);
+  const px = (ts) => 26 + ((ts - tage[0].ts) / spanne) * (W - 34);
   const py = (v) => H - 20 - (v / maxY) * (H - 32);
   const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
+  // Prognose aus der Verbesserungsrate (Jennifer 21.07.): lineare Steigung der
+  // letzten bis zu 14 geglaetteten Tage, ab heute gestrichelt fortgeschrieben.
+  const steigung = (reihe) => {
+    const s = reihe.slice(-14);
+    if (s.length < 3) return 0;
+    const n = s.length, mx = (n - 1) / 2, my = s.reduce((a, b) => a + b, 0) / n;
+    let zaehler = 0, nenner = 0;
+    s.forEach((y, i) => { zaehler += (i - mx) * (y - my); nenner += (i - mx) * (i - mx); });
+    return nenner ? zaehler / nenner : 0; // Karten pro Tag Veraenderung
+  };
+  const restTage = Math.max(1, (ende.getTime() - heute.getTime()) / 86400000);
+  const klemm = (v) => Math.max(0, Math.min(maxY, v));
+  const nJetzt = gN[gN.length - 1], vJetzt = gV[gV.length - 1];
+  const nProg = klemm(nJetzt + steigung(gN) * restTage);
+  const vProg = Math.min(klemm(vJetzt + steigung(gV) * restTage), nProg); // richtig kann geuebt nie ueberholen
   const hx = px(heute.getTime()).toFixed(1), ex = px(ende.getTime()).toFixed(1);
-  const nEnd = py(gN[gN.length - 1]).toFixed(1), vEnd = py(gV[gV.length - 1]).toFixed(1);
-  const quote = tage.length && gN[gN.length - 1] > 0 ? Math.round((100 * gV[gV.length - 1]) / gN[gN.length - 1]) : null;
-  const zielY = py(tz.ziel).toFixed(1);
+  const quote = tage.length && nJetzt > 0 ? Math.round((100 * vJetzt) / nJetzt) : null;
+  const raster = [20, 40, 60, 80].filter((v) => v < maxY).map((v) =>
+    `<line x1="26" y1="${py(v).toFixed(1)}" x2="${W - 8}" y2="${py(v).toFixed(1)}" stroke="var(--line)" stroke-width="${v === 60 || v === 80 ? 1.1 : 0.5}" ${v === 60 || v === 80 ? 'stroke-dasharray="5 4"' : ""} opacity="${v === 60 || v === 80 ? ".8" : ".45"}"/>
+     <text x="22" y="${(py(v) + 3).toFixed(1)}" text-anchor="end" class="kt-tick"${v === 60 || v === 80 ? ' font-weight="700"' : ""}>${v}</text>`).join("");
   return `<div class="card hm-card">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
       <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
     <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
     <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten (kräftiger Grün = mehr), kommende das Datum. Leere Tage sind einfach leer — jeder Tag startet neu.</p>
     <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Geuebte und richtige Karten pro Tag, mit Prognose bis zur Klausur">
-      <line x1="8" y1="${zielY}" x2="${W - 8}" y2="${zielY}" stroke="var(--ink-soft)" stroke-dasharray="3 4" stroke-width="1" opacity=".6"/>
-      <text x="${W - 10}" y="${(+zielY - 4).toFixed(1)}" text-anchor="end" class="kt-tick">Ziel ${tz.ziel}</text>
-      <line x1="${hx}" y1="10" x2="${hx}" y2="${H - 18}" stroke="var(--line)" stroke-width="1"/>
-      <polyline points="${pfad(gN)}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-      <polyline points="${pfad(gV)}" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <line x1="${hx}" y1="${nEnd}" x2="${ex}" y2="${nEnd}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.6" opacity=".55"/>
-      <line x1="${hx}" y1="${vEnd}" x2="${ex}" y2="${vEnd}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".55"/>
-      <circle cx="${hx}" cy="${nEnd}" r="3.2" fill="var(--accent)"/>
-      <circle cx="${hx}" cy="${vEnd}" r="3" fill="var(--ok)"/>
-      <text x="8" y="${H - 5}" class="kt-tick">${fmtDatumKurz(new Date(tage[0].ts))}</text>
+      ${raster}
+      <line x1="${hx}" y1="8" x2="${hx}" y2="${H - 18}" stroke="var(--line)" stroke-width="1"/>
+      <polyline points="${pfad(gN)}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${pfad(gV)}" fill="none" stroke="var(--ok)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${hx}" y1="${py(nJetzt).toFixed(1)}" x2="${ex}" y2="${py(nProg).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".6"/>
+      <line x1="${hx}" y1="${py(vJetzt).toFixed(1)}" x2="${ex}" y2="${py(vProg).toFixed(1)}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.4" opacity=".6"/>
+      <circle cx="${hx}" cy="${py(nJetzt).toFixed(1)}" r="2.8" fill="var(--accent)"/>
+      <circle cx="${hx}" cy="${py(vJetzt).toFixed(1)}" r="2.6" fill="var(--ok)"/>
+      <text x="26" y="${H - 5}" class="kt-tick">${fmtDatumKurz(new Date(tage[0].ts))}</text>
       <text x="${hx}" y="${H - 5}" text-anchor="middle" class="kt-tick">heute</text>
       <text x="${W - 8}" y="${H - 5}" text-anchor="end" class="kt-tick">18.9. 🎓</text>
     </svg>
-    <p class="muted tz-note"><span style="color:var(--accent);font-weight:700">—</span> geübte Karten/Tag · <span style="color:var(--ok);font-weight:700">—</span> davon voll richtig${quote != null ? ` (aktuell ${quote} %)` : ""} — je näher die Linien zusammen, desto besser sitzt der Stoff. Gestrichelt ab heute: so geht es weiter, wenn du dein Tempo hältst (7-Tage-Schnitt).</p>
+    <p class="muted tz-note"><span style="color:var(--accent);font-weight:700">—</span> geübte Karten/Tag · <span style="color:var(--ok);font-weight:700">—</span> davon voll richtig${quote != null ? ` (aktuell ${quote} %)` : ""} — je näher die Linien zusammen, desto besser sitzt der Stoff. Die gestrichelten Marken bei <b>60</b> und <b>80</b> sind die Wunsch-Zone; gestrichelt ab heute läuft die Prognose mit deiner aktuellen Verbesserungsrate weiter.</p>
   </div>`;
 }
 
@@ -443,7 +463,8 @@ function home() {
   }).join("");
 
   const eintraege = histEintraege();
-  const letzte = eintraege.slice(0, 4).map((x) => x.html).join("");
+  // Kompakte Zuletzt-Liste (Jennifer 21.07.): mehr Eintraege sichtbar
+  const letzte = eintraege.slice(0, 7).map((x) => x.html).join("");
 
   h(`<div class="fade-in" id="homeRoot">
     <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
@@ -493,7 +514,7 @@ function home() {
 
     ${heatmapHtml(tz)}
 
-    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card">${letzte}
+    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt">${letzte}
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
 
@@ -543,13 +564,14 @@ function histRow(s) {
     ${(s.runde?.length || s.proFrage?.length) ? `<button class="btn ghost small" data-retry="${s.id}" title="Gleiche Fragen nochmal üben — als neuer Versuch, der alte Eintrag bleibt">🔁</button>` : ""}
     <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
-// Einzeln geübte Fragen (Stöbern) als Tages-Eintrag im Verlauf — vollwertige
-// Übung, gehört sichtbar dazu. 🗑 löscht den ganzen Tag (aid-Grabsteine).
+// Einzeln geübte Fragen (Stöbern) und Spiel-/Begriffe-Runden als Tages-Eintrag
+// im Verlauf — vollwertige Übung, sichtbar und löschbar (aid-Grabsteine), damit
+// z. B. Test-Antworten wieder rausfliegen können.
 function histRowEinzel(e) {
-  return `<div class="hist-item click" data-einzel="${e.id}"><div><b>🗂 Einzelfragen</b> <span class="badge-src">Stöbern</span>
-    <div class="when">${datum(e.erstellt)} · ${e.n} ${e.n === 1 ? "Frage" : "Fragen"} einzeln geübt</div></div>
+  return `<div class="hist-item click" data-einzel="${e.id}"><div><b>${e.icon} ${e.label}</b> <span class="badge-src">${e.badge}</span>
+    <div class="when">${datum(e.erstellt)} · ${e.n} ${e.n === 1 ? "Karte" : "Karten"} geübt</div></div>
     ${e.max ? `<span class="sc">${e.punkte}/${e.max}</span>` : ""}
-    <button class="btn ghost small" data-del-einzel="${e.id}" title="Diese Einzelantworten löschen">🗑</button></div>`;
+    <button class="btn ghost small" data-del-einzel="${e.id}" title="Diese Antworten löschen">🗑</button></div>`;
 }
 // Sessions + Einzelfragen-Tage gemischt, Neuestes zuerst
 function histEintraege() {
@@ -577,7 +599,7 @@ function bindHist(rerender) {
     ev.stopPropagation();
     const g = C.einzelGruppen().find((x) => x.id === b.dataset.delEinzel);
     if (!g) return;
-    if (await frag(`${g.n} Einzelantworten vom ${datum(g.erstellt).split(" ")[0]} löschen? Dein Lernstand (Dots & Fortschritt) wird ohne sie neu berechnet — auf allen Geräten.`, { ja: "Löschen", nein: "Behalten" })) {
+    if (await frag(`${g.n} Antworten (${g.label}) vom ${datum(g.erstellt).split(" ")[0]} löschen? Dein Lernstand wird ohne sie neu berechnet — auf allen Geräten.`, { ja: "Löschen", nein: "Behalten" })) {
       C.loescheEinzel(g.antworten.map((a) => a.aid));
       rerender();
     }
@@ -624,15 +646,15 @@ function einzelDetail(id, zurueck = home) {
   const e = C.einzelGruppen().find((x) => x.id === id);
   if (!e) return zurueck();
   const rows = [...e.antworten].reverse().map((a) =>
-    a.gewaehlt ? reviewQ({ qid: a.qid, optOrder: [...(C.frage(a.qid)?.optionen.keys() || [])], gewaehlt: a.gewaehlt }, a) : ""
+    a.gewaehlt && C.frage(a.qid) ? reviewQ({ qid: a.qid, optOrder: [...(C.frage(a.qid)?.optionen.keys() || [])], gewaehlt: a.gewaehlt }, a) : ""
   ).join("");
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Einzelfragen</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>${e.icon} ${e.label}</h1></div>
     <div class="card">
-      <p style="margin:0"><b>${e.n} ${e.n === 1 ? "Frage" : "Fragen"}</b> beim Stöbern geübt am ${datum(e.erstellt).split(" ")[0]}${e.max ? ` — <b>${e.punkte}/${e.max} P.</b>` : ""}</p>
-      <p class="muted" style="margin:4px 0 0">Zählt voll in Lernstand & Statistik, wie jede Session.</p>
+      <p style="margin:0"><b>${e.n} ${e.n === 1 ? "Karte" : "Karten"}</b> geübt am ${datum(e.erstellt).split(" ")[0]}${e.max ? ` — <b>${e.punkte}/${e.max} P.</b>` : ""}</p>
+      <p class="muted" style="margin:4px 0 0">Zählt fürs Tagesziel${e.art === "explore" ? " und voll in Lernstand & Statistik" : ""} — löschbar über den Verlauf (🗑).</p>
     </div>
-    <div class="card mt"><h3>Alle Fragen im Detail</h3>${rows || "<p class='muted'>Zu diesen Antworten gibt es keine Details mehr (ältere App-Version).</p>"}</div>
+    ${rows ? `<div class="card mt"><h3>Alle Fragen im Detail</h3>${rows}</div>` : ""}
   </div>`);
   document.getElementById("back").onclick = zurueck;
 }
@@ -818,7 +840,10 @@ function builder({ preset }) {
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
     ${!istExam && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
-      <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>` : ""}
+      <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>
+    <div class="field"><span class="flabel">Optionen einzeln beurteilen ${M.infoBtn("abstempeln")}</span><div class="seg" id="stempeln">
+      <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
+      <p class="muted">An: Jede Antwort erscheint einzeln mit ‚trifft zu / trifft nicht zu' — die Kreuze setzt die App danach automatisch richtig herum, auch bei NICHT-Fragen. Feedback kommt dabei immer direkt nach jeder Frage.</p></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${istExam ? " (wie echt)" : ""}</button></div>
       ${istExam ? `<p class="muted">Bei Sofort gibt's unter jeder Frage einen Überprüfen-Button mit Erklärungen — die Frage ist danach festgelegt.</p>` : ""}</div>` : ""}
@@ -860,10 +885,11 @@ function builder({ preset }) {
       auswahl: segVal("auswahl") || P.auswahl || "smart",
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
-      feedback: istKlausur ? "ende" : istSprach ? "sofort" : segVal("fb") || "ende",
+      feedback: istKlausur ? "ende" : istSprach || segVal("stempeln") === "an" ? "sofort" : segVal("fb") || "ende",
       examLook: istExam || segVal("ansicht") === "exam", unterthemen,
       sprache,
       paraphrase: !istExam && !istSprach && segVal("para") === "an",
+      stempeln: !istExam && !istSprach && segVal("stempeln") === "an",
     });
   };
 }
@@ -1053,7 +1079,9 @@ function beende(status = "fertig") {
 function zeigFrage() {
   stopTimer();
   if (R.cfg.modus === "klausur" || R.cfg.examLook) return zeigMoodle();
-  if (R.cfg.modus === "sprach") return zeigSprach();
+  // Stempel-Option (Jennifer 21.07.): der Sprachverstaendnis-Ablauf ist in jedem
+  // Uebungsmodus zuschaltbar — dann laeuft jede Frage durch Einzel-Urteile.
+  if (R.cfg.modus === "sprach" || R.cfg.stempeln) return zeigSprach();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
   // Paraphrasieren als zuschaltbare Option in jedem Uebungsmodus (Block D):
@@ -1219,8 +1247,9 @@ function zeigSprach() {
   const q = C.frage(r.qid);
   if (!r.urteile && !r.gewaehlt?.length) C.shuffle(r.optOrder);
 
-  // ---- Schritt 1: Paraphrasieren
-  if (!r.paraDone) {
+  // ---- Schritt 1: Paraphrasieren (im Sprach-Modus immer; als Stempel-Option
+  // in anderen Modi nur, wenn Paraphrasieren zusaetzlich eingeschaltet ist)
+  if ((R.cfg.modus === "sprach" || R.cfg.paraphrase) && !r.paraDone) {
     h(`<div class="fade-in">${sprachKopf()}
       <div class="card">
         <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 1 von 3 · nur die Frage ${M.infoBtn("paraphrasieren")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>

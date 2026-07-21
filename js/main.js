@@ -302,6 +302,8 @@ function heatmapHtml(tz) {
   const erster = aktTage.length ? Math.min(...aktTage) : heute.getTime() - 7 * 86400000;
   const start = new Date(Math.min(erster, heute.getTime()));
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  // Zellfarbe = dieselben Zonen wie die Tagesziel-Bar (orange unter Minimum,
+  // gelb bis Tagespensum, gruen ab Pensum, gold ab Streckziel); 0 Karten = grau.
   const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : 4;
 
   const kopfzeile = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="hm-wtag">${w}</span>`).join("");
@@ -313,17 +315,18 @@ function heatmapHtml(tz) {
     const zukunft = ts > heute.getTime();
     const e = akt[ts] || { n: 0, voll: 0 };
     const datum = fmtDatumKurz(d);
+    const wtag = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()];
     let cls, inhalt, tip;
     if (istKlausur) {
-      cls = "hm-exam"; inhalt = "🎓"; tip = `${datum} — Klausurtag`;
+      cls = "hm-exam"; inhalt = "🎓"; tip = `${wtag} ${datum} — Klausurtag`;
     } else if (zukunft) {
-      cls = "hm-fut"; inhalt = d.getDate() === 1 ? datum : String(d.getDate()); tip = datum;
+      cls = "hm-fut"; inhalt = datum; tip = `${wtag} ${datum}`;
     } else {
       cls = `hm-s${stufe(e.n)}`;
       // Vergangene Tage: Anzahl geuebter Karten statt Datum; heute ohne Karten
       // zeigt noch das Datum (der Tag laeuft ja noch)
-      inhalt = e.n ? String(e.n) : (istHeute ? String(d.getDate()) : "");
-      tip = `${datum}: ${e.n} Karten` + (e.n ? ` · ${Math.round((100 * e.voll) / e.n)} % voll richtig` : "");
+      inhalt = e.n ? String(e.n) : (istHeute ? datum : "");
+      tip = `${wtag} ${datum}: ${e.n} Karten` + (e.n ? ` · ${Math.round((100 * e.voll) / e.n)} % voll richtig` : "");
     }
     zellen.push(`<span class="hm-zelle ${cls}${istHeute ? " hm-heute" : ""}" title="${tip}">${inhalt}</span>`);
   }
@@ -369,7 +372,7 @@ function heatmapHtml(tz) {
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
       <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
     <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
-    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten (kräftiger Grün = mehr), kommende das Datum. Leere Tage sind einfach leer — jeder Tag startet neu.</p>
+    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, gold = Streckziel), kommende Tage das Datum. Leere Tage sind einfach grau — jeder Tag startet neu.</p>
     <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Geuebte und richtige Karten pro Tag, mit Prognose bis zur Klausur">
       ${raster}
       <line x1="${hx}" y1="8" x2="${hx}" y2="${H - 18}" stroke="var(--line)" stroke-width="1"/>
@@ -491,8 +494,7 @@ function home() {
     <h2 class="mt">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
 
-    <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Wo du stehst</h2>
-      <button class="btn ghost small" data-go="statistik" style="margin-left:auto">📊 Statistik ›</button></div>
+    <h2 class="mt">Wo du stehst</h2>
     <div class="card mt" style="margin-top:8px">
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
@@ -514,6 +516,8 @@ function home() {
 
     ${heatmapHtml(tz)}
 
+    ${statInhaltHtml()}
+
     ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt">${letzte}
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
@@ -530,7 +534,8 @@ function home() {
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
 
-  bindUebe(); // Ein-Tipp-Runde zum naechsten Stern
+  bindUebe(); // Ein-Tipp-Runde zum naechsten Stern + Statistik-Hebel
+  belebeStats(document.getElementById("homeRoot")); // Statistik wohnt jetzt hier
 
   // Feiern (einmalig, geraetelokal): Tagespensum erreicht -> Konfetti einmal pro Tag,
   // Streckziel -> zweites, groesseres Konfetti; Sternaufstieg -> Konfetti + Puls.
@@ -2068,32 +2073,38 @@ function analyseHtml(a, scope = "global") {
 }
 
 // ================= STATISTIK =================
-function statistik() {
+// Kompletter Statistik-Inhalt. Wohnt seit 21.07. (Jennifers Wunsch) direkt auf
+// der Startseite; die alte Statistik-Route zeigt denselben Inhalt.
+function statInhaltHtml() {
   const st = C.statistik();
   const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
   const pkt = (v) => `${v.pkt}/${v.maxSchnitt} P.`;
-  // Beherrschungs-Status je Thema (Jennifers Wunsch 21.07.): Marken im Balken
-  // bei 80/90 %; darunter = noch offen (!), ab 80 % sitzt (Haken), ab 90 %
-  // versiegelt (Siegel). Sprachregel bleibt: "noch offen", nie "schwach".
+  // Beherrschungs-Schema (Jennifer 21.07., 2. Runde): Trenner in JEDEM Balken
+  // bei 50 % (Bestehensgrenze), 75 % (sicherer Bereich) und 90 % (besteht auf
+  // jeden Fall). Fuellfarbe: rot unter 50, gelb ab 50, gruen ab 90.
+  // Sprachregel bleibt: "noch offen", nie "schwach".
+  const quotenFarbe = (q) => q == null ? "var(--line)" : q < 50 ? "var(--bad)" : q < 90 ? "#d9b93a" : "var(--ok)";
   const siegel = (q) => q == null ? ""
-    : q >= 90 ? `<span class="siegel gold" title="ab 90 % — versiegelt, darauf kannst du bauen">🏅</span>`
-    : q >= 80 ? `<span class="siegel gut" title="ab 80 % — sitzt">✓</span>`
-    : `<span class="siegel offen" title="unter 80 % — hier ist noch Luft">!</span>`;
-  const markenBar = (quote, tc) => `<span class="bar mit-marke"${tc ? ` style="--tc:${tc}"` : ""}><i style="width:${quote ?? 0}%"></i><em class="bar-marke" style="left:80%"></em><em class="bar-marke m90" style="left:90%"></em></span>`;
+    : q >= 90 ? `<span class="siegel gold" title="ab 90 % — besteht auf jeden Fall">🏅</span>`
+    : q >= 75 ? `<span class="siegel gut" title="ab 75 % — sicherer Bereich">✓</span>`
+    : q < 50 ? `<span class="siegel rot" title="unter 50 % — hier ist am meisten drin">!</span>` : "";
+  const markenBar = (quote, thin = false) => `<span class="bar mit-marke${thin ? " thin" : ""}">
+    <i style="width:${quote ?? 0}%;background:${quotenFarbe(quote)}"></i>
+    <em class="bar-marke m50" style="left:50%"></em><em class="bar-marke m75" style="left:75%"></em><em class="bar-marke m90" style="left:90%"></em></span>`;
   // Pro Thema: aufklappbar bis auf die Unterthemen (Beherrschung + Ø Punkte + Ø Zeit)
   const themenRows = st.proThema.map((tt) => {
     const t = C.THEMEN[tt.slug] || { name: tt.slug, color: "var(--ink-soft)" };
-    // Balken = Punktequote, exakt wie die Zahl daneben (frueher zeigte er die
-    // Beherrschung Level >= 3 und stand deshalb fast immer auf leer — verwirrend)
-    const subRows = tt.unterthemen.map((s, ui) => `<div class="progress-row sub" style="--tc:${C.subColor(tt.slug, ui)}">
-        <span class="lbl">${esc(labelU(s.u))} <small class="muted">${s.n}×</small></span>
-        <span class="bar thin"><i style="width:${s.quote}%"></i></span>
+    // Balken = Punktequote, exakt wie die Zahl daneben — mit denselben Trennern
+    // auch in jeder Unterkategorie
+    const subRows = tt.unterthemen.map((s) => `<div class="progress-row sub">
+        <span class="lbl">${esc(labelU(s.u))} ${siegel(s.quote)} <small class="muted">${s.n}×</small></span>
+        ${markenBar(s.quote, true)}
         <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`).join("");
     return `<details class="topic" style="--tc:${t.color}">
       <summary><span class="lbl">${t.name} ${siegel(tt.quote)}</span>
         ${markenBar(tt.quote)}
         <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span></summary>
-      <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte, n× = Versuche, dann Ø Punkte & Ø Zeit. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}</div>
+      <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte mit den 50/75/90-Trennern, n× = Versuche, dann Ø Punkte & Ø Zeit. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}</div>
     </details>`;
   }).join("");
   // Trend: Punktequote der letzten Sitzungen als Mini-Verlauf
@@ -2145,9 +2156,7 @@ function statistik() {
   // nicht nur im Hover-Tooltip, das es am Handy nicht gibt); Quote nur im Tooltip.
   const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Karten${d.quote != null ? `, ${d.quote} % Punktequote` : ""}">
     ${d.n ? `<span class="akt-q">${d.n}</span>` : ""}<i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
-  h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
-    ${st.beantwortet ? `
+  return st.beantwortet ? `
     <h2 class="stat-sek">Überblick</h2>
     <div class="card"><div class="stat-grid">
       ${kachel(st.beantwortet, "Antworten gesamt")}
@@ -2159,14 +2168,20 @@ function statistik() {
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="stat-sek">Beherrschung nach Thema</h2>
-    <div class="card"><p class="muted" style="margin-top:0">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote · die Marken im Balken sitzen bei <b>80 %</b> und <b>90 %</b>: <span class="siegel offen">!</span> darunter ist noch Luft · <span class="siegel gut">✓</span> ab 80 % sitzt es · <span class="siegel gold">🏅</span> ab 90 % versiegelt.</p>${themenRows}</div>
+    <div class="card"><p class="muted" style="margin-top:0">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote. Trenner in jedem Balken: <b>50 %</b> Bestehensgrenze · <b>75 %</b> sicherer Bereich · <b>90 %</b> besteht auf jeden Fall. Füllung: <span class="siegel rot">!</span> rot unter 50 · gelb ab 50 · grün ab 90, <span class="siegel gut">✓</span> ab 75 · <span class="siegel gold">🏅</span> ab 90.</p>${themenRows}</div>
     <h2 class="stat-sek">Entwicklung</h2>
     ${ewHtml}
     ${trendHtml}
     <h2 class="stat-sek">Aktivität</h2>
     <div class="card"><h3>Letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
-      <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & die Trainings-Spiele. Der Kalender bis zur Klausur wohnt auf der Startseite.</p></div>`
-    : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
+      <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & die Trainings-Spiele.</p></div>`
+    : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`;
+}
+// Eigene Statistik-Seite bleibt als Route erreichbar (zeigt denselben Inhalt)
+function statistik() {
+  h(`<div class="fade-in">
+    <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
+    ${statInhaltHtml()}
   </div>`);
   belebeStats(app.querySelector(".fade-in"));
   bindUebe(); // Schwaechen-Chips & Hebel-Button starten direkt eine Themen-Runde

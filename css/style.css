@@ -1064,3 +1064,19 @@ button.ans:disabled { cursor: default; }
 .hist-kompakt .when { font-size: .7rem; }
 .hist-kompakt .sc { font-size: .82rem; }
 .hist-kompakt .btn.small { padding: 4px 9px; font-size: .76rem; }
+
+/* Kalender kleiner + Zonen-Farben wie die Tagesziel-Bar (Jennifer 21.07., 2. Runde) */
+.hm-kal { gap: 3px; }
+.hm-zelle { aspect-ratio: auto; height: 34px; border-radius: 8px; font-size: .66rem; font-weight: 600; }
+.hm-s1 { background: color-mix(in srgb, #e08a2e 45%, var(--card)); color: var(--ink); }
+.hm-s2 { background: color-mix(in srgb, #d9b93a 55%, var(--card)); color: var(--ink); }
+.hm-s3 { background: color-mix(in srgb, var(--ok) 62%, var(--card)); color: #fff; }
+.hm-s4 { background: linear-gradient(135deg, var(--ok), #d4a017); color: #fff; box-shadow: 0 0 6px color-mix(in srgb, #d4a017 55%, transparent); }
+.hm-exam { font-size: .9rem; }
+
+/* 50/75/90-Trenner in den Beherrschungs-Balken */
+.bar-marke.m50 { background: var(--ink-soft); opacity: .75; }
+.bar-marke.m75 { background: var(--ink-soft); opacity: .5; }
+.bar-marke.m90 { background: #d4a017; opacity: .85; }
+.bar.thin .bar-marke { top: -1px; bottom: -1px; }
+.siegel.rot { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }

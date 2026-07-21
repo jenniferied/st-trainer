@@ -592,11 +592,19 @@ export function tagesStand() {
 // das mittags schrumpft oder waechst, waere Psycho-Gift. Kappung bei 350/Tag: mehr
 // zeigen wir nie an, auch wenn der Rest groesser ist (Panik-Schutz); Vortag der
 // Klausur fest locker (80) — festigen und frueh schlafen statt pauken.
+// NextGen Block C (21.07.): Das 350er-Endspurt-Pensum ist Geschichte — mit dem
+// neuen Klausurtermin (18.09.) gilt Successive Relearning: TAEGLICH machbar
+// schlaegt Marathon. Zielband 60-100 Karten (~20-30 min bei Roses Tempo-Mix),
+// harter Deckel bei 100 — mehr zeigen wir nie an, auch wenn der Restbedarf
+// groesser waere. Rechnung wie gehabt (fehlende Voll-Antworten bis Level 3,
+// durch persoenliche Voll-Quote geteilt, auf Resttage verteilt), nur sanft
+// geklemmt. Vortag der Klausur fest locker (50). Plan friert 1x pro Tag ein
+// (settings.tzPlan, geraetelokal); v:2 verdraengt eingefrorene Alt-Plaene.
 function tagesPlan(heute, tage) {
   const st = state();
   const key = heute.toDateString();
   const alt = st.settings.tzPlan;
-  if (alt && alt.tag === key) return alt;
+  if (alt && alt.tag === key && alt.v === 2) return alt;
   let vollBedarf = 0;
   for (const q of POOL) {
     if (!(q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach")) continue;
@@ -610,14 +618,27 @@ function tagesPlan(heute, tage) {
   const basisRate = mc.length >= 20 ? mc.filter((a) => a.voll).length / mc.length : 0.6;
   const rate = Math.min(0.85, Math.max(0.55, basisRate * 1.15));
   const restBedarf = Math.ceil(vollBedarf / rate) + Math.ceil(bgBedarf / 0.85);
-  const restTage = Math.max(1, tage == null ? 6 : tage);
+  const restTage = Math.max(1, tage == null ? 30 : tage);
   const r10 = (x) => Math.round(x / 10) * 10;
-  let ziel = Math.max(100, Math.min(350, r10(restBedarf / restTage)));
-  if (tage === 1) ziel = Math.min(ziel, 80);
-  const plan = { tag: key, ziel, minimum: Math.max(40, r10(ziel * 0.35)),
-    stretch: Math.min(420, r10(ziel * 1.15)), restBedarf };
+  let ziel = Math.max(60, Math.min(100, r10(restBedarf / restTage)));
+  if (tage === 1) ziel = Math.min(ziel, 50);
+  const plan = { v: 2, tag: key, ziel, minimum: Math.max(25, r10(ziel * 0.35)),
+    stretch: Math.min(140, r10(ziel * 1.25)), restBedarf };
   st.settings.tzPlan = plan; save();
   return plan;
+}
+
+// Aktivitaet je Kalendertag (fuer Heatmap & Ziel-Linie): alle Antworten ausser
+// Spam-Wiederholungen, wie die Tagesziel-Bar (misst Einsatz, nicht Qualitaet).
+export function aktivitaetProTag() {
+  const spam = spamAids();
+  const tage = {};
+  for (const a of state().antwortLog) {
+    if (spam.has(a.aid || antwortId(a))) continue;
+    const d = new Date(a.ts); d.setHours(0, 0, 0, 0);
+    tage[d.getTime()] = (tage[d.getTime()] || 0) + 1;
+  }
+  return tage;
 }
 
 // Sicherheits-Sterne je Oberthema (0-3, ehrliche Momentaufnahme):
@@ -765,6 +786,31 @@ function waehleFragen(reps, n, strat) {
     return out.slice(0, n);
   }
 
+  if (strat === "sprach") {
+    // Sprachverstaendnis-Modus (Block D NextGen): Fragen, die Rose real schlecht
+    // versteht (niedrige Quote in der Historie), + antizipiert schwere —
+    // Negationen (ihr teuerster Fragetyp), lange Staemme, Anwendungs-Vignetten.
+    const hist = {};
+    for (const a of state().antwortLog) {
+      if (!a.max || !plausibel(a)) continue;
+      const s = hist[a.qid] || (hist[a.qid] = { n: 0, p: 0 });
+      s.n++; s.p += a.punkte / a.max;
+    }
+    const boost = schwacheUnterthemen();
+    const gew = (q) => {
+      let w = 1;
+      if (q.fragetyp === "negation") w *= 2.5;
+      else if (q.fragetyp === "anwendung") w *= 1.5;
+      if ((q.frage || "").length > 180) w *= 1.4;
+      const s = hist[q.id];
+      if (s && s.p / s.n < 0.5) w *= 2.5;          // real schlecht verstanden
+      else if (s && s.n >= 2 && s.p / s.n >= 0.9) w *= 0.4; // sitzt laengst
+      if (boost[q.oberthema + "/" + q.unterthema]) w *= 1.5;
+      return w;
+    };
+    return zieheGewichtet([...reps], n, gew);
+  }
+
   if (strat === "fokus") {
     // Nur Ungelerntes & Schwieriges (Level < 3). Gewicht: falsch/negativ am stärksten,
     // dann ungesehen, dann wacklig. Gewichtete Ziehung. Reicht der Pool nicht, wird
@@ -868,7 +914,10 @@ export function werteAus(runde, meta) {
     const erg = scoreFrage(q, r.gewaehlt);
     return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, zeit: r.zeitSek ?? null, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar,
       // Selbsterklaerung (Block A NextGen): Text + Abgleich wandern mit in Log & Sync
-      ...(r.selbst ? { selbstErkl: r.selbst.text || null, selbstAbgleich: r.selbst.abgleich || null, selbstSkip: !!r.selbst.skip } : {}) };
+      ...(r.selbst ? { selbstErkl: r.selbst.text || null, selbstAbgleich: r.selbst.abgleich || null, selbstSkip: !!r.selbst.skip } : {}),
+      // Paraphrase (Block D): "Was will diese Frage?" in Roses Worten — spaeter
+      // auswertbar (falsch paraphrasiert <-> falsch beantwortet?)
+      ...(r.para ? { paraphrase: r.para } : {}) };
   });
   const punkte = proFrage.reduce((a, x) => a + x.punkte, 0);
   const max = runde.map((r) => frage(r.qid).maxPunkte).reduce((a, b) => a + b, 0);
@@ -887,7 +936,8 @@ export function werteAus(runde, meta) {
   };
   state().sessions.push(session);
   proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit,
-    ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip } : {}) }));
+    ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip } : {}),
+    ...(x.paraphrase ? { paraphrase: x.paraphrase } : {}) }));
   for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();
   syncSession(session);

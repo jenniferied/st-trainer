@@ -1,6 +1,7 @@
 import * as C from "./core.js";
 import * as Beleg from "./beleg.js";
 import * as M from "./methoden.js";
+import * as Spiele from "./spiele.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -9,7 +10,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
 // Fallvignetten aus der Vorlesung (Sachverhalt) — steht ueber der Frage, wie im Original-PDF
 const fallHtml = (q) => q.sachverhalt ? `<div class="q-fall"><b>Sachverhalt</b>${esc(q.sachverhalt)}</div>` : "";
-const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde", probeklausur: "🏆 Probeklausur" };
+const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde", probeklausur: "🏆 Probeklausur", sprach: "🗣 Sprachverständnis" };
 // Probeklausuren tragen ihre Nummer (I-V) im Label; alles andere wie gehabt
 const pkLbl = (nr) => `🏆 Probeklausur ${C.PK_ROEM[nr] || nr || ""}`.trim();
 const sessLbl = (s) => {
@@ -263,6 +264,56 @@ function bindUebe() {
   }));
 }
 
+// ---- Uebungs-Heatmap + Ziel-Linie (Block C NextGen, Successive Relearning):
+// GitHub-Style-Kalender von jetzt bis zur Klausur — Kontinuitaet sichtbar machen.
+// Leere Tage bleiben bewusst neutral (nie rot, keine Vorwuerfe), der Klausurtag
+// ist als Endpunkt markiert. Darunter: Ist-Linie (7-Tage-geglaettet) vs. Ziel.
+function heatmapHtml(tz) {
+  const cfg = window.ST_CONFIG;
+  if (!cfg.klausurTag || tz.tage == null || tz.tage < 0) return "";
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  const ende = new Date(cfg.klausurTag + "T00:00:00");
+  const akt = C.aktivitaetProTag();
+  // Anlauf: 3 Wochen Vergangenheit, auf Montag ausgerichtet (Spalten = Wochen)
+  const start = new Date(heute.getTime() - 21 * 86400000);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : 4;
+  const zellen = [];
+  for (let d = new Date(start); d <= ende; d.setDate(d.getDate() + 1)) {
+    const ts = d.getTime();
+    const istKlausur = ts === ende.getTime();
+    const zukunft = ts > heute.getTime();
+    const n = akt[ts] || 0;
+    const cls = istKlausur ? "hm-exam" : (zukunft ? "hm-fut" : `hm-s${stufe(n)}`) + (ts === heute.getTime() ? " hm-heute" : "");
+    const tip = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + (istKlausur ? " — Klausurtag 🎓" : zukunft ? "" : `: ${n} Karten`);
+    zellen.push(`<i class="${cls}" title="${tip}">${istKlausur ? "🎓" : ""}</i>`);
+  }
+  // Ist-Linie: letzte 21 Tage, geglaettet ueber 7 Tage, gegen die Ziel-Linie
+  const T = 21;
+  const reihe = [];
+  for (let i = T - 1; i >= 0; i--) reihe.push(akt[heute.getTime() - i * 86400000] || 0);
+  const glatt = reihe.map((_, i) => { const s = reihe.slice(Math.max(0, i - 6), i + 1); return s.reduce((a, b) => a + b, 0) / s.length; });
+  const W = 320, H = 86, maxY = Math.max(tz.ziel * 1.3, ...glatt, 10);
+  const px = (i) => 8 + (i / (T - 1)) * (W - 16);
+  const py = (v) => H - 16 - (v / maxY) * (H - 26);
+  const pts = glatt.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
+  const zielY = py(tz.ziel).toFixed(1);
+  return `<div class="card hm-card">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
+      <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"}</span></div>
+    <div class="hm-scroll"><div class="hm-grid">${zellen.join("")}</div></div>
+    <p class="muted tz-note">Jede Zelle = ein Tag (Spalten = Wochen), kräftiger Grün = mehr Karten. Leere Tage sind einfach leer — jeder Tag startet neu. 🎓 = Klausur.</p>
+    <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Tagesschnitt gegen Tagesziel">
+      <line x1="8" y1="${zielY}" x2="${W - 8}" y2="${zielY}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".75"/>
+      <text x="${W - 10}" y="${(+zielY - 5).toFixed(1)}" text-anchor="end" class="kt-tick" fill="var(--ok)">Ziel ${tz.ziel}</text>
+      <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${px(T - 1)}" cy="${py(glatt[T - 1])}" r="3.4" fill="var(--accent)"/>
+      <text x="8" y="${H - 3}" class="kt-tick">vor 3 Wochen</text><text x="${W - 8}" y="${H - 3}" text-anchor="end" class="kt-tick">heute</text>
+    </svg>
+    <p class="muted tz-note">Linie = dein Tagesschnitt (über 7 Tage geglättet) · gestrichelt = Tagespensum (${tz.ziel} Karten ≈ 20–30 min). Kleine tägliche Runden schlagen Marathon-Tage — deshalb ist das Ziel bewusst machbar.</p>
+  </div>`;
+}
+
 // ---- Klausurtraining-Karte: die 5 Probeklausuren als freischaltbarer Pfad.
 // Alle Kaesten sind klickbar (auch gesperrte -> Info, was zum Freischalten fehlt).
 function klausurtrainingHtml() {
@@ -348,6 +399,8 @@ function home() {
 
     ${klausurtrainingHtml()}
 
+    ${Spiele.hubHtml()}
+
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
     <h2 class="mt">Neue Session</h2>
@@ -357,6 +410,7 @@ function home() {
       <button class="mode-card" data-go="spaced"><b>🧠 Schlaues Wiederholen</b><span>Spaced Repetition: Fälliges zuerst + Neues</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
       <button class="mode-card" data-go="fehler"><b>🔁 Fehler-Training</b><span>Nur Fragen, die noch wackeln</span></button>
+      <button class="mode-card wide" data-go="sprach"><b>🗣 Sprachverständnis</b><span>Fragen knacken: erst paraphrasieren, dann jede Option einzeln beurteilen — entschärft NICHT-Fragen</span></button>
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
     </div>
 
@@ -385,11 +439,14 @@ function home() {
       <p class="muted tz-note" style="margin-top:10px">Balken: kräftig = gemeistert · mittel = auf gutem Weg · hell = angefangen; die Zahl = Fragen in Arbeit. ★-Sterne = Sicherheit aus deinen letzten Antworten je Thema (⭐⭐ sicher, ⭐⭐⭐ prüfungsreif) — aktuell <b>${sich.filter((t) => t.stars >= 2).length}/6</b> sicher.</p>
     </div>
 
+    ${heatmapHtml(tz)}
+
     ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card">${letzte}
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
+  Spiele.bindHub(home);
   app.querySelectorAll("[data-pk]").forEach((b) => b.onclick = () => pkScreen(+b.dataset.pk));
   app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = async () => {
@@ -662,6 +719,7 @@ const PRESETS = {
   schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", auswahl: "smart", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
   fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, auswahl: "fokus", hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
   eigene: { titel: "🧩 Eigene Runde", modus: "eigene", anzahl: 10, fb: "sofort", auswahl: "smart" },
+  sprach: { titel: "🗣 Sprachverständnis", modus: "sprach", anzahl: 10, fb: "sofort", auswahl: "sprach", hinweis: "Der Modus für Fragen, die sich sperrig lesen: Erst siehst du NUR die Frage und sagst in eigenen Worten, was sie will (Paraphrasieren). Dann erscheinen die Optionen einzeln und du beurteilst jede für sich mit ‚trifft zu / trifft nicht zu' — aus einer NICHT-Frage werden so einfache Ja/Nein-Urteile. Zum Schluss die normale Auflösung. Ausgewählt werden bevorzugt Fragen, die dir bisher schwerfielen, NICHT-Fragen und lange Stämme." },
 };
 // Auswahl-Strategien: Label + Erklärung (wird im Builder als Hint gezeigt)
 // Drei klar unterscheidbare Strategien (statt vier, die sich paarweise überlappten):
@@ -678,6 +736,7 @@ function builder({ preset }) {
   const P = PRESETS[preset] || PRESETS.eigene;
   const istKlausur = preset === "klausur";
   const istExam = istKlausur || preset === "halbe";   // Exam.UP-Look, Feedback erst am Ende
+  const istSprach = preset === "sprach";              // Paraphrase + Abstempeln fest eingebaut
   const fixAnzahl = istKlausur ? 42 : preset === "halbe" ? 21 : null;
   const nta = C.state().settings.nta;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
@@ -700,12 +759,15 @@ function builder({ preset }) {
       <button data-v="normal" class="${istExam && !nta ? "on" : ""}">Normal</button>
       <button data-v="nta" class="${istExam && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
       <p class="muted" id="timerHint"></p></div>
-    <div class="field"><span class="flabel">Auswahl der Fragen</span><div class="seg" id="auswahl">
+    ${istSprach ? "" : `<div class="field"><span class="flabel">Auswahl der Fragen</span><div class="seg" id="auswahl">
       ${AUSWAHL_OPT.map(([v, lbl]) => `<button data-v="${v}" class="${v === (P.auswahl || "smart") ? "on" : ""}">${lbl}</button>`).join("")}</div>
-      <p class="muted" id="auswahlHint"></p></div>
+      <p class="muted" id="auswahlHint"></p></div>`}
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
-    ${!istKlausur ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
+    ${!istExam && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
+      <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
+      <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>` : ""}
+    ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${istExam ? " (wie echt)" : ""}</button></div>
       ${istExam ? `<p class="muted">Bei Sofort gibt's unter jeder Frage einen Überprüfen-Button mit Erklärungen — die Frage ist danach festgelegt.</p>` : ""}</div>` : ""}
     ${preset === "eigene" ? `<div class="field"><span class="flabel">Ansicht</span><div class="seg" id="ansicht">
@@ -731,8 +793,8 @@ function builder({ preset }) {
     const n = fixAnzahl || +(segVal("anz") || 10);
     const t = segVal("timer");
     document.getElementById("timerHint").textContent = t === "aus" ? "Ohne Zeitdruck üben." : `≈ ${C.timerMinuten(n, t)} Minuten für ${n} Fragen (${t === "nta" ? "mit" : "ohne"} Nachteilsausgleich, relativ zur echten Klausur).`;
-    const aw = segVal("auswahl");
-    document.getElementById("auswahlHint").textContent = (AUSWAHL_OPT.find(([v]) => v === aw) || [])[2] || "";
+    const ah = document.getElementById("auswahlHint");
+    if (ah) ah.textContent = (AUSWAHL_OPT.find(([v]) => v === segVal("auswahl")) || [])[2] || "";
   };
   updateHint();
   document.getElementById("los").onclick = () => {
@@ -746,9 +808,10 @@ function builder({ preset }) {
       auswahl: segVal("auswahl") || P.auswahl || "smart",
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
-      feedback: istKlausur ? "ende" : segVal("fb") || "ende",
+      feedback: istKlausur ? "ende" : istSprach ? "sofort" : segVal("fb") || "ende",
       examLook: istExam || segVal("ansicht") === "exam", unterthemen,
       sprache,
+      paraphrase: !istExam && !istSprach && segVal("para") === "an",
     });
   };
 }
@@ -938,8 +1001,12 @@ function beende(status = "fertig") {
 function zeigFrage() {
   stopTimer();
   if (R.cfg.modus === "klausur" || R.cfg.examLook) return zeigMoodle();
+  if (R.cfg.modus === "sprach") return zeigSprach();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
+  // Paraphrasieren als zuschaltbare Option in jedem Uebungsmodus (Block D):
+  // erst nur der Stamm + "Was will die Frage?", dann die normale Ansicht
+  if (R.cfg.paraphrase && !r.paraDone && !r.gewaehlt?.length) return zeigParaphrase();
   // Antworten bei jedem Anzeigen frisch mischen (nur solange unbeantwortet)
   if (!r.gewaehlt?.length) C.shuffle(r.optOrder);
   h(`<div class="fade-in">
@@ -1054,6 +1121,126 @@ function bereit() {
   document.getElementById("abbruch").onclick = abbrechen;
   document.getElementById("pauseBtn").onclick = pausiere;
   document.getElementById("los").onclick = zeigFrage;
+}
+
+// ================= SPRACHVERSTAENDNIS-MODUS (Block D NextGen) =================
+// Drei Schritte je Frage: (1) Paraphrasieren — nur der Stamm sichtbar, "Was will
+// diese Frage von dir?" (Eingabe wird gespeichert & spaeter auswertbar);
+// (2) Optionen einzeln abstempeln (trifft zu / trifft nicht zu) — entschaerft
+// Negationsfragen zu einfachen Ja/Nein-Urteilen; (3) Aufloesung: die Kreuze
+// ergeben sich aus den Urteilen (bei NICHT-Fragen automatisch umgedreht — genau
+// das ist der Lerneffekt), danach normales Feedback inkl. Selbsterklaerung.
+const sprachKopf = () => `<div class="q-progress">
+    <button class="back" id="abbruch">‹</button>
+    <span class="bar thin"><i style="width:${(100 * R.idx) / R.runde.length}%"></i></span>
+    <span>${R.idx + 1}/${R.runde.length}</span>
+    <span class="timer" id="t-anzeige"></span>
+    ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn ghost small" id="pauseBtn" title="Pausieren">⏸</button>` : ""}
+  </div>`;
+const sprachDraehte = () => {
+  document.getElementById("abbruch").onclick = abbrechen;
+  const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
+};
+function zeigParaphrase() {
+  const r = R.runde[R.idx];
+  const q = C.frage(r.qid);
+  h(`<div class="fade-in">${sprachKopf()}
+    <div class="card">
+      <div class="q-head"><span class="muted" style="font-size:.82rem">Erst die Frage knacken — die Antworten kommen gleich ${M.infoBtn("paraphrasieren")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+      ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
+      <div class="selbst-box">
+        <div class="selbst-kopf"><b>Was will diese Frage von dir?</b></div>
+        <textarea id="paraTxt" rows="2" placeholder="In deinen Worten — Stichworte reichen"></textarea>
+        <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter zu den Antworten ›</button></div>
+      </div>
+    </div></div>`);
+  qStart = Date.now(); startTick(); sprachDraehte();
+  document.getElementById("paraOk").onclick = () => {
+    r.para = document.getElementById("paraTxt").value.trim() || null;
+    r.paraDone = true; bankZeit(); C.save();
+    zeigFrage();
+  };
+}
+function zeigSprach() {
+  const r = R.runde[R.idx];
+  const q = C.frage(r.qid);
+  if (!r.urteile && !r.gewaehlt?.length) C.shuffle(r.optOrder);
+
+  // ---- Schritt 1: Paraphrasieren
+  if (!r.paraDone) {
+    h(`<div class="fade-in">${sprachKopf()}
+      <div class="card">
+        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 1 von 3 · nur die Frage ${M.infoBtn("paraphrasieren")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+        ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
+        <div class="selbst-box">
+          <div class="selbst-kopf"><b>Was will diese Frage von dir?</b></div>
+          <textarea id="paraTxt" rows="2" placeholder="In deinen Worten — Stichworte reichen"></textarea>
+          <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter ›</button></div>
+        </div>
+      </div></div>`);
+    qStart = Date.now(); startTick(); sprachDraehte();
+    document.getElementById("paraOk").onclick = () => {
+      r.para = document.getElementById("paraTxt").value.trim() || null;
+      r.paraDone = true; bankZeit(); C.save();
+      zeigSprach();
+    };
+    return;
+  }
+
+  // ---- Schritt 2: Optionen einzeln abstempeln
+  r.urteile = r.urteile || {};
+  const offenOpt = r.optOrder.filter((oi) => r.urteile[oi] === undefined);
+  if (offenOpt.length && !r.sprachFertig) {
+    const oi = offenOpt[0];
+    const nr = r.optOrder.length - offenOpt.length + 1;
+    h(`<div class="fade-in">${sprachKopf()}
+      <div class="card">
+        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 2 von 3 · Aussage ${nr}/${r.optOrder.length} ${M.infoBtn("abstempeln")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+        <div class="q-fall" style="font-size:.86rem">${esc(q.frage)}</div>
+        <div class="sprach-opt"><p>${esc(q.optionen[oi].text)}</p></div>
+        <div class="btn-row">
+          <button class="btn secondary" id="stimmtNicht">✗ trifft nicht zu</button>
+          <button class="btn" id="stimmt">✓ trifft zu</button>
+        </div>
+        <p class="muted" style="margin:10px 0 0;font-size:.8rem">Beurteile nur diese eine Aussage für sich. Ob am Ende die zutreffenden oder die nicht-zutreffenden gekreuzt werden, dreht die App danach richtig — das übernimmt der Fragen-Stamm.</p>
+      </div></div>`);
+    qStart = Date.now(); startTick(); sprachDraehte();
+    const stempel = (wert) => { r.urteile[oi] = wert; bankZeit(); C.save(); zeigSprach(); };
+    document.getElementById("stimmt").onclick = () => stempel(true);
+    document.getElementById("stimmtNicht").onclick = () => stempel(false);
+    return;
+  }
+
+  // ---- Schritt 3: Aufloesung — Kreuze ergeben sich aus den Urteilen
+  const dreht = q.fragetyp === "negation";
+  if (!r.sprachFertig) {
+    r.gewaehlt = r.optOrder.filter((oi) => r.urteile[oi] === (dreht ? false : true));
+    r.sprachFertig = true; C.save();
+  }
+  h(`<div class="fade-in">${sprachKopf()}
+    <div class="card">
+      <div class="q-head"><span id="qmeta" style="display:contents"></span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span><span class="q-pts">${q.maxPunkte} P.</span></div>
+      ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
+      <div class="explain good" style="margin:8px 0"><span class="bt">${dreht
+        ? "Diese Frage will die NICHT-zutreffenden — gekreuzt wurden also automatisch deine ✗-Urteile."
+        : "Diese Frage will die zutreffenden — gekreuzt wurden deine ✓-Urteile."}${r.para ? ` Deine Paraphrase: ‚${esc(r.para)}'` : ""}</span></div>
+      <div class="answers" id="answers">
+        ${r.optOrder.map((oi) => `<label class="ans"><input type="checkbox" data-oi="${oi}" disabled ${r.gewaehlt.includes(oi) ? "checked" : ""}><span>${esc(q.optionen[oi].text)}</span></label>`).join("")}
+      </div>
+      <div id="fbzone"></div>
+      <div class="btn-row mt"><button class="btn hidden" id="weiter">${R.idx + 1 === R.runde.length ? "Abschließen" : "Weiter"}</button></div>
+    </div></div>`);
+  startTick(); sprachDraehte();
+  qStart = null; // Nachdenkzeit stand mit dem letzten Stempel fest — Lesen zaehlt nicht
+  const erg = C.scoreFrage(q, r.gewaehlt);
+  const aufloesen = () => {
+    zeigeFeedback(q, r);
+    document.getElementById("weiter").classList.remove("hidden");
+  };
+  document.getElementById("weiter").onclick = () => naechste();
+  if (!erg.voll && seModus() !== "aus" && !r.selbst) {
+    selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => { r.selbst = selbst; C.save(); aufloesen(); });
+  } else aufloesen();
 }
 
 // ================= EXAM.UP-KLAUSURMODUS =================
@@ -2014,6 +2201,7 @@ function verlauf() {
     await C.ladeFragen();
     await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
     await C.ladeProbeklausuren(); // optional — ohne Datei fehlt nur die Klausurtraining-Karte
+    await Spiele.ladeSpiele(); // optional — Kacheln erscheinen nur mit Daten (Detektiv immer)
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

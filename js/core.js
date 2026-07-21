@@ -923,8 +923,9 @@ export function werteAus(runde, meta) {
     const q = frage(r.qid);
     const erg = scoreFrage(q, r.gewaehlt);
     return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, zeit: r.zeitSek ?? null, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar,
-      // Selbsterklaerung (Block A NextGen): Text + Abgleich wandern mit in Log & Sync
-      ...(r.selbst ? { selbstErkl: r.selbst.text || null, selbstAbgleich: r.selbst.abgleich || null, selbstSkip: !!r.selbst.skip } : {}),
+      // Selbsterklaerung (Block A NextGen): Text + Abgleich + Modus/Nachkommentar
+      ...(r.selbst ? { selbstErkl: r.selbst.text || null, selbstAbgleich: r.selbst.abgleich || null, selbstSkip: !!r.selbst.skip,
+        ...(r.selbst.modus ? { selbstModus: r.selbst.modus } : {}), ...(r.selbst.text2 ? { selbstErkl2: r.selbst.text2 } : {}) } : {}),
       // Paraphrase (Block D): "Was will diese Frage?" in Roses Worten — spaeter
       // auswertbar (falsch paraphrasiert <-> falsch beantwortet?)
       ...(r.para ? { paraphrase: r.para } : {}) };
@@ -946,7 +947,8 @@ export function werteAus(runde, meta) {
   };
   state().sessions.push(session);
   proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit,
-    ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip } : {}),
+    ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip,
+      ...(x.selbstModus ? { selbstModus: x.selbstModus } : {}), ...(x.selbstErkl2 ? { selbstErkl2: x.selbstErkl2 } : {}) } : {}),
     ...(x.paraphrase ? { paraphrase: x.paraphrase } : {}) }));
   for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();

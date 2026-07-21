@@ -159,8 +159,8 @@ const seModus = () => C.state().settings.selbstErkl || "standard";
 // haben ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
 const seAktiv = () => seModus() !== "aus";
 
-function selbstErklStart(zone, erg, done) {
-  const frage = erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?";
+function selbstErklStart(zone, erg, done, frageText) {
+  const frage = frageText || (erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?");
   zone.innerHTML = `<div class="selbst-box" id="selbstBox">
     <div class="selbst-kopf"><b>${frage}</b> ${M.infoBtn("selbsterklaerung")}</div>
     <textarea id="selbstTxt" rows="2" placeholder="Deine Vermutung — Stichworte reichen" autocapitalize="sentences"></textarea>
@@ -200,6 +200,74 @@ function llmSelbstFeedback(q, text, gewaehlt, erg) {
     if (anker && anker.dataset.qid === q.id && !document.querySelector(".llm-fb"))
       anker.insertAdjacentHTML("beforebegin", Llm.feedbackHtml(fb, q.oberthema));
   });
+}
+
+// ---- Erklaer-Abfrage in 3 Modi (Jennifer 21.07., je Runde im Builder waehlbar):
+//   aus        = einfach richtig/falsch + Erklaerungen zeigen
+//   begruenden = Faerbung sofort sichtbar, aber die kuratierten Erklaerungen
+//                gibt es erst, nachdem Rose selbst begruendet hat (+ KI-Feedback)
+//   raten      = zweistufig: erst steht nur die ANZAHL falscher Kreuze da, Rose
+//                tippt, welche es waren und warum (+ KI-Feedback) — nach der
+//                Aufloesung haelt sie nicht erkannte Fallen nochmal kurz fest
+// KI ist ueberall nur Verstaerkung — ohne Function laeuft der feste Ablauf.
+function erklaerFlow(q, r, erg, done) {
+  C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
+  const modus = erg.voll ? "aus" : (R?.cfg?.erklaerModus || (seModus() === "aus" ? "aus" : "begruenden"));
+  const fz = document.getElementById("fbzone");
+  if (modus === "aus" || !fz) { zeigeFeedback(q, r); done(); return; }
+
+  if (modus === "begruenden") {
+    faerbeAntworten(q, r, false);
+    fz.innerHTML = fbBanner(q, erg);
+    const zone = document.createElement("div");
+    fz.appendChild(zone);
+    selbstErklStart(zone, erg, (selbst) => {
+      selbst.modus = "begruenden";
+      r.selbst = selbst; C.save();
+      zeigeFeedback(q, r);
+      if (selbst.text) llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
+      done();
+    }, "Deine falschen Kreuze sind markiert — warum, glaubst du, waren die falsch?");
+    return;
+  }
+
+  // raten: KEINE Faerbung — nur wie viel danebenlag. Erst tippen, dann sehen.
+  const fehlend = q.optionen.filter((o) => o.richtig).length - erg.richtigGesetzt;
+  const info = [
+    erg.falschGesetzt ? `${erg.falschGesetzt} ${erg.falschGesetzt === 1 ? "Kreuz war" : "Kreuze waren"} falsch` : "",
+    fehlend > 0 ? `${fehlend} ${fehlend === 1 ? "richtige Antwort fehlt" : "richtige Antworten fehlen"}` : "",
+  ].filter(Boolean).join(" · ");
+  fz.innerHTML = `<div class="fb-banner part"><span>🤔 ${info} — aber welche?</span></div>`;
+  const zone = document.createElement("div");
+  fz.appendChild(zone);
+  selbstErklStart(zone, erg, (selbst) => {
+    selbst.modus = "raten";
+    r.selbst = selbst; C.save();
+    zeigeFeedback(q, r);
+    if (selbst.text) llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
+    // Stufe 2: jetzt liegt die Aufloesung offen — nicht Erkanntes kurz festhalten
+    if (!selbst.skip) {
+      const anker = document.getElementById("abgleich");
+      const nb = document.createElement("div");
+      if (anker) anker.parentNode.insertBefore(nb, anker); else fz.appendChild(nb);
+      nb.innerHTML = `<div class="selbst-box"><div class="selbst-kopf"><b>Jetzt siehst du die Auflösung — was hattest du nicht auf dem Schirm?</b> ${M.infoBtn("selbsterklaerung")}</div>
+        <textarea id="selbst2Txt" rows="2" placeholder="Kurz festhalten — genau das bleibt hängen"></textarea>
+        <div class="btn-row" style="margin-top:8px"><button class="btn small" id="selbst2Ok">Merken</button></div>
+        ${seModus() === "streng" ? "" : `<button class="linkish" id="selbst2Skip">Überspringen</button>`}</div>`;
+      const zu = (txt) => {
+        r.selbst.text2 = txt || null; C.save();
+        nb.innerHTML = txt ? `<div class="llm-fb"><span class="llm-fb-kopf">📝 Notiert — gute Falle erkannt</span><div>${esc(txt)}</div></div>` : "";
+        done();
+      };
+      nb.querySelector("#selbst2Ok").onclick = () => zu(nb.querySelector("#selbst2Txt").value.trim());
+      const sk = nb.querySelector("#selbst2Skip");
+      if (sk) sk.onclick = () => zu("");
+      // Locker: Weiter geht auch ohne Nachkommentar; streng gate't bis "Merken"
+      if (seModus() !== "streng") done();
+      return;
+    }
+    done();
+  }, "Welche deiner Kreuze waren wohl falsch (a, b, c ...) — und warum? Fehlt eine richtige?");
 }
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
@@ -857,6 +925,10 @@ function builder({ preset }) {
       <p class="muted" id="auswahlHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
+    ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span><div class="seg" id="erklaer">
+      ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Erst raten"]].map(([v, l]) =>
+        `<button data-v="${v}" class="${v === (seModus() === "aus" ? "aus" : "begruenden") ? "on" : ""}">${l}</button>`).join("")}</div>
+      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. (Streng/locker stellst du in den Einstellungen.)</p></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
       <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>
@@ -911,6 +983,7 @@ function builder({ preset }) {
       sprache,
       paraphrase: !examLook && !istSprach && segVal("para") === "an",
       stempeln: !examLook && !istSprach && segVal("stempeln") === "an",
+      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || (seModus() === "aus" ? "aus" : "begruenden"),
     });
   };
 }
@@ -1143,19 +1216,7 @@ function zeigFrage() {
   if (pruefen) pruefen.onclick = () => {
     r.gewaehlt = gewaehlt(); bankZeit();
     pruefen.classList.add("hidden");
-    const erg = C.scoreFrage(q, r.gewaehlt);
-    const zeigen = () => {
-      zeigeFeedback(q, r);
-      document.getElementById("weiter").classList.remove("hidden");
-    };
-    // Selbsterklaerung: bei Fehlern erst selbst ueberlegen, dann aufloesen
-    if (!erg.voll && seAktiv(R.cfg.modus)) {
-      selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => {
-        r.selbst = selbst; C.save();
-        zeigen();
-        llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
-      });
-    } else zeigen();
+    erklaerFlow(q, r, C.scoreFrage(q, r.gewaehlt), () => document.getElementById("weiter")?.classList.remove("hidden"));
   };
   document.getElementById("weiter").onclick = () => {
     if (!r.gewaehlt) r.gewaehlt = gewaehlt();
@@ -1163,14 +1224,9 @@ function zeigFrage() {
     naechste();
   };
 }
-function zeigeFeedback(q, r) {
-  const erg = C.scoreFrage(q, r.gewaehlt);
-  C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
-  // Thema erst JETZT verraten — während der Beantwortung wäre es ein Hinweis (Klausurnähe)
-  const t = C.THEMEN[q.oberthema] || {};
-  const qmeta = document.getElementById("qmeta");
-  if (qmeta) qmeta.innerHTML = `<span class="chip" style="--tc:${t.color}">${t.kurz}</span>
-    <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}`;
+// Antwort-Faerbung getrennt von den Erklaerungstexten — die Erklaer-Modi
+// zeigen unterschiedlich viel, bevor Rose selbst denkt.
+function faerbeAntworten(q, r, mitErklaerungen) {
   app.querySelectorAll("#answers label.ans").forEach((el) => {
     const oi = +el.querySelector("input").dataset.oi;
     const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
@@ -1178,10 +1234,19 @@ function zeigeFeedback(q, r) {
     if (gw && o.richtig) el.classList.add("correct");
     else if (gw && !o.richtig) el.classList.add("wrong");
     else if (!gw && o.richtig) el.classList.add("missed");
-    if (o.erklaerung && (gw || o.richtig)) {
+    if (mitErklaerungen && o.erklaerung && (gw || o.richtig) && !el.nextElementSibling?.classList?.contains("explain")) {
       el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
+}
+function zeigeFeedback(q, r) {
+  const erg = C.scoreFrage(q, r.gewaehlt);
+  // Thema erst JETZT verraten — während der Beantwortung wäre es ein Hinweis (Klausurnähe)
+  const t = C.THEMEN[q.oberthema] || {};
+  const qmeta = document.getElementById("qmeta");
+  if (qmeta) qmeta.innerHTML = `<span class="chip" style="--tc:${t.color}">${t.kurz}</span>
+    <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}`;
+  faerbeAntworten(q, r, true);
   const fz = document.getElementById("fbzone");
   fz.innerHTML = fbBanner(q, erg) + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich, q.id) : "") + Llm.chatBtnHtml(q);
   const setzAb = (v) => {
@@ -1336,17 +1401,14 @@ function zeigSprach() {
   startTick(); sprachDraehte();
   qStart = null; // Nachdenkzeit stand mit dem letzten Stempel fest — Lesen zaehlt nicht
   const erg = C.scoreFrage(q, r.gewaehlt);
-  const aufloesen = () => {
+  document.getElementById("weiter").onclick = () => naechste();
+  if (!r.selbst) {
+    erklaerFlow(q, r, erg, () => document.getElementById("weiter")?.classList.remove("hidden"));
+  } else {
+    // Wiederaufbau (z. B. nach Pause): Aufloesung direkt, ohne doppeltes Logging
     zeigeFeedback(q, r);
     document.getElementById("weiter").classList.remove("hidden");
-  };
-  document.getElementById("weiter").onclick = () => naechste();
-  if (!erg.voll && seModus() !== "aus" && !r.selbst) {
-    selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => {
-      r.selbst = selbst; C.save(); aufloesen();
-      llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
-    });
-  } else aufloesen();
+  }
 }
 
 // ================= EXAM.UP-KLAUSURMODUS =================

@@ -17,6 +17,19 @@ const app = () => document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const REDUCE_MOTION = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// Reaktions-Sticker (gleiche Assets wie main.js — Motivation schlaegt Nuechternheit):
+// richtig = Freude, falsch = troestend/aufmunternd, nie haemisch.
+const STICKER = {
+  good: ["pepe_drool", "troll_grin", "patrick_happy", "laugh_cam", "happy_dog", "laughcry", "rat_dance", "kitten_lift"],
+  part: ["emoji_eye", "seal_blob", "patrick_slime", "monkey_side", "cat_grass", "fish_drink"],
+  sanft: ["praying_cat", "pat_pat", "kitten_braces", "kitten_suit", "sad_hamster", "teary_cat"],
+};
+const reactSrc = (name) => `assets/reactions/${name}.${REDUCE_MOTION ? "png" : "webp"}`;
+function sticker(cls) {
+  const arr = STICKER[cls] || STICKER.part;
+  return `<img class="sticker" src="${reactSrc(arr[Math.floor(Math.random() * arr.length)])}" alt="" loading="lazy">`;
+}
+
 // Kleiner Feier-Regen (lokale Kopie, main.js ist das Entry-Modul — kein Zyklus)
 function miniKonfetti(n = 40) {
   const ov = document.createElement("div");
@@ -46,38 +59,55 @@ export async function ladeSpiele() {
 export const hatVignetten = () => !!VIG;
 export const hatOperatoren = () => !!OPS;
 
-// ---------- Tages-Status je Game (farbiger Punkt = heute noch nicht gemacht) ----------
+// ---------- Tages-Status je Game (Karte farbig = heute noch nicht gemacht) ----------
 export function spieleHeute() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
-  const s = { vp: 0, op: 0, detektiv: 0 };
+  const s = { vp: 0, op: 0, detektiv: 0, begriffe: 0 };
   for (const a of C.state().antwortLog)
     if (a.ts >= heute.getTime() && s[a.modus] !== undefined) s[a.modus]++;
   return s;
 }
 
 // ---------- Hub auf der Startseite ----------
+// Vier gleich gebaute Karten nebeneinander: grosses Icon, Name darunter,
+// i-Info IMMER oben rechts (frueher sass es im Untertitel und sprang — dazu
+// war es ein Button im Button, den der Parser zerlegt hat; Karte ist jetzt
+// bewusst ein div[role=button]). Heute noch offene Karten sind farbig
+// hervorgehoben und neutralisieren sich nach der ersten Runde (kein Streak-
+// Druck: ein Haekchen, nie ein Zaehler).
 export function hubHtml() {
   const heute = spieleHeute();
-  const dot = (n) => `<span class="spiel-dot ${n ? "done" : "offen"}" title="${n ? `heute schon ${n}× geübt` : "heute noch offen"}"></span>`;
-  const kachel = (key, icon, titel, sub, mKey, aktiv) => aktiv
-    ? `<button class="spiel-card" data-spiel="${key}">${dot(heute[key === "dt" ? "detektiv" : key])}<b>${icon} ${titel}</b><span>${sub} ${M.infoBtn(mKey)}</span></button>`
-    : "";
+  const kachel = (key, icon, name, mKey, n, aktiv) => aktiv
+    ? `<div class="spiel-card ${n ? "done" : "offen"}" data-spiel="${key}" role="button" tabindex="0"
+         aria-label="${name}${n ? " — heute schon geübt" : " — heute noch offen"}">
+        <span class="info-btn spiel-info" data-methode="${mKey}" role="button" title="Warum das hilft">ⓘ</span>
+        ${n ? `<span class="spiel-done" title="heute schon ${n}× geübt">✓</span>` : ""}
+        <span class="spiel-icon">${icon}</span>
+        <b>${name}</b>
+      </div>` : "";
   const karten = [
-    kachel("vp", "🔀", "Verwechslungspaare", "Wischen & zuordnen — die feinen Unterschiede", "interleaving", !!VIG),
-    kachel("op", "🔎", "Operatoren", "Die Sprache der Prüfungsfragen knacken", "operatoren", !!OPS),
-    kachel("dt", "🕵️", "Fragen-Detektiv", "Was will die Frage? Zwei Tipps, 10 Sekunden", "paraphrasieren", true),
+    kachel("vp", "🔀", "Paare", "interleaving", heute.vp, !!VIG),
+    kachel("op", "🔎", "Operatoren", "operatoren", heute.op, !!OPS),
+    kachel("dt", "🕵️", "Detektiv", "paraphrasieren", heute.detektiv, true),
+    kachel("bg", "🃏", "Begriffe", "retrieval", heute.begriffe, C.begriffe().length > 0),
   ].filter(Boolean);
   if (!karten.length) return "";
   return `<h2 class="mt">Tägliches Training</h2>
-    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Drei kleine Spiele, je ~2 Minuten. Punkt oben rechts: farbig = heute noch offen. Alles zählt für dein Tagesziel.</p>
+    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Vier kleine Runden, je ~2 Minuten. Farbig = heute noch offen, ✓ = heute schon geübt. Alles zählt für dein Tagesziel.</p>
     <div class="spiel-grid">${karten.join("")}</div>`;
 }
-export function bindHub(zurueck) {
-  app().querySelectorAll("[data-spiel]").forEach((b) => b.onclick = () => {
-    const k = b.dataset.spiel;
-    if (k === "vp") vpSpiel(zurueck);
-    else if (k === "op") opHome(zurueck);
-    else dtSpiel(zurueck);
+// extra.begriffe: Begriffe-Blitz lebt in main.js — der Hub bekommt den Einstieg gereicht
+export function bindHub(zurueck, extra = {}) {
+  app().querySelectorAll("[data-spiel]").forEach((b) => {
+    const oeffne = () => {
+      const k = b.dataset.spiel;
+      if (k === "vp") vpSpiel(zurueck);
+      else if (k === "op") opHome(zurueck);
+      else if (k === "bg") extra.begriffe?.();
+      else dtSpiel(zurueck);
+    };
+    b.onclick = (e) => { if (e.target.closest(".info-btn")) return; oeffne(); };
+    b.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); oeffne(); } };
   });
 }
 
@@ -113,7 +143,7 @@ const zieh = (arr, n, gewFn) => arr.map((x) => ({ x, s: (gewFn ? gewFn(x) : 1) *
 function fazit(el, ok, n, nochmal, zurueckFn, extraHtml = "") {
   const cls = ok === n ? "good" : ok >= n * 0.6 ? "part" : "bad";
   const msg = ok === n ? `Alle ${n} richtig — stark! 🎉` : `${ok} von ${n} — jede Runde schärft den Blick.`;
-  el.innerHTML = `<div class="fb-banner ${cls}" style="margin-top:14px"><span>${msg}</span></div>${extraHtml}
+  el.innerHTML = `<div class="fb-banner ${cls}" style="margin-top:14px">${sticker(ok === n ? "good" : ok >= n * 0.6 ? "part" : "sanft")}<span>${msg}</span></div>${extraHtml}
     <div class="btn-row mt"><button class="btn" id="spNochmal">Nächste Runde ›</button>
     <button class="btn secondary" id="spFertig">Fertig für jetzt</button></div>`;
   document.getElementById("spNochmal").onclick = nochmal;
@@ -134,41 +164,59 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
     : zieh(VIG.gruppen, 1, (g) => (gew[g.oberthema + "/" + g.unterthema] || 1) * (1 + Math.min(2, g.items.reduce((s, i) => s + (itemFehler[i.id] || 0), 0) / 3)))[0];
   if (!gruppe) return zurueckFn();
   const items = zieh(gruppe.items, Math.min(VP_RUNDE, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
-  const swipe = gruppe.konzepte.length === 2;
   const t = C.THEMEN[gruppe.oberthema] || {};
   let idx = 0, richtig = 0, t0 = Date.now();
-  const fertigListe = [];
+
+  // Swipe in bis zu 4 Richtungen (Jennifer 21.07.): links/rechts/oben/unten,
+  // je nachdem wie viele Konzepte die Gruppe hat. Chips bleiben als Tap-Weg.
+  const K = Math.min(4, gruppe.konzepte.length);
+  const RICHTUNG_PFEIL = ["←", "→", "↑", "↓"];
 
   const mal = () => {
     const it = items[idx];
-    const chips = gruppe.konzepte.map((k, i) => `<button class="vp-chip" data-k="${k.key}" style="--tc:${t.color}">${esc(k.label)}${k.kurz ? `<small>${esc(k.kurz)}</small>` : ""}</button>`).join("");
+    const chips = gruppe.konzepte.map((k, i) => `<button class="vp-chip" data-k="${k.key}" style="--tc:${t.color}">${i < K ? `<small class="vp-pfeil">${RICHTUNG_PFEIL[i]}</small>` : ""}${esc(k.label)}${k.kurz ? `<small>${esc(k.kurz)}</small>` : ""}</button>`).join("");
+    const seite = (i, cls, pfeilVor) => i < K
+      ? `<div class="vp-seite ${cls}" id="vpS${i}">${pfeilVor ? `<span>${RICHTUNG_PFEIL[i]}</span>` : ""}${esc(gruppe.konzepte[i].label)}${pfeilVor ? "" : `<span>${RICHTUNG_PFEIL[i]}</span>`}</div>` : "";
     app().innerHTML = `<div class="fade-in">
       ${kopf("🔀 Verwechslungspaare", zurueckFn)}
       <div class="vp-titel"><span class="chip" style="--tc:${t.color}">${t.kurz || ""}</span> <b>${esc(gruppe.titel)}</b> ${M.infoBtn("interleaving")}</div>
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / items.length}%"></i></span><span>${idx + 1}/${items.length}</span></div>
+      ${seite(2, "oben", true)}
       <div class="vp-buehne">
-        ${swipe ? `<div class="vp-seite links" id="vpL"><span>‹</span>${esc(gruppe.konzepte[0].label)}</div>` : ""}
-        <div class="vp-card" id="vpCard"><p>${esc(it.text)}</p>${swipe ? `<div class="vp-hint">wischen oder unten tippen</div>` : ""}</div>
-        ${swipe ? `<div class="vp-seite rechts" id="vpR">${esc(gruppe.konzepte[1].label)}<span>›</span></div>` : ""}
+        ${seite(0, "links", true)}
+        <div class="vp-card" id="vpCard" style="touch-action:${K > 2 ? "none" : "pan-y"}"><p>${esc(it.text)}</p><div class="vp-hint">wischen (${RICHTUNG_PFEIL.slice(0, K).join(" ")}) oder unten tippen</div></div>
+        ${seite(1, "rechts", false)}
       </div>
+      ${seite(3, "unten", true)}
       <div class="vp-chips">${chips}</div>
       <div id="vpFb"></div>
     </div>`;
     document.getElementById("spielBack").onclick = zurueckFn;
-    const antworte = (key) => {
+    const antworte = (key, richtungIdx = -1) => {
       const ok = key === it.richtig;
       if (ok) richtig++;
       const zeit = Math.round((Date.now() - t0) / 1000);
       logSpiel("vp", it.id, ok ? 1 : 0, 1, ok, zeit);
-      fertigListe.push({ it, ok });
       const richtigLbl = (gruppe.konzepte.find((k) => k.key === it.richtig) || {}).label || it.richtig;
+      const card = document.getElementById("vpCard");
+      // Richtig: Karte fliegt in die gewischte Richtung raus. Falsch: Karte
+      // schnappt zurueck und schuettelt kurz den Kopf.
+      if (!REDUCE_MOTION && ok && richtungIdx >= 0) {
+        const [fx, fy] = [[-1.4, 0], [1.4, 0], [0, -1.2], [0, 1.2]][richtungIdx];
+        card.style.transition = "transform .3s ease, opacity .3s ease";
+        card.style.transform = `translate(${fx * 160}px, ${fy * 140}px) rotate(${fx * 16}deg)`;
+        card.style.opacity = ".25";
+      } else {
+        card.style.transition = "transform .18s ease";
+        card.style.transform = "";
+      }
+      card.classList.add(ok ? "ok" : "nope");
       const fb = document.getElementById("vpFb");
-      fb.innerHTML = `<div class="fb-banner ${ok ? "good" : "bad"}"><span>${ok ? "Richtig!" : `Das war: <b>${esc(richtigLbl)}</b>`}</span></div>
+      fb.innerHTML = `<div class="fb-banner ${ok ? "good" : "bad"}">${sticker(ok ? "good" : "sanft")}<span>${ok ? "Richtig! 🎉" : `Das war: <b>${esc(richtigLbl)}</b> — gut, dass es hier passiert und nicht in der Klausur.`}</span></div>
         <div class="explain ${ok ? "good" : "bad"}">${Beleg.render(it.erklaerung || gruppe.merksatz, gruppe.oberthema)}</div>
         <button class="btn" id="vpWeiter" style="width:100%;margin-top:10px">${idx + 1 < items.length ? "Weiter ›" : "Runde abschließen"}</button>`;
-      const card = document.getElementById("vpCard");
-      card.classList.add(ok ? "ok" : "nope");
-      app().querySelectorAll(".vp-chip").forEach((c) => { c.disabled = true; if (c.dataset.k === it.richtig) c.classList.add("richtig"); });
+      app().querySelectorAll(".vp-chip").forEach((c) => { c.disabled = true; if (c.dataset.k === it.richtig) c.classList.add("richtig"); else if (c.dataset.k === key) c.classList.add("falsch"); });
+      app().querySelectorAll(".vp-seite").forEach((s) => s.classList.remove("an"));
       document.getElementById("vpWeiter").onclick = () => {
         idx++;
         if (idx < items.length) { t0 = Date.now(); mal(); }
@@ -177,36 +225,46 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
           `<div class="card mt"><b>Merksatz</b><div class="explain good" style="margin-top:6px">${Beleg.render(gruppe.merksatz, gruppe.oberthema)}</div></div>`);
       };
     };
-    app().querySelectorAll(".vp-chip").forEach((c) => c.onclick = () => antworte(c.dataset.k));
-    // Swipe (nur bei 2 Konzepten): Karte folgt dem Finger, Schwelle 80px
-    if (swipe) {
-      const card = document.getElementById("vpCard");
-      let startX = null, dx = 0;
-      const move = (x) => {
-        dx = x - startX;
-        card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
-        document.getElementById("vpL")?.classList.toggle("an", dx < -30);
-        document.getElementById("vpR")?.classList.toggle("an", dx > 30);
-      };
-      const ende = () => {
-        if (startX == null) return;
-        if (dx < -80) antworte(gruppe.konzepte[0].key);
-        else if (dx > 80) antworte(gruppe.konzepte[1].key);
-        else card.style.transform = "";
-        startX = null; dx = 0;
-        document.getElementById("vpL")?.classList.remove("an");
-        document.getElementById("vpR")?.classList.remove("an");
-      };
-      card.addEventListener("pointerdown", (e) => { startX = e.clientX; card.setPointerCapture(e.pointerId); });
-      card.addEventListener("pointermove", (e) => { if (startX != null) move(e.clientX); });
-      card.addEventListener("pointerup", ende);
-      card.addEventListener("pointercancel", ende);
-      document.addEventListener("keydown", function tast(e) {
-        if (!document.getElementById("vpCard")) { document.removeEventListener("keydown", tast); return; }
-        if (e.key === "ArrowLeft") antworte(gruppe.konzepte[0].key);
-        if (e.key === "ArrowRight") antworte(gruppe.konzepte[1].key);
-      });
-    }
+    app().querySelectorAll(".vp-chip").forEach((c) => c.onclick = () => {
+      if (c.disabled) return;
+      antworte(c.dataset.k, gruppe.konzepte.findIndex((k) => k.key === c.dataset.k));
+    });
+
+    // Swipe: Karte folgt dem Finger in x UND y, Schwelle 80px auf der
+    // dominanten Achse; Seitenlabels leuchten waehrend des Ziehens auf.
+    const card = document.getElementById("vpCard");
+    let sx = null, sy = null, dx = 0, dy = 0, beantwortet = false;
+    const seiteAn = (i, an) => document.getElementById(`vpS${i}`)?.classList.toggle("an", an);
+    const move = () => {
+      card.style.transform = `translate(${dx}px, ${K > 2 ? dy : 0}px) rotate(${dx / 18}deg)`;
+      seiteAn(0, dx < -30 && Math.abs(dx) >= Math.abs(dy));
+      seiteAn(1, dx > 30 && Math.abs(dx) >= Math.abs(dy));
+      if (K > 2) seiteAn(2, dy < -30 && Math.abs(dy) > Math.abs(dx));
+      if (K > 3) seiteAn(3, dy > 30 && Math.abs(dy) > Math.abs(dx));
+    };
+    const ende = () => {
+      if (sx == null || beantwortet) return;
+      const hx = Math.abs(dx) >= Math.abs(dy);
+      let ri = -1;
+      if (hx && dx < -80) ri = 0;
+      else if (hx && dx > 80) ri = 1;
+      else if (!hx && dy < -80 && K > 2) ri = 2;
+      else if (!hx && dy > 80 && K > 3) ri = 3;
+      if (ri >= 0) { beantwortet = true; antworte(gruppe.konzepte[ri].key, ri); }
+      else { card.style.transition = "transform .18s ease"; card.style.transform = ""; setTimeout(() => { card.style.transition = ""; }, 200); }
+      sx = sy = null; dx = dy = 0;
+      if (!beantwortet) app().querySelectorAll(".vp-seite").forEach((s) => s.classList.remove("an"));
+    };
+    card.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; card.setPointerCapture(e.pointerId); });
+    card.addEventListener("pointermove", (e) => { if (sx != null && !beantwortet) { dx = e.clientX - sx; dy = e.clientY - sy; move(); } });
+    card.addEventListener("pointerup", ende);
+    card.addEventListener("pointercancel", ende);
+    document.addEventListener("keydown", function tast(e) {
+      if (!document.getElementById("vpCard")) { document.removeEventListener("keydown", tast); return; }
+      if (beantwortet) return;
+      const ri = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].indexOf(e.key);
+      if (ri >= 0 && ri < K) { e.preventDefault(); beantwortet = true; antworte(gruppe.konzepte[ri].key, ri); }
+    });
   };
   mal();
 }

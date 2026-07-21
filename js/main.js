@@ -278,53 +278,92 @@ function bindUebe() {
   }));
 }
 
-// ---- Uebungs-Heatmap + Ziel-Linie (Block C NextGen, Successive Relearning):
-// GitHub-Style-Kalender von jetzt bis zur Klausur — Kontinuitaet sichtbar machen.
-// Leere Tage bleiben bewusst neutral (nie rot, keine Vorwuerfe), der Klausurtag
-// ist als Endpunkt markiert. Darunter: Ist-Linie (7-Tage-geglaettet) vs. Ziel.
+// ---- Uebungs-Kalender + Trend (Block C NextGen, ueberarbeitet nach Jennifers
+// Feedback 21.07.): echter Kalender (7 Spalten Mo-So, volle Breite, Zellen
+// resizen dynamisch) vom ersten Trainingstag bis zur Klausur. Vergangene Tage
+// zeigen die Karten-Zahl, kuenftige das Datum, 🎓 = Klausurtag. Leere Tage
+// bleiben neutral (nie rot). Darunter der Doppel-Trend: geuebte Karten/Tag und
+// davon voll richtige — je naeher die Linien zusammenlaufen, desto hoeher die
+// Quote — plus gestrichelte Prognose mit dem aktuellen 7-Tage-Schnitt bis 18.09.
+const fmtDatumKurz = (d) => d.getDate() + "." + (d.getMonth() + 1) + ".";
 function heatmapHtml(tz) {
   const cfg = window.ST_CONFIG;
   if (!cfg.klausurTag || tz.tage == null || tz.tage < 0) return "";
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
   const ende = new Date(cfg.klausurTag + "T00:00:00");
   const akt = C.aktivitaetProTag();
-  // Anlauf: 3 Wochen Vergangenheit, auf Montag ausgerichtet (Spalten = Wochen)
-  const start = new Date(heute.getTime() - 21 * 86400000);
+  const aktTage = Object.keys(akt).map(Number);
+  // Start: Montag der Woche des ersten Trainingstags (Fallback: vorige Woche)
+  const erster = aktTage.length ? Math.min(...aktTage) : heute.getTime() - 7 * 86400000;
+  const start = new Date(Math.min(erster, heute.getTime()));
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : 4;
+
+  const kopfzeile = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="hm-wtag">${w}</span>`).join("");
   const zellen = [];
   for (let d = new Date(start); d <= ende; d.setDate(d.getDate() + 1)) {
     const ts = d.getTime();
+    const istHeute = ts === heute.getTime();
     const istKlausur = ts === ende.getTime();
     const zukunft = ts > heute.getTime();
-    const n = akt[ts] || 0;
-    const cls = istKlausur ? "hm-exam" : (zukunft ? "hm-fut" : `hm-s${stufe(n)}`) + (ts === heute.getTime() ? " hm-heute" : "");
-    const tip = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + (istKlausur ? " — Klausurtag 🎓" : zukunft ? "" : `: ${n} Karten`);
-    zellen.push(`<i class="${cls}" title="${tip}">${istKlausur ? "🎓" : ""}</i>`);
+    const e = akt[ts] || { n: 0, voll: 0 };
+    const datum = fmtDatumKurz(d);
+    let cls, inhalt, tip;
+    if (istKlausur) {
+      cls = "hm-exam"; inhalt = "🎓"; tip = `${datum} — Klausurtag`;
+    } else if (zukunft) {
+      cls = "hm-fut"; inhalt = d.getDate() === 1 ? datum : String(d.getDate()); tip = datum;
+    } else {
+      cls = `hm-s${stufe(e.n)}`;
+      // Vergangene Tage: Anzahl geuebter Karten statt Datum; heute ohne Karten
+      // zeigt noch das Datum (der Tag laeuft ja noch)
+      inhalt = e.n ? String(e.n) : (istHeute ? String(d.getDate()) : "");
+      tip = `${datum}: ${e.n} Karten` + (e.n ? ` · ${Math.round((100 * e.voll) / e.n)} % voll richtig` : "");
+    }
+    zellen.push(`<span class="hm-zelle ${cls}${istHeute ? " hm-heute" : ""}" title="${tip}">${inhalt}</span>`);
   }
-  // Ist-Linie: letzte 21 Tage, geglaettet ueber 7 Tage, gegen die Ziel-Linie
-  const T = 21;
-  const reihe = [];
-  for (let i = T - 1; i >= 0; i--) reihe.push(akt[heute.getTime() - i * 86400000] || 0);
-  const glatt = reihe.map((_, i) => { const s = reihe.slice(Math.max(0, i - 6), i + 1); return s.reduce((a, b) => a + b, 0) / s.length; });
-  const W = 320, H = 86, maxY = Math.max(tz.ziel * 1.3, ...glatt, 10);
-  const px = (i) => 8 + (i / (T - 1)) * (W - 16);
-  const py = (v) => H - 16 - (v / maxY) * (H - 26);
-  const pts = glatt.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
+
+  // ---- Doppel-Trend: geuebt/Tag vs. davon voll richtig, 7 Tage geglaettet,
+  // ab heute als flache Prognose mit dem aktuellen Schnitt weitergezeichnet.
+  const tage = [];
+  for (let d = new Date(Math.min(erster, heute.getTime())); d.getTime() <= heute.getTime(); d.setDate(d.getDate() + 1)) {
+    const e = akt[d.getTime()] || { n: 0, voll: 0 };
+    tage.push({ ts: d.getTime(), n: e.n, voll: e.voll });
+  }
+  const glatt = (feld) => tage.map((_, i) => {
+    const s = tage.slice(Math.max(0, i - 6), i + 1);
+    return s.reduce((a, t) => a + t[feld], 0) / s.length;
+  });
+  const gN = glatt("n"), gV = glatt("voll");
+  const W = 340, H = 116, spanne = Math.max(1, ende.getTime() - tage[0].ts);
+  const maxY = Math.max(tz.ziel * 1.25, ...gN, 10);
+  const px = (ts) => 8 + ((ts - tage[0].ts) / spanne) * (W - 16);
+  const py = (v) => H - 20 - (v / maxY) * (H - 32);
+  const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
+  const hx = px(heute.getTime()).toFixed(1), ex = px(ende.getTime()).toFixed(1);
+  const nEnd = py(gN[gN.length - 1]).toFixed(1), vEnd = py(gV[gV.length - 1]).toFixed(1);
+  const quote = tage.length && gN[gN.length - 1] > 0 ? Math.round((100 * gV[gV.length - 1]) / gN[gN.length - 1]) : null;
   const zielY = py(tz.ziel).toFixed(1);
   return `<div class="card hm-card">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
-      <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"}</span></div>
-    <div class="hm-scroll"><div class="hm-grid">${zellen.join("")}</div></div>
-    <p class="muted tz-note">Jede Zelle = ein Tag (Spalten = Wochen), kräftiger Grün = mehr Karten. Leere Tage sind einfach leer — jeder Tag startet neu. 🎓 = Klausur.</p>
-    <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Tagesschnitt gegen Tagesziel">
-      <line x1="8" y1="${zielY}" x2="${W - 8}" y2="${zielY}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".75"/>
-      <text x="${W - 10}" y="${(+zielY - 5).toFixed(1)}" text-anchor="end" class="kt-tick" fill="var(--ok)">Ziel ${tz.ziel}</text>
-      <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${px(T - 1)}" cy="${py(glatt[T - 1])}" r="3.4" fill="var(--accent)"/>
-      <text x="8" y="${H - 3}" class="kt-tick">vor 3 Wochen</text><text x="${W - 8}" y="${H - 3}" text-anchor="end" class="kt-tick">heute</text>
+      <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
+    <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
+    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten (kräftiger Grün = mehr), kommende das Datum. Leere Tage sind einfach leer — jeder Tag startet neu.</p>
+    <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Geuebte und richtige Karten pro Tag, mit Prognose bis zur Klausur">
+      <line x1="8" y1="${zielY}" x2="${W - 8}" y2="${zielY}" stroke="var(--ink-soft)" stroke-dasharray="3 4" stroke-width="1" opacity=".6"/>
+      <text x="${W - 10}" y="${(+zielY - 4).toFixed(1)}" text-anchor="end" class="kt-tick">Ziel ${tz.ziel}</text>
+      <line x1="${hx}" y1="10" x2="${hx}" y2="${H - 18}" stroke="var(--line)" stroke-width="1"/>
+      <polyline points="${pfad(gN)}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${pfad(gV)}" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${hx}" y1="${nEnd}" x2="${ex}" y2="${nEnd}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.6" opacity=".55"/>
+      <line x1="${hx}" y1="${vEnd}" x2="${ex}" y2="${vEnd}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".55"/>
+      <circle cx="${hx}" cy="${nEnd}" r="3.2" fill="var(--accent)"/>
+      <circle cx="${hx}" cy="${vEnd}" r="3" fill="var(--ok)"/>
+      <text x="8" y="${H - 5}" class="kt-tick">${fmtDatumKurz(new Date(tage[0].ts))}</text>
+      <text x="${hx}" y="${H - 5}" text-anchor="middle" class="kt-tick">heute</text>
+      <text x="${W - 8}" y="${H - 5}" text-anchor="end" class="kt-tick">18.9. 🎓</text>
     </svg>
-    <p class="muted tz-note">Linie = dein Tagesschnitt (über 7 Tage geglättet) · gestrichelt = Tagespensum (${tz.ziel} Karten ≈ 20–30 min). Kleine tägliche Runden schlagen Marathon-Tage — deshalb ist das Ziel bewusst machbar.</p>
+    <p class="muted tz-note"><span style="color:var(--accent);font-weight:700">—</span> geübte Karten/Tag · <span style="color:var(--ok);font-weight:700">—</span> davon voll richtig${quote != null ? ` (aktuell ${quote} %)` : ""} — je näher die Linien zusammen, desto besser sitzt der Stoff. Gestrichelt ab heute: so geht es weiter, wenn du dein Tempo hältst (7-Tage-Schnitt).</p>
   </div>`;
 }
 
@@ -430,7 +469,6 @@ function home() {
 
     <h2 class="mt">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
-    ${C.begriffe().length ? `<button class="mode-card wide mt" data-go="begriffe" style="width:100%"><b>🃏 Begriffe-Blitz</b><span>Paragrafen, Zuständigkeiten & Fachbegriffe zuordnen — perfekt für 2 Minuten zwischendurch</span></button>` : ""}
 
     <div style="display:flex;align-items:baseline;gap:10px" class="mt"><h2 style="margin:0">Wo du stehst</h2>
       <button class="btn ghost small" data-go="statistik" style="margin-left:auto">📊 Statistik ›</button></div>
@@ -460,7 +498,7 @@ function home() {
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
-  Spiele.bindHub(home);
+  Spiele.bindHub(home, { begriffe: begriffeHome });
   app.querySelectorAll("[data-pk]").forEach((b) => b.onclick = () => pkScreen(+b.dataset.pk));
   app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = async () => {
@@ -903,8 +941,8 @@ function pkScreen(nr) {
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pkPause">
       <button data-v="ja" class="${wiederholung ? "on" : ""}">Ja</button>
       <button data-v="nein" class="${wiederholung ? "" : "on"}">Nein (wie echt)</button></div></div>
-    <button class="btn" id="pkLos">${wiederholung ? "Nochmal antreten" : "Probeklausur starten"} ›</button>`}
-    ${versuche ? `<div class="card mt"><h3>Deine Versuche</h3>${versuche}</div>` : ""}`;
+    <button class="btn" id="pkLos">${p.bestanden ? "Nochmal antreten — Score verbessern" : wiederholung ? "Nochmal antreten — diesmal über die Grenze" : "Probeklausur starten"} ›</button>`}
+    ${versuche ? `<div class="card mt"><h3>Deine Versuche</h3><p class="muted" style="margin:2px 0 8px;font-size:.84rem">Beste bisher: <b>${p.beste} P.</b> — jeder neue Durchgang zählt als eigener Versuch und wird in der Auswertung verglichen.</p>${versuche}</div>` : ""}`;
   }
 
   h(`<div class="fade-in">
@@ -2005,6 +2043,14 @@ function statistik() {
   const st = C.statistik();
   const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
   const pkt = (v) => `${v.pkt}/${v.maxSchnitt} P.`;
+  // Beherrschungs-Status je Thema (Jennifers Wunsch 21.07.): Marken im Balken
+  // bei 80/90 %; darunter = noch offen (!), ab 80 % sitzt (Haken), ab 90 %
+  // versiegelt (Siegel). Sprachregel bleibt: "noch offen", nie "schwach".
+  const siegel = (q) => q == null ? ""
+    : q >= 90 ? `<span class="siegel gold" title="ab 90 % — versiegelt, darauf kannst du bauen">🏅</span>`
+    : q >= 80 ? `<span class="siegel gut" title="ab 80 % — sitzt">✓</span>`
+    : `<span class="siegel offen" title="unter 80 % — hier ist noch Luft">!</span>`;
+  const markenBar = (quote, tc) => `<span class="bar mit-marke"${tc ? ` style="--tc:${tc}"` : ""}><i style="width:${quote ?? 0}%"></i><em class="bar-marke" style="left:80%"></em><em class="bar-marke m90" style="left:90%"></em></span>`;
   // Pro Thema: aufklappbar bis auf die Unterthemen (Beherrschung + Ø Punkte + Ø Zeit)
   const themenRows = st.proThema.map((tt) => {
     const t = C.THEMEN[tt.slug] || { name: tt.slug, color: "var(--ink-soft)" };
@@ -2015,8 +2061,8 @@ function statistik() {
         <span class="bar thin"><i style="width:${s.quote}%"></i></span>
         <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`).join("");
     return `<details class="topic" style="--tc:${t.color}">
-      <summary><span class="lbl">${t.name}</span>
-        <span class="bar"><i style="width:${tt.quote ?? 0}%"></i></span>
+      <summary><span class="lbl">${t.name} ${siegel(tt.quote)}</span>
+        ${markenBar(tt.quote)}
         <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span></summary>
       <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte, n× = Versuche, dann Ø Punkte & Ø Zeit. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}</div>
     </details>`;
@@ -2073,6 +2119,7 @@ function statistik() {
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
     ${st.beantwortet ? `
+    <h2 class="stat-sek">Überblick</h2>
     <div class="card"><div class="stat-grid">
       ${kachel(st.beantwortet, "Antworten gesamt")}
       ${kachel(st.punkteQuote != null ? st.punkteQuote + " %" : "–", "Ø Punktequote")}
@@ -2082,11 +2129,14 @@ function statistik() {
       ${kachel(st.sessions, "Sessions")}
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
+    <h2 class="stat-sek">Beherrschung nach Thema</h2>
+    <div class="card"><p class="muted" style="margin-top:0">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote · die Marken im Balken sitzen bei <b>80 %</b> und <b>90 %</b>: <span class="siegel offen">!</span> darunter ist noch Luft · <span class="siegel gut">✓</span> ab 80 % sitzt es · <span class="siegel gold">🏅</span> ab 90 % versiegelt.</p>${themenRows}</div>
+    <h2 class="stat-sek">Entwicklung</h2>
     ${ewHtml}
-    <div class="card"><h3>Nach Thema</h3><p class="muted" style="margin-top:-4px">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote (Anteil der Punkte, die du holst) · n× = Versuche · dann Ø Punkte pro Frage & Ø Zeit.</p>${themenRows}</div>
     ${trendHtml}
-    <div class="card"><h3>Aktivität — letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
-      <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & Begriffe-Blitz.</p></div>`
+    <h2 class="stat-sek">Aktivität</h2>
+    <div class="card"><h3>Letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
+      <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & die Trainings-Spiele. Der Kalender bis zur Klausur wohnt auf der Startseite.</p></div>`
     : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`}
   </div>`);
   belebeStats(app.querySelector(".fade-in"));

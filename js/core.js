@@ -628,15 +628,19 @@ function tagesPlan(heute, tage) {
   return plan;
 }
 
-// Aktivitaet je Kalendertag (fuer Heatmap & Ziel-Linie): alle Antworten ausser
-// Spam-Wiederholungen, wie die Tagesziel-Bar (misst Einsatz, nicht Qualitaet).
+// Aktivitaet je Kalendertag (fuer Heatmap & Trend): alle Antworten ausser
+// Spam-Wiederholungen (misst Einsatz wie die Tagesziel-Bar), dazu wie viele
+// davon voll richtig waren — fuer die zweite Trend-Linie (Konvergenz
+// geuebt vs. richtig = sichtbar steigende Qualitaet).
 export function aktivitaetProTag() {
   const spam = spamAids();
   const tage = {};
   for (const a of state().antwortLog) {
     if (spam.has(a.aid || antwortId(a))) continue;
     const d = new Date(a.ts); d.setHours(0, 0, 0, 0);
-    tage[d.getTime()] = (tage[d.getTime()] || 0) + 1;
+    const e = tage[d.getTime()] || (tage[d.getTime()] = { n: 0, voll: 0 });
+    e.n++;
+    if (a.voll) e.voll++;
   }
   return tage;
 }

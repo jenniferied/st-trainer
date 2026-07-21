@@ -15,8 +15,7 @@ window.ST_CONFIG = {
   klausur: { fragen: 42, minutenNormal: 90, minutenNTA: 120, bestehen: 42 },
   // Klausurtag + Tagesziel fuer die Zonen-Bar auf der Startseite.
   // Am Vortag faehrt die App das Ziel automatisch runter (locker wiederholen statt pauken).
-  // Stand 21.07.: Klausur auf den 18.09.2026 verschoben (unbestaetigt, "glaube ich" —
-  // ROADMAP Phase 0). Sobald Rose bestaetigt, ggf. hier anpassen.
+  // 18.09.2026 von Rose BESTAETIGT (21.07.). GE-Klausur: 10.09.2026.
   klausurTag: "2026-09-18",
   // Tagesziel ist seit 18.07. dynamisch (tagesPlan() in core.js rechnet Minimum/
   // Tagespensum/Streckziel taeglich aus dem echten Restbedarf) — kein fester Wert mehr.

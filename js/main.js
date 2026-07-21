@@ -154,9 +154,10 @@ const qBadges = (q) =>
 // gespeichert (Hypercorrection-Auswertung spaeter). Drei Stufen in den
 // Einstellungen: standard (Skip-Link sichtbar) / streng (ohne Skip) / aus.
 const seModus = () => C.state().settings.selbstErkl || "standard";
-// Schnelle 10er bleibt bewusst ohne (Tempo-Modus); Klausur-Durchlaeufe haben
-// ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
-const seAktiv = (modus) => seModus() !== "aus" && modus !== "schnell";
+// Gilt in ALLEN Modi mit Sofort-Feedback (Jennifer 21.07.: die fruehere
+// Schnelle-10er-Ausnahme ist raus — sie hat nur verwirrt). Klausur-Durchlaeufe
+// haben ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
+const seAktiv = () => seModus() !== "aus";
 
 function selbstErklStart(zone, erg, done) {
   const frage = erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?";
@@ -709,7 +710,7 @@ function einstellungen() {
         ${[["standard", "Standard"], ["streng", "Streng"], ["aus", "Aus"]].map(([v, l]) =>
           `<button data-v="${v}" class="${seModus() === v ? "on" : ""}">${l}</button>`).join("")}
       </div>
-      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne. Gilt überall mit Sofort-Feedback — die ⚡ Schnelle 10er bleibt bewusst ohne (Tempo), Klausur-Durchläufe sowieso.</p>
+      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne Link — erst erklären, dann weiter. Gilt in allen Modi mit Sofort-Feedback; Klausur-Durchläufe (Feedback erst am Ende) bleiben ohne.</p>
       <div class="pillzeile" id="methodenPills"></div>
     </div>
     <div class="card">
@@ -800,7 +801,7 @@ function testBestanden(stufe) {
 // Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
 const PRESETS = {
   klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur", auswahl: "klausur" },
-  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", fb: "ende", auswahl: "klausur", hinweis: "21 Fragen im Exam.UP-Look mit halber Zeit — und pausierbar, wenn zwischendurch das Leben ruft. Bestehen ab der Hälfte der Punkte, wie im Original." },
+  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", anzahl: 21, fb: "ende", auswahl: "klausur", ansicht: "exam", hinweis: "Voreingestellt: 21 Fragen im Exam.UP-Look mit halber Zeit, pausierbar. Bestehen ab der Hälfte der Punkte — alles unten frei anpassbar." },
   spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, auswahl: "smart", hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
   schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", auswahl: "smart", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
   fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, auswahl: "fokus", hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
@@ -817,13 +818,19 @@ const AUSWAHL_OPT = [
   ["smart", "Schlau", "Schlau: wiederholt zum richtigen Zeitpunkt (Spaced Repetition) und mischt Neues dazu — der Standard fürs tägliche Üben bis zur Klausur. (empfohlen)"],
   ["fokus", "Schwächen", "Schwächen: nur Ungelerntes und was noch wackelt, das Schwerste zuerst. Zum gezielten Aufholen eines Themas."],
   ["klausur", "Klausur-Mix", "Klausur-Mix: querbeet über alle Themen verteilt wie in der echten Prüfung, ohne Rücksicht auf schwer oder leicht."],
+  ["sprach", "Verstehen", "Verstehen: bevorzugt Fragen, die sich sperrig lesen — NICHT-Fragen, lange Stämme und was dir bisher schwerfiel."],
 ];
+// Seit 21.07. (Jennifers Wunsch): ALLE Optionen sind in JEDEM Modus da — die
+// Presets sind nur Voreinstellungen. Einzige Ausnahme: die volle Klausur-
+// Simulation bleibt fix (42 Fragen, Exam-Look, Feedback am Ende — ihr Quirk
+// IST der Ernstfall). Modus-Eigenheiten (Verstehens-Ablauf, Exam-Flow) leben
+// im Fragen-Ablauf, nicht im Builder.
 function builder({ preset }) {
   const P = PRESETS[preset] || PRESETS.eigene;
   const istKlausur = preset === "klausur";
-  const istExam = istKlausur || preset === "halbe";   // Exam.UP-Look, Feedback erst am Ende
   const istSprach = preset === "sprach";              // Paraphrase + Abstempeln fest eingebaut
-  const fixAnzahl = istKlausur ? 42 : preset === "halbe" ? 21 : null;
+  const timerAn = istKlausur || preset === "halbe";   // Voreinstellung: Timer laeuft
+  const fixAnzahl = istKlausur ? 42 : null;
   const nta = C.state().settings.nta;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
@@ -841,28 +848,28 @@ function builder({ preset }) {
     ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
-      <button data-v="aus" class="${istExam ? "" : "on"}">Ohne</button>
-      <button data-v="normal" class="${istExam && !nta ? "on" : ""}">Normal</button>
-      <button data-v="nta" class="${istExam && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
+      <button data-v="aus" class="${timerAn ? "" : "on"}">Ohne</button>
+      <button data-v="normal" class="${timerAn && !nta ? "on" : ""}">Normal</button>
+      <button data-v="nta" class="${timerAn && nta ? "on" : ""}">+ Nachteilsausgleich</button></div>
       <p class="muted" id="timerHint"></p></div>
-    ${istSprach ? "" : `<div class="field"><span class="flabel">Auswahl der Fragen</span><div class="seg" id="auswahl">
+    <div class="field"><span class="flabel">Auswahl der Fragen</span><div class="seg" id="auswahl">
       ${AUSWAHL_OPT.map(([v, lbl]) => `<button data-v="${v}" class="${v === (P.auswahl || "smart") ? "on" : ""}">${lbl}</button>`).join("")}</div>
-      <p class="muted" id="auswahlHint"></p></div>`}
+      <p class="muted" id="auswahlHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
-    ${!istExam && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
+    ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
       <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>
     <div class="field"><span class="flabel">Optionen einzeln beurteilen ${M.infoBtn("abstempeln")}</span><div class="seg" id="stempeln">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
       <p class="muted">An: Jede Antwort erscheint einzeln mit ‚trifft zu / trifft nicht zu' — die Kreuze setzt die App danach automatisch richtig herum, auch bei NICHT-Fragen. Feedback kommt dabei immer direkt nach jeder Frage.</p></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
-      <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${istExam ? " (wie echt)" : ""}</button></div>
-      ${istExam ? `<p class="muted">Bei Sofort gibt's unter jeder Frage einen Überprüfen-Button mit Erklärungen — die Frage ist danach festgelegt.</p>` : ""}</div>` : ""}
-    ${preset === "eigene" ? `<div class="field"><span class="flabel">Ansicht</span><div class="seg" id="ansicht">
-      <button data-v="uebung" class="on">Übungs-Ansicht</button><button data-v="exam">Klausuransicht</button></div>
-      <p class="muted">Klausuransicht = Exam.UP-Look wie in der echten Klausur, mit Fragen-Navigation zum Vor- und Zurückblättern.</p></div>` : ""}
-    ${!istExam && C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
+      <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${preset === "halbe" ? " (wie echt)" : ""}</button></div>
+      ${`<p class="muted">In der Klausuransicht heißt Sofort: Überprüfen-Button unter jeder Frage — danach ist sie festgelegt.</p>`}</div>` : ""}
+    ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Ansicht</span><div class="seg" id="ansicht">
+      <button data-v="uebung" class="${P.ansicht === "exam" ? "" : "on"}">Übungs-Ansicht</button><button data-v="exam" class="${P.ansicht === "exam" ? "on" : ""}">Klausuransicht</button></div>
+      <p class="muted">Klausuransicht = Exam.UP-Look wie in der echten Klausur, mit Fragen-Navigation — läuft immer mit Original-Sprache.</p></div>` : ""}
+    ${!istKlausur && C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
       <button data-v="schwer" class="${(C.state().settings.sprache || "schwer") === "schwer" ? "on" : ""}">Original (Klausur)</button>
       <button data-v="einfach" class="${C.state().settings.sprache === "einfach" ? "on" : ""}">Einfache Sprache</button></div>
       <p class="muted">Einfache Varianten, wo vorhanden — sonst die Original-Frage. Deine Wahl wird gemerkt. Klausur-Simulationen laufen immer mit Original-Sprache (wie im Ernstfall).</p></div>` : ""}
@@ -890,18 +897,20 @@ function builder({ preset }) {
     const unterthemen = [...app.querySelectorAll(".uth:checked")].map((x) => x.value);
     if (!unterthemen.length) { sag("Mindestens ein Thema auswählen 🙂"); return; }
     // Klausur-/Exam-Modi immer in Original-Sprache (wie im Ernstfall); Übungswahl wird gemerkt
-    const sprache = istExam ? "schwer" : (segVal("sprache") || C.state().settings.sprache || "schwer");
-    if (!istExam && segVal("sprache")) { C.state().settings.sprache = segVal("sprache"); C.save(); }
+    const examLook = istKlausur || segVal("ansicht") === "exam";
+    // Invariante: Exam-Ansichten laufen immer mit Original-Sprache (wie im Ernstfall)
+    const sprache = examLook ? "schwer" : (segVal("sprache") || C.state().settings.sprache || "schwer");
+    if (!examLook && segVal("sprache")) { C.state().settings.sprache = segVal("sprache"); C.save(); }
     starte({
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
       auswahl: segVal("auswahl") || P.auswahl || "smart",
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
       feedback: istKlausur ? "ende" : istSprach || segVal("stempeln") === "an" ? "sofort" : segVal("fb") || "ende",
-      examLook: istExam || segVal("ansicht") === "exam", unterthemen,
+      examLook, unterthemen,
       sprache,
-      paraphrase: !istExam && !istSprach && segVal("para") === "an",
-      stempeln: !istExam && !istSprach && segVal("stempeln") === "an",
+      paraphrase: !examLook && !istSprach && segVal("para") === "an",
+      stempeln: !examLook && !istSprach && segVal("stempeln") === "an",
     });
   };
 }

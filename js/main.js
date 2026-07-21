@@ -2,6 +2,7 @@ import * as C from "./core.js";
 import * as Beleg from "./beleg.js";
 import * as M from "./methoden.js";
 import * as Spiele from "./spiele.js";
+import * as Llm from "./llm.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -182,10 +183,23 @@ const AB_ECHO = {
   teils: "Halb erkannt ist viel wert — der fehlende Teil steht oben in der Erklärung.",
   nein: "Solche Überraschungen sind Gold: Was anders kam als gedacht, bleibt am besten hängen. ✨",
 };
-const abgleichHtml = (sel) => `<div class="abgleich" id="abgleich"><span class="ab-frage">Entspricht das deiner Erklärung?</span>
+const abgleichHtml = (sel, qid = "") => `<div class="abgleich" id="abgleich" data-qid="${esc(qid)}"><span class="ab-frage">Entspricht das deiner Erklärung?</span>
   ${AB_OPT.map(([v, l]) => `<button type="button" data-ab="${v}" class="${sel === v ? "on" : ""}">${l}</button>`).join("")}
   ${sel ? `<p class="ab-echo">${AB_ECHO[sel]}</p>` : ""}</div>`;
 const bindAbgleich = (wurzel, onWahl) => wurzel.querySelectorAll("[data-ab]").forEach((b) => b.onclick = () => onWahl(b.dataset.ab));
+
+// LLM-Feedback auf die Selbsterklaerung (Block E): kommt asynchron nach dem
+// Aufdecken und wird VOR dem Abgleich eingeschoben. Scheitert lautlos —
+// der feste Ablauf (kuratierte Erklaerung + Abgleich) braucht kein LLM.
+function llmSelbstFeedback(q, text, gewaehlt, erg) {
+  if (!text || !Llm.aktiv()) return;
+  Llm.selbstFeedback(q, text, gewaehlt, erg).then((fb) => {
+    if (!fb) return;
+    const anker = document.getElementById("abgleich");
+    if (anker && anker.dataset.qid === q.id && !document.querySelector(".llm-fb"))
+      anker.insertAdjacentHTML("beforebegin", Llm.feedbackHtml(fb, q.oberthema));
+  });
+}
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
@@ -1052,6 +1066,7 @@ function zeigFrage() {
       selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => {
         r.selbst = selbst; C.save();
         zeigen();
+        llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
       });
     } else zeigen();
   };
@@ -1081,10 +1096,10 @@ function zeigeFeedback(q, r) {
     }
   });
   const fz = document.getElementById("fbzone");
-  fz.innerHTML = fbBanner(q, erg) + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich) : "");
+  fz.innerHTML = fbBanner(q, erg) + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich, q.id) : "") + Llm.chatBtnHtml(q);
   const setzAb = (v) => {
     r.selbst.abgleich = v; C.save();
-    fz.querySelector("#abgleich").outerHTML = abgleichHtml(v);
+    fz.querySelector("#abgleich").outerHTML = abgleichHtml(v, q.id);
     bindAbgleich(fz, setzAb); // Umentscheiden bleibt erlaubt
   };
   if (r.selbst?.text) bindAbgleich(fz, setzAb);
@@ -1239,7 +1254,10 @@ function zeigSprach() {
   };
   document.getElementById("weiter").onclick = () => naechste();
   if (!erg.voll && seModus() !== "aus" && !r.selbst) {
-    selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => { r.selbst = selbst; C.save(); aufloesen(); });
+    selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => {
+      r.selbst = selbst; C.save(); aufloesen();
+      llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
+    });
   } else aufloesen();
 }
 
@@ -1325,7 +1343,7 @@ function zeigMoodle() {
           return `<div class="q-head" style="margin-top:12px"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
             <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}
             <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg)
-            + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich) : "");
+            + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich, q.id) : "") + Llm.chatBtnHtml(q);
         })() : ""}
         ${!locked && R.cfg.feedback === "sofort" ? `<button class="btn small" id="check" style="margin-top:10px">Überprüfen</button>` : ""}
       </div>
@@ -1393,7 +1411,10 @@ function zeigMoodle() {
       check.classList.add("hidden");
       const zone = document.createElement("div");
       check.parentNode.insertBefore(zone, check);
-      selbstErklStart(zone, e, (selbst) => { r.selbst = selbst; abschluss(); });
+      selbstErklStart(zone, e, (selbst) => {
+        r.selbst = selbst; abschluss();
+        llmSelbstFeedback(q, selbst.text, r.gewaehlt, e);
+      });
     } else abschluss();
   };
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
@@ -1481,7 +1502,7 @@ function reviewQ(r, erg) {
       const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
       return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
         ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
-    }).join("")}</div></div>`;
+    }).join("")}</div>${Llm.chatBtnHtml(q)}</div>`;
 }
 
 // Versuchs-Vergleich: frühere Versuche derselben Fragen-Kette als Verlauf mit
@@ -1892,7 +1913,7 @@ function toggleInfo(qid, btn) {
       <div class="stat-head">Letzte Versuche:</div>${st.letzte.map((a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
         <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`).join("")}`
     : `<div class="muted" style="margin-top:8px">Noch nie geübt — gute Gelegenheit 🙂</div>`;
-  zone.innerHTML = `<div class="q-stats">${kopf}${loesung}${stats}</div>`;
+  zone.innerHTML = `<div class="q-stats">${kopf}${loesung}${stats}${Llm.chatBtnHtml(q)}</div>`;
 }
 function tryInline(qid, btn) {
   const q = C.frage(qid);
@@ -1929,11 +1950,12 @@ function tryInline(qid, btn) {
       // Nochmal üben setzt die Zone frisch auf — jeder Versuch zählt einzeln
       const fbz = wrap.querySelector(".fbz");
       fbz.innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>
-        ${selbst?.text ? abgleichHtml(null) : ""}
+        ${selbst?.text ? abgleichHtml(null, q.id) : ""}
+        ${Llm.chatBtnHtml(q)}
         <button class="btn small" id="re-${qid}">🔁 Nochmal üben</button>`;
       const setzAb = (v) => {
         C.ergaenzeAntwort(eintrag.aid, { selbstAbgleich: v });
-        fbz.querySelector("#abgleich").outerHTML = abgleichHtml(v);
+        fbz.querySelector("#abgleich").outerHTML = abgleichHtml(v, q.id);
         bindAbgleich(fbz, setzAb);
       };
       if (selbst?.text) bindAbgleich(fbz, setzAb);
@@ -1944,6 +1966,7 @@ function tryInline(qid, btn) {
       selbstErklStart(wrap.querySelector(".fbz"), erg, (selbst) => {
         C.ergaenzeAntwort(eintrag.aid, { selbstErkl: selbst.text, selbstSkip: !!selbst.skip });
         reveal(selbst);
+        llmSelbstFeedback(q, selbst.text, gewaehlt, erg);
       });
     } else reveal(null);
   };
@@ -2202,6 +2225,7 @@ function verlauf() {
     await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
     await C.ladeProbeklausuren(); // optional — ohne Datei fehlt nur die Klausurtraining-Karte
     await Spiele.ladeSpiele(); // optional — Kacheln erscheinen nur mit Daten (Detektiv immer)
+    Llm.initChat(C.frage);     // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

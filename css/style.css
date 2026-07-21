@@ -835,3 +835,67 @@ button.tag-hebel:active { transform: scale(.96); }
   --zone-g: color-mix(in srgb, var(--ok) 24%, var(--paper-2));
 }
 .zonen-bar .fill.gold { background: linear-gradient(90deg, var(--ok), #d4a017 55%, #f0c94a); }
+
+/* ============ NextGen V2: Info-System (Block F) ============ */
+.info-btn {
+  border: 0; background: none; cursor: pointer; padding: 0 2px;
+  font-size: 1rem; line-height: 1; color: var(--accent); opacity: .8;
+  vertical-align: -1px; font-family: inherit;
+}
+.info-btn:hover, .info-btn:active { opacity: 1; transform: scale(1.1); }
+.sheet-ov {
+  position: fixed; inset: 0; z-index: 90; background: rgba(20, 14, 8, .42);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadein .18s ease both;
+}
+.sheet {
+  background: var(--card); color: var(--ink); width: 100%; max-width: 560px;
+  border-radius: 18px 18px 0 0; padding: 14px 20px calc(18px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .25);
+  animation: sheet-rein .22s ease both;
+}
+@keyframes sheet-rein { from { transform: translateY(24px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+.sheet-grip { width: 42px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 12px; }
+.sheet h3 { margin: 0 0 8px; }
+.sheet p { margin: 0 0 10px; font-size: .93rem; line-height: 1.55; }
+.sheet-studie {
+  font-size: .82rem; color: var(--ink-soft); border-left: 3px solid var(--line);
+  padding-left: 10px; margin-bottom: 14px;
+}
+@media (min-width: 700px) { .sheet-ov { align-items: center; } .sheet { border-radius: 18px; } }
+
+/* ============ NextGen V2: Selbsterklaerung beim Feedback (Block A) ============ */
+.selbst-box {
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--card));
+  border-radius: 12px; padding: 12px 14px; margin: 12px 0;
+}
+.selbst-box .selbst-kopf { font-size: .95rem; margin-bottom: 8px; }
+.selbst-box textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; min-height: 58px;
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 11px;
+  font: inherit; font-size: .95rem; background: var(--card); color: var(--ink);
+}
+.selbst-box textarea:focus { outline: none; border-color: var(--accent); }
+.linkish {
+  border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
+  color: var(--ink-soft); text-decoration: underline; padding: 4px 0 0; display: inline-block;
+}
+.abgleich { margin: 10px 0 4px; font-size: .9rem; }
+.abgleich .ab-frage { font-weight: 600; margin-right: 6px; }
+.abgleich button {
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: 999px; padding: 5px 12px; margin: 4px 6px 0 0; font: inherit;
+  font-size: .86rem; cursor: pointer;
+}
+.abgleich button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card)); font-weight: 700; }
+.abgleich .ab-echo { margin: 8px 0 0; font-size: .86rem; color: var(--ink-soft); }
+
+/* Pill-Anzeigen in den Einstellungen (Block F): was ist gerade aktiv */
+.pillzeile { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.pill {
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  font-size: .78rem; color: var(--ink-soft); background: var(--paper);
+}
+.pill.an { border-color: color-mix(in srgb, var(--ok) 55%, transparent); color: var(--ok); background: var(--ok-bg); }

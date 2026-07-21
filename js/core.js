@@ -260,6 +260,18 @@ export function logAntwort(a) {
   st.antwortLog.push(e);
   save();
   syncBald(); // Explore-Antworten gebuendelt hochschieben
+  return e;
+}
+
+// Nachtraeglich Felder an einen bestehenden Log-Eintrag haengen (Selbsterklaerung/
+// Abgleich kommen zeitlich NACH dem Loggen der Antwort). Der Merge dedupliziert
+// per aid und die lokale Fassung gewinnt — Ergaenzungen syncen also sauber mit.
+export function ergaenzeAntwort(aid, felder) {
+  const a = state().antwortLog.find((x) => (x.aid || antwortId(x)) === aid);
+  if (!a) return;
+  Object.assign(a, felder);
+  save();
+  syncBald();
 }
 
 // Lernstand komplett neu aus dem Antwort-Log aufbauen (chronologisch
@@ -854,7 +866,9 @@ export function werteAus(runde, meta) {
   const proFrage = runde.filter((r) => r.gewaehlt).map((r) => {
     const q = frage(r.qid);
     const erg = scoreFrage(q, r.gewaehlt);
-    return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, zeit: r.zeitSek ?? null, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar };
+    return { qid: r.qid, gewaehlt: r.gewaehlt, ...erg, zeit: r.zeitSek ?? null, max: q.maxPunkte, thema: q.oberthema, unterthema: q.unterthema, fragetyp: q.fragetyp, paar: q.verwechslungspaar,
+      // Selbsterklaerung (Block A NextGen): Text + Abgleich wandern mit in Log & Sync
+      ...(r.selbst ? { selbstErkl: r.selbst.text || null, selbstAbgleich: r.selbst.abgleich || null, selbstSkip: !!r.selbst.skip } : {}) };
   });
   const punkte = proFrage.reduce((a, x) => a + x.punkte, 0);
   const max = runde.map((r) => frage(r.qid).maxPunkte).reduce((a, b) => a + b, 0);
@@ -872,7 +886,8 @@ export function werteAus(runde, meta) {
     runde: runde.map((r) => ({ qid: r.qid, optOrder: r.optOrder, gewaehlt: r.gewaehlt || null, zeitSek: r.zeitSek ?? null })),
   };
   state().sessions.push(session);
-  proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit }));
+  proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit,
+    ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip } : {}) }));
   for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();
   syncSession(session);

@@ -1,5 +1,6 @@
 import * as C from "./core.js";
 import * as Beleg from "./beleg.js";
+import * as M from "./methoden.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -146,6 +147,45 @@ const qBadges = (q) =>
   (q.quelle === "generiert" ? `<span class="badge-src badge-generiert">KI-generiert</span>` : "") +
   (q.persoenlich ? `<span class="badge-src badge-pers">💛 aus deiner Welt</span>` : "");
 
+// ---- Selbsterklaerung bei Fehlern (Block A NextGen, Chi et al.): erst selbst
+// ueberlegen, warum es falsch war, DANN die kuratierte Erklaerung — beides wird
+// gespeichert (Hypercorrection-Auswertung spaeter). Drei Stufen in den
+// Einstellungen: standard (Skip-Link sichtbar) / streng (ohne Skip) / aus.
+const seModus = () => C.state().settings.selbstErkl || "standard";
+// Schnelle 10er bleibt bewusst ohne (Tempo-Modus); Klausur-Durchlaeufe haben
+// ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
+const seAktiv = (modus) => seModus() !== "aus" && modus !== "schnell";
+
+function selbstErklStart(zone, erg, done) {
+  const frage = erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?";
+  zone.innerHTML = `<div class="selbst-box" id="selbstBox">
+    <div class="selbst-kopf"><b>${frage}</b> ${M.infoBtn("selbsterklaerung")}</div>
+    <textarea id="selbstTxt" rows="2" placeholder="Deine Vermutung — Stichworte reichen" autocapitalize="sentences"></textarea>
+    <div class="btn-row" style="margin-top:8px"><button class="btn small" id="selbstOk">Erklärung ansehen</button></div>
+    ${seModus() === "streng" ? "" : `<button class="linkish" id="selbstSkip">Nur die Antwort zeigen</button>`}
+  </div>`;
+  const fertig = (skip) => {
+    const text = zone.querySelector("#selbstTxt").value.trim();
+    done({ text: text || null, skip: !!skip && !text });
+  };
+  zone.querySelector("#selbstOk").onclick = () => fertig(false);
+  const sk = zone.querySelector("#selbstSkip");
+  if (sk) sk.onclick = () => fertig(true);
+}
+
+// Abgleich nach dem Lesen der Erklaerung: "Nein, war was anderes" ist der
+// wertvollste Fall (Hypercorrection) — das Echo feiert ihn entsprechend.
+const AB_OPT = [["ja", "Ja"], ["teils", "Teilweise"], ["nein", "Nein, war was anderes"]];
+const AB_ECHO = {
+  ja: "Schön — du wusstest schon, woran es lag. Das sitzt beim nächsten Mal. 💪",
+  teils: "Halb erkannt ist viel wert — der fehlende Teil steht oben in der Erklärung.",
+  nein: "Solche Überraschungen sind Gold: Was anders kam als gedacht, bleibt am besten hängen. ✨",
+};
+const abgleichHtml = (sel) => `<div class="abgleich" id="abgleich"><span class="ab-frage">Entspricht das deiner Erklärung?</span>
+  ${AB_OPT.map(([v, l]) => `<button type="button" data-ab="${v}" class="${sel === v ? "on" : ""}">${l}</button>`).join("")}
+  ${sel ? `<p class="ab-echo">${AB_ECHO[sel]}</p>` : ""}</div>`;
+const bindAbgleich = (wurzel, onWahl) => wurzel.querySelectorAll("[data-ab]").forEach((b) => b.onclick = () => onWahl(b.dataset.ab));
+
 let R = null;      // aktive offene Session (Referenz in state().offen)
 let timerInt = null;
 let qStart = null; // Start-Timestamp der aktuell angezeigten Frage (Zeit pro Frage)
@@ -188,7 +228,7 @@ function tageszielHtml(tz, sich) {
     : `Warmlaufen — erstes Etappenziel: ${tz.minimum}. Jede Karte zählt, Begriffe-Blitz auch.`;
   const note = tz.tage == null ? ""
     : tz.tage === 1 ? `<p class="muted tz-note">Morgen früh ist es so weit. Heute reichen lockere ${tz.ziel} zum Festigen — und dann Feierabend und früh schlafen. 💛</p>`
-    : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit.</p>`;
+    : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`;
   const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
   return `<div class="card tagesziel">
     <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
@@ -520,6 +560,16 @@ function einstellungen() {
       <p class="muted" style="margin:8px 0 0">Automatisch folgt der Einstellung deines Geräts.</p>
     </div>
     <div class="card">
+      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Lernmethoden</span>
+      <p style="margin:0 0 8px">Selbsterklärung bei Fehlern ${M.infoBtn("selbsterklaerung")}<br><span class="muted" style="font-size:.85rem">Erst kurz selbst überlegen, warum es falsch war — dann kommt die Erklärung.</span></p>
+      <div class="seg" id="seSeg">
+        ${[["standard", "Standard"], ["streng", "Streng"], ["aus", "Aus"]].map(([v, l]) =>
+          `<button data-v="${v}" class="${seModus() === v ? "on" : ""}">${l}</button>`).join("")}
+      </div>
+      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne. Gilt überall mit Sofort-Feedback — die ⚡ Schnelle 10er bleibt bewusst ohne (Tempo), Klausur-Durchläufe sowieso.</p>
+      <div class="pillzeile" id="methodenPills"></div>
+    </div>
+    <div class="card">
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
@@ -541,6 +591,23 @@ function einstellungen() {
   document.querySelectorAll("#themeSeg button").forEach((b) => b.onclick = () => {
     C.state().settings.theme = b.dataset.v; C.save(); applyTheme();
     document.querySelectorAll("#themeSeg button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  // Pill-Uebersicht (Block F): welche Lernmethoden gerade aktiv sind — auf einen Blick
+  const malPills = () => {
+    const pills = [
+      ["🧠 Abrufübung", true, "retrieval"],
+      ["📅 Verteiltes Üben", true, "relearning"],
+      [`💬 Selbsterklärung${seModus() === "streng" ? " (streng)" : ""}`, seModus() !== "aus", "selbsterklaerung"],
+      ["🗣 Einfache Sprache", s.settings.sprache === "einfach", null],
+    ];
+    document.getElementById("methodenPills").innerHTML = pills.map(([l, an, key]) =>
+      `<span class="pill ${an ? "an" : ""}">${l}${an ? "" : " · aus"}${key ? " " + M.infoBtn(key) : ""}</span>`).join("");
+  };
+  malPills();
+  document.querySelectorAll("#seSeg button").forEach((b) => b.onclick = () => {
+    C.state().settings.selbstErkl = b.dataset.v; C.save();
+    document.querySelectorAll("#seSeg button").forEach((x) => x.classList.toggle("on", x === b));
+    malPills();
   });
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); await C.syncLernstand(); home(); } };
@@ -907,9 +974,19 @@ function zeigFrage() {
   const pruefen = document.getElementById("pruefen");
   if (pruefen) pruefen.onclick = () => {
     r.gewaehlt = gewaehlt(); bankZeit();
-    zeigeFeedback(q, r);
     pruefen.classList.add("hidden");
-    document.getElementById("weiter").classList.remove("hidden");
+    const erg = C.scoreFrage(q, r.gewaehlt);
+    const zeigen = () => {
+      zeigeFeedback(q, r);
+      document.getElementById("weiter").classList.remove("hidden");
+    };
+    // Selbsterklaerung: bei Fehlern erst selbst ueberlegen, dann aufloesen
+    if (!erg.voll && seAktiv(R.cfg.modus)) {
+      selbstErklStart(document.getElementById("fbzone"), erg, (selbst) => {
+        r.selbst = selbst; C.save();
+        zeigen();
+      });
+    } else zeigen();
   };
   document.getElementById("weiter").onclick = () => {
     if (!r.gewaehlt) r.gewaehlt = gewaehlt();
@@ -936,7 +1013,14 @@ function zeigeFeedback(q, r) {
       el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
-  document.getElementById("fbzone").innerHTML = fbBanner(q, erg);
+  const fz = document.getElementById("fbzone");
+  fz.innerHTML = fbBanner(q, erg) + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich) : "");
+  const setzAb = (v) => {
+    r.selbst.abgleich = v; C.save();
+    fz.querySelector("#abgleich").outerHTML = abgleichHtml(v);
+    bindAbgleich(fz, setzAb); // Umentscheiden bleibt erlaubt
+  };
+  if (r.selbst?.text) bindAbgleich(fz, setzAb);
 }
 function fbBanner(q, erg) {
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
@@ -1053,7 +1137,8 @@ function zeigMoodle() {
           const t = C.THEMEN[q.oberthema] || {};
           return `<div class="q-head" style="margin-top:12px"><span class="chip" style="--tc:${t.color}">${t.kurz}</span>
             <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}
-            <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg);
+            <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span></div>` + fbBanner(q, erg)
+            + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich) : "");
         })() : ""}
         ${!locked && R.cfg.feedback === "sofort" ? `<button class="btn small" id="check" style="margin-top:10px">Überprüfen</button>` : ""}
       </div>
@@ -1094,6 +1179,7 @@ function zeigMoodle() {
   }
   const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
+  if (locked && r.selbst?.text) bindAbgleich(app.querySelector(".moodle-body"), (v) => { r.selbst.abgleich = v; C.save(); zeigMoodle(); });
   const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };
   document.getElementById("next").onclick = async () => {
     if (R.idx + 1 === R.runde.length) {
@@ -1106,12 +1192,22 @@ function zeigMoodle() {
   if (check) check.onclick = () => {
     merke();
     if (!r.gewaehlt?.length) { sag("Erst eine Antwort ankreuzen 🙂"); return; }
-    r.geprueft = true;
     bankZeit(); // Erklärungen lesen zählt nicht als Nachdenkzeit auf der Frage
     const e = C.scoreFrage(q, r.gewaehlt);
-    C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: e.punkte, max_punkte: q.maxPunkte, voll: e.voll, modus: R.cfg.modus, ts: new Date().toISOString() });
-    C.save();
-    zeigMoodle();
+    const abschluss = () => {
+      r.geprueft = true;
+      C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: e.punkte, max_punkte: q.maxPunkte, voll: e.voll, modus: R.cfg.modus, ts: new Date().toISOString() });
+      C.save();
+      zeigMoodle();
+    };
+    // Selbsterklaerung (auch im 2. Probeklausur-Durchlauf mit Sofort-Feedback):
+    // erst selbst ueberlegen, dann loest die Seite mit Erklaerungen auf.
+    if (!e.voll && seAktiv(R.cfg.modus)) {
+      check.classList.add("hidden");
+      const zone = document.createElement("div");
+      check.parentNode.insertBefore(zone, check);
+      selbstErklStart(zone, e, (selbst) => { r.selbst = selbst; abschluss(); });
+    } else abschluss();
   };
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
   document.getElementById("abbruch").onclick = abbrechen;
@@ -1630,21 +1726,39 @@ function tryInline(qid, btn) {
     const erg = C.scoreFrage(q, gewaehlt);
     const zeit = Math.round((Date.now() - t0) / 1000);
     C.leitnerUpdate(q.id, erg);
-    C.logAntwort({ qid: q.id, modus: "explore", gewaehlt, punkte: erg.punkte, max: q.maxPunkte, voll: erg.voll, zeit });
+    // Antwort sofort loggen (echte Nachdenkzeit) — Selbsterklaerung & Abgleich
+    // werden danach an denselben Eintrag gehaengt (ergaenzeAntwort).
+    const eintrag = C.logAntwort({ qid: q.id, modus: "explore", gewaehlt, punkte: erg.punkte, max: q.maxPunkte, voll: erg.voll, zeit });
     C.syncEvent({ frage_id: q.id, gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: "explore", ts: new Date().toISOString() });
-    wrap.querySelectorAll("label.ans").forEach((el) => {
-      const oi = +el.querySelector("input").dataset.oi; const o = q.optionen[oi]; const gw = gewaehlt.includes(oi);
-      el.querySelector("input").disabled = true;
-      if (gw && o.richtig) el.classList.add("correct"); else if (gw) el.classList.add("wrong"); else if (o.richtig) el.classList.add("missed");
-      if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
-    });
-    const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
-    // Nochmal üben setzt die Zone frisch auf — jeder Versuch zählt einzeln
-    wrap.querySelector(".fbz").innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>
-      <button class="btn small" id="re-${qid}">🔁 Nochmal üben</button>`;
-    const dots = item.querySelector(".lvl-dots"); if (dots) dots.innerHTML = lvlDots(q.id);
     document.getElementById(`chk-${qid}`).classList.add("hidden");
-    document.getElementById(`re-${qid}`).onclick = () => tryInline(qid, btn);
+    const reveal = (selbst) => {
+      wrap.querySelectorAll("label.ans").forEach((el) => {
+        const oi = +el.querySelector("input").dataset.oi; const o = q.optionen[oi]; const gw = gewaehlt.includes(oi);
+        el.querySelector("input").disabled = true;
+        if (gw && o.richtig) el.classList.add("correct"); else if (gw) el.classList.add("wrong"); else if (o.richtig) el.classList.add("missed");
+        if (o.erklaerung && (gw || o.richtig)) el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
+      });
+      const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
+      // Nochmal üben setzt die Zone frisch auf — jeder Versuch zählt einzeln
+      const fbz = wrap.querySelector(".fbz");
+      fbz.innerHTML = `<div class="fb-banner ${cls}">${sticker(cls)}<span>${erg.voll ? "Voll richtig! 🎉" : `${erg.punkte}/${q.maxPunkte} P.`}</span></div>
+        ${selbst?.text ? abgleichHtml(null) : ""}
+        <button class="btn small" id="re-${qid}">🔁 Nochmal üben</button>`;
+      const setzAb = (v) => {
+        C.ergaenzeAntwort(eintrag.aid, { selbstAbgleich: v });
+        fbz.querySelector("#abgleich").outerHTML = abgleichHtml(v);
+        bindAbgleich(fbz, setzAb);
+      };
+      if (selbst?.text) bindAbgleich(fbz, setzAb);
+      const dots = item.querySelector(".lvl-dots"); if (dots) dots.innerHTML = lvlDots(q.id);
+      document.getElementById(`re-${qid}`).onclick = () => tryInline(qid, btn);
+    };
+    if (!erg.voll && seAktiv("explore")) {
+      selbstErklStart(wrap.querySelector(".fbz"), erg, (selbst) => {
+        C.ergaenzeAntwort(eintrag.aid, { selbstErkl: selbst.text, selbstSkip: !!selbst.skip });
+        reveal(selbst);
+      });
+    } else reveal(null);
   };
 }
 

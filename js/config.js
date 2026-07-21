@@ -13,9 +13,11 @@ window.ST_CONFIG = {
   // mit Roses "rose"-Stand syncen. Nur die Live-Seite (github.io) synct echt.
   syncCode: (location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "") ? "" : "rose",
   klausur: { fragen: 42, minutenNormal: 90, minutenNTA: 120, bestehen: 42 },
-  // Endspurt: Klausurtag (Freitag morgens) + Tagesziel fuer die Zonen-Bar auf der Startseite.
+  // Klausurtag + Tagesziel fuer die Zonen-Bar auf der Startseite.
   // Am Vortag faehrt die App das Ziel automatisch runter (locker wiederholen statt pauken).
-  klausurTag: "2026-07-24",
+  // Stand 21.07.: Klausur auf den 18.09.2026 verschoben (unbestaetigt, "glaube ich" —
+  // ROADMAP Phase 0). Sobald Rose bestaetigt, ggf. hier anpassen.
+  klausurTag: "2026-09-18",
   // Tagesziel ist seit 18.07. dynamisch (tagesPlan() in core.js rechnet Minimum/
   // Tagespensum/Streckziel taeglich aus dem echten Restbedarf) — kein fester Wert mehr.
 };

@@ -1080,3 +1080,8 @@ button.ans:disabled { cursor: default; }
 .bar-marke.m90 { background: #d4a017; opacity: .85; }
 .bar.thin .bar-marke { top: -1px; bottom: -1px; }
 .siegel.rot { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
+
+/* Wackel-Runde: rote Bereiche direkt ueben */
+.rot-uebung { border-left: 3px solid var(--bad); }
+.rot-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-rot { background: var(--bad-bg); color: var(--bad); }

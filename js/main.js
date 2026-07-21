@@ -281,6 +281,13 @@ function bindUebe() {
     sprache: C.state().settings.sprache || "schwer",
     paraphrase: true,
   }));
+  // Wackel-Runde: schnelle 10er nur aus roten Unterthemen, Schwerstes zuerst
+  // (fokus-Auswahl); Selbsterklaerung bei Fehlern greift wie eingestellt.
+  app.querySelectorAll("[data-rot]").forEach((b) => b.onclick = () => starte({
+    modus: "eigene", anzahl: 10, auswahl: "fokus", unterthemen: JSON.parse(b.dataset.rot),
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+    sprache: C.state().settings.sprache || "schwer",
+  }));
 }
 
 // ---- Uebungs-Kalender + Trend (Block C NextGen, ueberarbeitet nach Jennifers
@@ -2168,6 +2175,24 @@ function statInhaltHtml() {
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="stat-sek">Beherrschung nach Thema</h2>
+    ${(() => {
+      // Rote Bereiche (unter 50 %, mind. 3 echte Versuche) direkt uebbar:
+      // ein Sammel-Button + ein Chip je wackligem Unterthema (Jennifer 21.07.).
+      const rote = [];
+      for (const tt of st.proThema)
+        for (const s of tt.unterthemen)
+          if (s.n >= 3 && s.quote != null && s.quote < 50)
+            rote.push({ key: tt.slug + "/" + s.u, label: labelU(s.u), quote: s.quote });
+      if (!rote.length) return "";
+      rote.sort((a, b) => a.quote - b.quote);
+      const alle = JSON.stringify(rote.map((r) => r.key));
+      return `<div class="card rot-uebung">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>🔴 Wackel-Runde</b>
+          <span class="muted" style="font-size:.82rem">10 Karten, Schwerstes zuerst — genau da, wo es noch rot ist.</span></div>
+        <button class="btn small" data-rot='${alle}' style="margin:8px 0 6px">⚡ 10 Karten aus allen roten Bereichen</button>
+        <div class="rot-chips">${rote.map((r) => `<button class="tag-hebel tag-rot" data-rot='${JSON.stringify([r.key])}' title="10 Karten ${esc(r.label)} üben">${esc(r.label)} ${r.quote} % ›</button>`).join(" ")}</div>
+      </div>`;
+    })()}
     <div class="card"><p class="muted" style="margin-top:0">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote. Trenner in jedem Balken: <b>50 %</b> Bestehensgrenze · <b>75 %</b> sicherer Bereich · <b>90 %</b> besteht auf jeden Fall. Füllung: <span class="siegel rot">!</span> rot unter 50 · gelb ab 50 · grün ab 90, <span class="siegel gut">✓</span> ab 75 · <span class="siegel gold">🏅</span> ab 90.</p>${themenRows}</div>
     <h2 class="stat-sek">Entwicklung</h2>
     ${ewHtml}

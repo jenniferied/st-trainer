@@ -438,9 +438,20 @@ function heatmapHtml(tz) {
     return s.reduce((a, t) => a + t[feld], 0) / s.length;
   });
   const g3 = glatt("n", 3), g7 = glatt("n", 7);
-  const W = 340, spanne = Math.max(1, ende.getTime() - tage[0].ts);
-  const px = (ts) => 26 + ((ts - tage[0].ts) / spanne) * (W - 34);
-  const hx = px(heute.getTime()).toFixed(1), ex = px(ende.getTime()).toFixed(1);
+  const W = 340;
+  // Geknickte Zeitachse: das Geuebte bekommt mindestens 45 % der Breite, auch wenn
+  // erst ein paar Tage hinter Rose liegen und 8 Wochen vor ihr. Sonst waere ihre
+  // Linie ein unlesbarer Zacken ganz links. Der Knick sitzt genau auf der
+  // Heute-Linie und ist damit sichtbar; links steht Gemessenes, rechts die Prognose.
+  const gestern = Math.max(1, heute.getTime() - tage[0].ts);
+  const gesamt = Math.max(1, ende.getTime() - tage[0].ts);
+  const anteil = Math.max(0.45, gestern / gesamt);
+  const xStart = 26, xEnd = W - 8, breite = xEnd - xStart;
+  const xHeute = xStart + breite * anteil;
+  const px = (ts) => ts <= heute.getTime()
+    ? xStart + ((ts - tage[0].ts) / gestern) * (xHeute - xStart)
+    : xHeute + ((ts - heute.getTime()) / Math.max(1, ende.getTime() - heute.getTime())) * (xEnd - xHeute);
+  const hx = xHeute.toFixed(1), ex = xEnd.toFixed(1);
 
   // ---- Chart 1: Menge (Karten/Tag) ----
   const H1 = 116;

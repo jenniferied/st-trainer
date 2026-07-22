@@ -460,24 +460,73 @@ export function bewerteRows(input) {
   return { staerken, schwaechen, verwechslung: verw, overallQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null, nQual: qual.length };
 }
 
-// "Werde ich besser?" — vergleicht je Thema (und gesamt) die aeltere Haelfte
-// der plausiblen Antworten mit der neueren. Nur belastbare Aussagen: mindestens
-// 5 Antworten je Haelfte (gesamt) bzw. 4 (Thema).
+// ---------- Qualitaet je UEBUNGSTAG (eine einzige Definition) ----------
+// Jennifer 22.07.: Fortschritt soll Konstanz zeigen, nicht "immer mehr". Basis
+// dafuer ist ueberall dieselbe Zahl: die Punktequote (punkte/max) ueber
+// qual-gefilterte Antworten (3-s-Filter + keine Sofort-Wiederholung) — exakt
+// das, was auch die Beherrschungs-Balken anzeigen. Bewusst NICHT voll/n aus
+// aktivitaetProTag(): das ist ungefiltert und alles-oder-nichts und wuerde neben
+// den Prozentzahlen eine zweite, andere Wahrheit erzaehlen.
+// Gezaehlt werden nur Tage, an denen wirklich geuebt wurde — Ruhetage werden
+// uebersprungen, nicht als 0 eingerechnet. Eine Pause darf die Quote nie druecken.
+export const QUAL_FENSTER = 5; // gleitendes Fenster in Uebungstagen
+const tagStempel = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+// [{ ts, n, quote }] je Uebungstag, aufsteigend. Optional auf ein Thema gefiltert.
+export function qualProTag(rows) {
+  const basis = (rows || logZeilen()).filter((r) => r.plaus && r.max);
+  const tage = new Map();
+  for (const r of basis) {
+    const k = tagStempel(r.ts);
+    const e = tage.get(k) || { ts: k, n: 0, summe: 0 };
+    e.n++; e.summe += r.punkte / r.max;
+    tage.set(k, e);
+  }
+  return [...tage.values()].sort((a, b) => a.ts - b.ts)
+    .map((e) => ({ ts: e.ts, n: e.n, quote: Math.round((100 * e.summe) / e.n), summe: e.summe }));
+}
+
+// Gleitender Schnitt ueber die letzten `fenster` Uebungstage — je Uebungstag ein
+// Punkt (nach Antworten gewichtet, damit ein Tag mit 3 Karten den Schnitt nicht
+// so stark zieht wie einer mit 80).
+export function qualVerlauf(tage, fenster = QUAL_FENSTER) {
+  return tage.map((t, i) => {
+    const s = tage.slice(Math.max(0, i - (fenster - 1)), i + 1);
+    const n = s.reduce((a, x) => a + x.n, 0);
+    return { ts: t.ts, quote: Math.round((100 * s.reduce((a, x) => a + x.summe, 0)) / n), n };
+  });
+}
+
+// Schnitt eines Uebungstage-Abschnitts (null, wenn zu duenn fuer eine Aussage)
+function abschnitt(tage, minAntworten) {
+  const n = tage.reduce((a, x) => a + x.n, 0);
+  if (!tage.length || n < minAntworten) return null;
+  return { quote: Math.round((100 * tage.reduce((a, x) => a + x.summe, 0)) / n), n };
+}
+
+// "Werde ich besser?" (Jennifer 22.07. neu gefasst): letzte QUAL_FENSTER
+// Uebungstage gegen die QUAL_FENSTER Uebungstage davor — gesamt und je Thema.
+// Frueher war das die aeltere gegen die neuere Haelfte ALLER Antworten; das
+// verglich nach Wochen des Uebens immer noch mit dem allerersten Tag und wurde
+// dadurch traege. Ruhetage zaehlen nicht mit.
 export function entwicklung() {
-  const rows = logZeilen().filter((r) => r.plaus && r.max).sort((a, b) => a.ts - b.ts);
-  const quote = (arr) => Math.round(100 * arr.reduce((s, r) => s + r.punkte / r.max, 0) / arr.length);
-  const halb = (arr, min) => {
-    if (arr.length < min * 2) return null;
-    const mitte = Math.floor(arr.length / 2);
-    const vorher = quote(arr.slice(0, mitte)), jetzt = quote(arr.slice(mitte));
-    return { vorher, jetzt, delta: jetzt - vorher, n: arr.length };
+  const rows = logZeilen().filter((r) => r.plaus && r.max);
+  const fenstervergleich = (arr, min) => {
+    const tage = qualProTag(arr);
+    if (tage.length < 2) return null;
+    const jetztTage = tage.slice(-QUAL_FENSTER);
+    const vorherTage = tage.slice(Math.max(0, tage.length - 2 * QUAL_FENSTER), tage.length - jetztTage.length);
+    const jetzt = abschnitt(jetztTage, min), vorher = abschnitt(vorherTage, min);
+    if (!jetzt || !vorher) return null;
+    return { vorher: vorher.quote, jetzt: jetzt.quote, delta: jetzt.quote - vorher.quote,
+      n: jetzt.n + vorher.n, tage: jetztTage.length };
   };
-  const gesamt = halb(rows, 5);
+  const gesamt = fenstervergleich(rows, 5);
   const proThema = Object.entries(gruppiere(rows, (r) => r.thema))
-    .map(([thema, arr]) => ({ thema, ...halb(arr, 4) }))
+    .map(([thema, arr]) => ({ thema, ...(fenstervergleich(arr, 4) || {}) }))
     .filter((x) => x.n)
     .sort((a, b) => b.delta - a.delta);
-  return { gesamt, proThema };
+  return { gesamt, proThema, fenster: QUAL_FENSTER };
 }
 
 // Verlauf der abgeschlossenen Sitzungen -> Trend der Punktequote ueber die Zeit.
@@ -540,7 +589,9 @@ export function statistik() {
     punkteQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null,
     vollQuote: qual.length ? Math.round((100 * qual.filter((r) => r.voll).length) / qual.length) : null,
     avgZeit: zeit != null ? Math.round(zeit) : null,
-    uebungsTage: new Set(log.map((a) => new Date(a.ts).toDateString())).size,
+    // Uebungstage = Tage mit echter Uebung (Jennifer 22.07.): dieselbe Basis wie
+    // die gefaerbten Kalenderzellen — Sofort-Wiederholungen zaehlen nicht als Tag.
+    uebungsTage: Object.keys(aktivitaetProTag()).length,
     sessions: st.sessions.length,
     proThema, tage14,
     analyse: bewerteRows(rows),

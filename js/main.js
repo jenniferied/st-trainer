@@ -357,6 +357,14 @@ function bindUebe() {
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
     sprache: C.state().settings.sprache || "schwer",
   }));
+  // Unterthema-Runde (Jennifer 22.07.): der kleine Blitz an jeder Zeile der
+  // Beherrschungs-Liste — 10 smarte Karten aus genau diesem Unterthema.
+  app.querySelectorAll("[data-uebe-unter]").forEach((b) => b.onclick = () => starte({
+    modus: "eigene", anzahl: 10, auswahl: "smart", unterthemen: JSON.parse(b.dataset.uebeUnter),
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+    sprache: C.state().settings.sprache || "schwer",
+    paraphrase: true,
+  }));
 }
 
 // ---- Uebungs-Kalender + Trend (Block C NextGen, ueberarbeitet nach Jennifers
@@ -398,71 +406,115 @@ function heatmapHtml(tz) {
     } else if (zukunft) {
       cls = "hm-fut"; inhalt = datum; tip = `${wtag} ${datum}`;
     } else {
-      cls = `hm-s${stufe(e.n)}`;
+      const s = stufe(e.n);
+      cls = `hm-s${s}`;
       // Vergangene Tage: Anzahl geuebter Karten statt Datum; heute ohne Karten
-      // zeigt noch das Datum (der Tag laeuft ja noch)
-      inhalt = e.n ? String(e.n) : (istHeute ? datum : "");
-      tip = `${wtag} ${datum}: ${e.n} Karten` + (e.n ? ` · ${Math.round((100 * e.voll) / e.n)} % voll richtig` : "");
+      // zeigt noch das Datum (der Tag laeuft ja noch). Ruhetage kriegen einen
+      // freundlichen Smiley statt einer leeren Zelle (Jennifer 22.07.) — Pause
+      // ist Teil des Plans, nicht ein Loch im Kalender.
+      inhalt = e.n ? (s === 4 ? `${e.n}<b class="hm-stern">⭐</b>` : String(e.n))
+        : (istHeute ? datum : `<span class="hm-ruhe">😴</span>`);
+      tip = e.n
+        ? `${wtag} ${datum}: ${e.n} Karten · ${Math.round((100 * e.voll) / e.n)} % voll richtig${s === 4 ? " — Streckziel geknackt!" : ""}`
+        : `${wtag} ${datum} — Ruhetag`;
     }
     zellen.push(`<span class="hm-zelle ${cls}${istHeute ? " hm-heute" : ""}" title="${tip}">${inhalt}</span>`);
   }
 
-  // ---- Doppel-Trend: geuebt/Tag vs. davon voll richtig, 7 Tage geglaettet,
-  // ab heute als flache Prognose mit dem aktuellen Schnitt weitergezeichnet.
+  // ---- Zwei getrennte Charts mit gemeinsamer Zeitachse (Jennifer 22.07.):
+  //   1. MENGE  — Karten/Tag als 3- und 7-Tage-Schnitt im Zielband
+  //   2. QUALITAET — Punktequote ueber die letzten 5 Uebungstage
+  // Bewusst nicht mehr in EINEM Bild: "geuebte Karten" und "Prozent richtig"
+  // haben verschiedene Einheiten, und zwei Linien in Terracotta/Gruen sind bei
+  // Rotblindheit kaum zu trennen. Getrennte Charts mit je einer Farbe und
+  // eigener Beschriftung loesen beides.
   const tage = [];
   for (let d = new Date(Math.min(erster, heute.getTime())); d.getTime() <= heute.getTime(); d.setDate(d.getDate() + 1)) {
     const e = akt[d.getTime()] || { n: 0, voll: 0 };
     tage.push({ ts: d.getTime(), n: e.n, voll: e.voll });
   }
-  const glatt = (feld) => tage.map((_, i) => {
-    const s = tage.slice(Math.max(0, i - 6), i + 1);
+  const glatt = (feld, fenster) => tage.map((_, i) => {
+    const s = tage.slice(Math.max(0, i - (fenster - 1)), i + 1);
     return s.reduce((a, t) => a + t[feld], 0) / s.length;
   });
-  const gN = glatt("n"), gV = glatt("voll");
-  const W = 340, H = 128, spanne = Math.max(1, ende.getTime() - tage[0].ts);
-  const maxY = Math.max(92, ...gN, ...gV);
+  const g3 = glatt("n", 3), g7 = glatt("n", 7);
+  const W = 340, spanne = Math.max(1, ende.getTime() - tage[0].ts);
   const px = (ts) => 26 + ((ts - tage[0].ts) / spanne) * (W - 34);
-  const py = (v) => H - 20 - (v / maxY) * (H - 32);
-  const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
-  // Prognose aus der Verbesserungsrate (Jennifer 21.07.): lineare Steigung der
-  // letzten bis zu 14 geglaetteten Tage, ab heute gestrichelt fortgeschrieben.
-  const steigung = (reihe) => {
-    const s = reihe.slice(-14);
-    if (s.length < 3) return 0;
-    const n = s.length, mx = (n - 1) / 2, my = s.reduce((a, b) => a + b, 0) / n;
-    let zaehler = 0, nenner = 0;
-    s.forEach((y, i) => { zaehler += (i - mx) * (y - my); nenner += (i - mx) * (i - mx); });
-    return nenner ? zaehler / nenner : 0; // Karten pro Tag Veraenderung
-  };
-  const restTage = Math.max(1, (ende.getTime() - heute.getTime()) / 86400000);
-  const klemm = (v) => Math.max(0, Math.min(maxY, v));
-  const nJetzt = gN[gN.length - 1], vJetzt = gV[gV.length - 1];
-  const nProg = klemm(nJetzt + steigung(gN) * restTage);
-  const vProg = Math.min(klemm(vJetzt + steigung(gV) * restTage), nProg); // richtig kann geuebt nie ueberholen
   const hx = px(heute.getTime()).toFixed(1), ex = px(ende.getTime()).toFixed(1);
-  const quote = tage.length && nJetzt > 0 ? Math.round((100 * vJetzt) / nJetzt) : null;
-  const raster = [20, 40, 60, 80].filter((v) => v < maxY).map((v) =>
-    `<line x1="26" y1="${py(v).toFixed(1)}" x2="${W - 8}" y2="${py(v).toFixed(1)}" stroke="var(--line)" stroke-width="${v === 60 || v === 80 ? 1.1 : 0.5}" ${v === 60 || v === 80 ? 'stroke-dasharray="5 4"' : ""} opacity="${v === 60 || v === 80 ? ".8" : ".45"}"/>
-     <text x="22" y="${(py(v) + 3).toFixed(1)}" text-anchor="end" class="kt-tick"${v === 60 || v === 80 ? ' font-weight="700"' : ""}>${v}</text>`).join("");
-  return `<div class="card hm-card">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
-      <span class="muted" style="margin-left:auto;font-size:.8rem">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
-    <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
-    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, gold = Streckziel), kommende Tage das Datum. Leere Tage sind einfach grau — jeder Tag startet neu.</p>
-    <svg viewBox="0 0 ${W} ${H}" class="hm-trend" role="img" aria-label="Geuebte und richtige Karten pro Tag, mit Prognose bis zur Klausur">
+
+  // ---- Chart 1: Menge (Karten/Tag) ----
+  const H1 = 116;
+  const maxY = Math.max(tz.stretch + 20, ...g3, ...g7);
+  const py = (v) => H1 - 20 - (v / maxY) * (H1 - 30);
+  const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
+  // Prognose (Jennifer 22.07.): flach mit dem aktuellen 7-Tage-Schnitt weiter —
+  // "wenn du so weitermachst". Die alte lineare Steigungs-Extrapolation vom 21.07.
+  // hat "du musst immer mehr schaffen" erzaehlt; die Botschaft ist aber Konstanz.
+  const nJetzt = g7[g7.length - 1];
+  // Zielband = Tagespensum bis Streckziel, dieselben Zonen wie die Tagesziel-Bar
+  const bandOben = py(Math.min(maxY, tz.stretch)), bandUnten = py(tz.ziel);
+  // Zukunfts-Schleier rechts von heute: erklaert die leere Flaeche, ohne dort
+  // etwas zu behaupten. Beide Charts benutzen ihn — gleiche Zeitachse, gleiche Optik.
+  const zukunftFeld = (hoehe, y0 = 0) =>
+    `<rect x="${hx}" y="${y0}" width="${Math.max(0, W - 8 - +hx).toFixed(1)}" height="${hoehe}" fill="var(--ink-soft)" opacity=".05"/>`;
+  const raster = `${zukunftFeld(H1 - 18 - 6, 6)}
+    <rect x="26" y="${bandOben.toFixed(1)}" width="${W - 34}" height="${(bandUnten - bandOben).toFixed(1)}"
+      fill="var(--ok)" opacity=".18"/>
+    <line x1="26" y1="${bandOben.toFixed(1)}" x2="${W - 8}" y2="${bandOben.toFixed(1)}" stroke="var(--ok)" stroke-width="1" opacity=".4"/>
+    <line x1="26" y1="${py(tz.ziel).toFixed(1)}" x2="${W - 8}" y2="${py(tz.ziel).toFixed(1)}" stroke="var(--ok)" stroke-width="1.2" opacity=".7"/>
+    <line x1="26" y1="${py(tz.minimum).toFixed(1)}" x2="${W - 8}" y2="${py(tz.minimum).toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="22" y="${(py(tz.ziel) + 3).toFixed(1)}" text-anchor="end" class="kt-tick" font-weight="700">${tz.ziel}</text>
+    <text x="22" y="${(py(tz.minimum) + 3).toFixed(1)}" text-anchor="end" class="kt-tick">${tz.minimum}</text>`;
+  const mengeSvg = `<svg viewBox="0 0 ${W} ${H1}" class="hm-trend" role="img" aria-label="Geuebte Karten pro Tag im 3- und 7-Tage-Schnitt, mit dem Zielband">
       ${raster}
-      <line x1="${hx}" y1="8" x2="${hx}" y2="${H - 18}" stroke="var(--line)" stroke-width="1"/>
-      <polyline points="${pfad(gN)}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-      <polyline points="${pfad(gV)}" fill="none" stroke="var(--ok)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-      <line x1="${hx}" y1="${py(nJetzt).toFixed(1)}" x2="${ex}" y2="${py(nProg).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.5" opacity=".6"/>
-      <line x1="${hx}" y1="${py(vJetzt).toFixed(1)}" x2="${ex}" y2="${py(vProg).toFixed(1)}" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.4" opacity=".6"/>
-      <circle cx="${hx}" cy="${py(nJetzt).toFixed(1)}" r="2.8" fill="var(--accent)"/>
-      <circle cx="${hx}" cy="${py(vJetzt).toFixed(1)}" r="2.6" fill="var(--ok)"/>
-      <text x="26" y="${H - 5}" class="kt-tick">${fmtDatumKurz(new Date(tage[0].ts))}</text>
-      <text x="${hx}" y="${H - 5}" text-anchor="middle" class="kt-tick">heute</text>
-      <text x="${W - 8}" y="${H - 5}" text-anchor="end" class="kt-tick">18.9. 🎓</text>
-    </svg>
-    <p class="muted tz-note"><span style="color:var(--accent);font-weight:700">—</span> geübte Karten/Tag · <span style="color:var(--ok);font-weight:700">—</span> davon voll richtig${quote != null ? ` (aktuell ${quote} %)` : ""} — je näher die Linien zusammen, desto besser sitzt der Stoff. Die gestrichelten Marken bei <b>60</b> und <b>80</b> sind die Wunsch-Zone; gestrichelt ab heute läuft die Prognose mit deiner aktuellen Verbesserungsrate weiter.</p>
+      <line x1="${hx}" y1="6" x2="${hx}" y2="${H1 - 18}" stroke="var(--line)" stroke-width="1"/>
+      <polyline points="${pfad(g3)}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".4" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${pfad(g7)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${hx}" y1="${py(nJetzt).toFixed(1)}" x2="${ex}" y2="${py(nJetzt).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.4" opacity=".55"/>
+      <circle cx="${hx}" cy="${py(nJetzt).toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"/>
+      <text x="${W - 8}" y="${(py(nJetzt) - 7).toFixed(1)}" text-anchor="end" class="kt-wert">${Math.round(nJetzt)} Karten/Tag</text>
+      <text x="26" y="${H1 - 5}" class="kt-tick">${fmtDatumKurz(new Date(tage[0].ts))}</text>
+      <text x="${hx}" y="${H1 - 5}" text-anchor="middle" class="kt-tick">heute</text>
+      <text x="${W - 8}" y="${H1 - 5}" text-anchor="end" class="kt-tick">18.9. 🎓</text>
+    </svg>`;
+
+  // ---- Chart 2: Qualitaet (Punktequote je Uebungstag, 5-Tage-Schnitt) ----
+  const qTage = C.qualProTag();
+  const qVerlauf = C.qualVerlauf(qTage);
+  let qualiSvg = "", qualiText = "";
+  if (qVerlauf.length >= 2) {
+    const H2 = 78;
+    // Achse startet bei 40 (oder tiefer, wenn noetig) statt bei 0: die spannende
+    // Zone ist 50-100, und darunter wuerde die Linie zum flachen Strich gequetscht.
+    const qMin = Math.min(40, ...qVerlauf.map((p) => Math.floor(p.quote / 10) * 10 - 5));
+    const qy = (v) => H2 - 16 - ((v - qMin) / (100 - qMin)) * (H2 - 26);
+    const qPunkte = qVerlauf.map((p) => `${px(p.ts).toFixed(1)},${qy(p.quote).toFixed(1)}`).join(" ");
+    const letzte = qVerlauf[qVerlauf.length - 1];
+    const lx = px(letzte.ts);
+    qualiSvg = `<svg viewBox="0 0 ${W} ${H2}" class="hm-trend" role="img" aria-label="Punktequote im Schnitt der letzten ${C.QUAL_FENSTER} Uebungstage">
+      ${zukunftFeld(H2 - 14 - 4, 4)}
+      <rect x="26" y="${qy(100).toFixed(1)}" width="${W - 34}" height="${(qy(75) - qy(100)).toFixed(1)}" fill="var(--ok)" opacity=".12"/>
+      <line x1="26" y1="${qy(50).toFixed(1)}" x2="${W - 8}" y2="${qy(50).toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="26" y1="${qy(75).toFixed(1)}" x2="${W - 8}" y2="${qy(75).toFixed(1)}" stroke="var(--ok)" stroke-width="1.2" opacity=".6"/>
+      <text x="22" y="${(qy(50) + 3).toFixed(1)}" text-anchor="end" class="kt-tick">50</text>
+      <text x="22" y="${(qy(75) + 3).toFixed(1)}" text-anchor="end" class="kt-tick" font-weight="700">75</text>
+      <line x1="${hx}" y1="4" x2="${hx}" y2="${H2 - 14}" stroke="var(--line)" stroke-width="1"/>
+      <polyline points="${qPunkte}" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${lx.toFixed(1)}" cy="${qy(letzte.quote).toFixed(1)}" r="3" fill="var(--ok)" stroke="var(--card)" stroke-width="1.5"/>
+      <text x="${W - 8}" y="${(qy(letzte.quote) - 7).toFixed(1)}" text-anchor="end" class="kt-wert" fill="var(--ok)">${letzte.quote} %</text>
+    </svg>`;
+    qualiText = `<p class="muted tz-note"><b>Wie sicher es sitzt:</b> Punktequote im Schnitt deiner letzten ${C.QUAL_FENSTER} Übungstage — aktuell <b>${letzte.quote} %</b>. Ruhetage zählen nicht mit, eine Pause drückt die Linie also nie. <b>50</b> ist die Bestehensgrenze, ab <b>75</b> bist du im sicheren Bereich.</p>`;
+  }
+
+  return `<div class="card hm-card">
+    <div class="hm-head"><h3>📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
+      <span class="muted hm-rest">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
+    <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
+    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, <b>gold ⭐ = Streckziel</b>), kommende Tage das Datum. 😴 heißt Ruhetag — die sind eingeplant, jeder Tag startet neu.</p>
+    <p class="hm-sub">Wie viel du übst</p>
+    ${mengeSvg}
+    <p class="muted tz-note">Karten pro Tag: <span class="hm-key stark"></span> Schnitt der letzten 7 Tage, <span class="hm-key fein"></span> der letzten 3 Tage. Das grüne Band ist dein Tagespensum (${tz.ziel}–${tz.stretch}), die gestrichelte Linie unten der Boden für zähe Tage (${tz.minimum}). Ab heute gestrichelt: so läuft es weiter, <b>wenn du dein aktuelles Tempo hältst</b> — es geht nicht um immer mehr, sondern um dranbleiben.</p>
+    ${qualiSvg ? `<p class="hm-sub">Wie gut es sitzt</p>${qualiSvg}${qualiText}` : ""}
   </div>`;
 }
 
@@ -2157,11 +2209,13 @@ function statInhaltHtml() {
   const st = C.statistik();
   const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
   const pkt = (v) => `${v.pkt}/${v.maxSchnitt} P.`;
-  // Beherrschungs-Schema (Jennifer 21.07., 2. Runde): Trenner in JEDEM Balken
-  // bei 50 % (Bestehensgrenze), 75 % (sicherer Bereich) und 90 % (besteht auf
-  // jeden Fall). Fuellfarbe: rot unter 50, gelb ab 50, gruen ab 90.
-  // Sprachregel bleibt: "noch offen", nie "schwach".
-  const quotenFarbe = (q) => q == null ? "var(--line)" : q < 50 ? "var(--bad)" : q < 90 ? "#d9b93a" : "var(--ok)";
+  // Beherrschungs-Schema (Jennifer 21.07., Feinschliff 22.07.): Trenner in JEDEM
+  // Balken bei 50 % (Bestehensgrenze), 75 % (sicherer Bereich) und 90 % (besteht
+  // auf jeden Fall). Fuellfarbe: rot unter 50, gelb ab 50, GRUEN AB 85 — die
+  // Farbe belohnt schon kurz vor der Medaille, die Siegel bleiben strenger
+  // (Haken ab 75, Medaille erst ab 90: 90 ist die ehrliche "sicher bestanden"-Marke).
+  const GRUEN_AB = 85;
+  const quotenFarbe = (q) => q == null ? "var(--line)" : q < 50 ? "var(--bad)" : q < GRUEN_AB ? "#d9b93a" : "var(--ok)";
   const siegel = (q) => q == null ? ""
     : q >= 90 ? `<span class="siegel gold" title="ab 90 % — besteht auf jeden Fall">🏅</span>`
     : q >= 75 ? `<span class="siegel gut" title="ab 75 % — sicherer Bereich">✓</span>`
@@ -2169,64 +2223,65 @@ function statInhaltHtml() {
   const markenBar = (quote, thin = false) => `<span class="bar mit-marke${thin ? " thin" : ""}">
     <i style="width:${quote ?? 0}%;background:${quotenFarbe(quote)}"></i>
     <em class="bar-marke m50" style="left:50%"></em><em class="bar-marke m75" style="left:75%"></em><em class="bar-marke m90" style="left:90%"></em></span>`;
+  // Entwicklung je Thema (Jennifer 22.07.): wandert als kleiner Pfeil direkt in
+  // die Themenzeile, statt weiter unten eine eigene Sektion zu belegen.
+  const ew = st.entwicklung;
+  const ewProThema = {};
+  for (const t of ew.proThema) ewProThema[t.thema] = t;
+  const ewPfeil = (slug) => {
+    const t = ewProThema[slug];
+    if (!t) return "";
+    const cls = t.delta >= 5 ? "up" : t.delta <= -5 ? "down" : "";
+    const pfeil = t.delta >= 5 ? "▲" : t.delta <= -5 ? "▽" : "→";
+    return `<span class="delta ${cls}" title="Letzte ${ew.fenster} Übungstage: ${t.vorher} % → ${t.jetzt} %">${pfeil} ${t.delta > 0 ? "+" : ""}${t.delta}</span>`;
+  };
+  // Wacklige Unterthemen (unter 50 %, mind. 3 echte Versuche) — nicht mehr als
+  // eigener Block, sondern dezent an genau der Kategorie, um die es geht.
+  const rote = new Map();
+  for (const tt of st.proThema)
+    for (const s of tt.unterthemen)
+      if (s.n >= 3 && s.quote != null && s.quote < 50) rote.set(tt.slug + "/" + s.u, { label: labelU(s.u), quote: s.quote });
   // Pro Thema: aufklappbar bis auf die Unterthemen (Beherrschung + Ø Punkte + Ø Zeit)
   const themenRows = st.proThema.map((tt) => {
     const t = C.THEMEN[tt.slug] || { name: tt.slug, color: "var(--ink-soft)" };
     // Balken = Punktequote, exakt wie die Zahl daneben — mit denselben Trennern
-    // auch in jeder Unterkategorie
-    const subRows = tt.unterthemen.map((s) => `<div class="progress-row sub">
+    // auch in jeder Unterkategorie. Je Zeile ein kleiner Uebe-Knopf: wacklige
+    // Unterthemen starten die Fokus-Runde (Schwerstes zuerst), alle anderen
+    // eine normale 10er-Runde zu genau diesem Unterthema.
+    const subRows = tt.unterthemen.map((s) => {
+      const key = tt.slug + "/" + s.u;
+      const istRot = rote.has(key);
+      return `<div class="progress-row sub${istRot ? " ist-wacklig" : ""}">
         <span class="lbl">${esc(labelU(s.u))} ${siegel(s.quote)} <small class="muted">${s.n}×</small></span>
         ${markenBar(s.quote, true)}
-        <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span></div>`).join("");
+        <span class="val">${s.quote}%<small>${pkt(s)}${s.zeit != null ? " · " + fmtSek(s.zeit) : ""}</small></span>
+        <button class="ueb-mini${istRot ? " rot" : ""}" ${istRot ? `data-rot='${JSON.stringify([key])}'` : `data-uebe-unter='${JSON.stringify([key])}'`}
+          title="10 Karten ${esc(labelU(s.u))} üben" aria-label="10 Karten ${esc(labelU(s.u))} üben">⚡</button></div>`;
+    }).join("");
+    const roteImThema = [...rote.keys()].filter((k) => k.startsWith(tt.slug + "/"));
     return `<details class="topic" style="--tc:${t.color}">
-      <summary><span class="lbl">${t.name} ${siegel(tt.quote)}</span>
+      <summary><span class="lbl">${t.name} ${siegel(tt.quote)}${roteImThema.length ? `<span class="wackel-punkt" title="${roteImThema.length} wacklige${roteImThema.length === 1 ? "s" : ""} Unterthema">●</span>` : ""}</span>
         ${markenBar(tt.quote)}
-        <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span></summary>
-      <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte mit den 50/75/90-Trennern, n× = Versuche, dann Ø Punkte & Ø Zeit. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}</div>
+        <span class="val">${tt.quote != null ? tt.quote + " %" : "–"}<small>${tt.n}× · ${pkt(tt)}${tt.zeit != null ? " · " + fmtSek(tt.zeit) : ""}</small></span>
+        ${ewPfeil(tt.slug)}</summary>
+      <div class="sub-wrap"><p class="muted sub-head">Gleiche Logik je Unterthema: Balken & %-Zahl = geholte Punkte mit den 50/75/90-Trennern, n× = Versuche, dann Ø Punkte & Ø Zeit. ⚡ startet 10 Karten zu genau der Zeile. Unterthemen ohne Versuche tauchen noch nicht auf.</p>${subRows}
+        <div class="topic-tools">
+          <button class="btn small ghost" data-uebe="${tt.slug}">⚡ 10 Karten aus ${esc(t.name)}</button>
+          ${roteImThema.length ? `<button class="btn small ghost rot" data-rot='${JSON.stringify(roteImThema)}'>🔴 10 Karten aus den wackligen Stellen</button>` : ""}
+        </div></div>
     </details>`;
   }).join("");
-  // Trend: Punktequote der letzten Sitzungen als Mini-Verlauf
-  const tr = st.trend;
-  let trendHtml = "";
-  if (tr.genug) {
-    const qs = tr.proSession.map((s) => s.quote);
-    const mx = Math.max(60, ...qs), mn = Math.min(40, ...qs);
-    const bars = tr.proSession.map((s) => {
-      const hoehe = Math.round((100 * (s.quote - mn)) / Math.max(1, mx - mn));
-      return `<div class="tr-col" title="${MODUS_LBL[s.modus] || s.modus}: ${s.punkte}/${s.max} (${s.quote} %)">
-        <span class="tr-q">${s.quote}%</span><i style="height:${Math.max(6, hoehe)}%;--tc:${s.bestanden ? "var(--ok)" : "var(--bad)"}"></i>
-        <span class="tr-lbl">${(MODUS_LBL[s.modus] || s.modus).replace(/^\S+\s/, "").slice(0, 8)}</span></div>`;
-    }).join("");
-    const satz = tr.richtung === "hoch" ? `Aufwärts — zuletzt +${tr.delta} Punkte gegenüber vorher. Weiter so! 🎉`
-      : tr.richtung === "runter" ? `Zuletzt ${tr.delta} Punkte unter dem Schnitt davor — erst ${tr.proSession.length} Runden, das schwankt noch. Kein Grund zur Sorge.`
-      : `Stabil um die ${Math.round(tr.proSession.reduce((a, s) => a + s.quote, 0) / tr.proSession.length)} %.`;
-    trendHtml = `<div class="card"><h3>Trend 📈</h3><div class="trend-chart">${bars}</div><p class="muted" style="margin-bottom:0">${satz}</p>
-      <p class="muted tz-note" style="margin:6px 0 0">Jede Säule = eine abgeschlossene Runde (älteste links): Höhe & Zahl = Punktequote, grün = bestanden.</p></div>`;
-  } else if (st.sessions >= 1) {
-    trendHtml = `<div class="card"><h3>Trend 📈</h3><p class="muted" style="margin:0">Nach der zweiten abgeschlossenen Runde zeigt sich hier dein Verlauf.</p></div>`;
-  }
-  // "Werde ich besser?" — frueher vs. jetzt, je Thema. Immer ermutigend gerahmt.
-  const ew = st.entwicklung;
-  let ewHtml = "";
-  if (ew.gesamt || ew.proThema.length) {
-    const teile = [];
-    if (ew.gesamt) {
-      const g = ew.gesamt;
-      const satz = g.delta >= 5 ? `<b>Du wirst messbar besser:</b> früher ${g.vorher} %, zuletzt ${g.jetzt} % — <span class="delta up">+${g.delta} Punkte</span>. Weiter genau so! 🎉`
-        : g.delta <= -5 ? `Zuletzt ${g.jetzt} % nach ${g.vorher} % davor. Meist heißt das: du übst gerade mutig die schweren Themen — genau richtig vor der Klausur.`
-        : `<b>Stabil:</b> ${g.vorher} % → ${g.jetzt} %. Sicherheit, auf die du bauen kannst.`;
-      teile.push(`<p class="an-zeile">${satz}</p>`);
-    }
-    const rows = ew.proThema.map((t) => {
-      const n = (C.THEMEN[t.thema] || { name: t.thema }).name;
-      const cls = t.delta >= 5 ? "up" : t.delta <= -5 ? "down" : "";
-      const pfeil = t.delta >= 5 ? "▲" : t.delta <= -5 ? "▽" : "→";
-      return `<div class="ew-row"><span class="lbl" style="--tc:${(C.THEMEN[t.thema] || {}).color || "var(--ink-soft)"}">${esc(n)}</span>
-        <span class="muted">${t.vorher} % → ${t.jetzt} %</span>
-        <span class="delta ${cls}">${pfeil} ${t.delta > 0 ? "+" : ""}${t.delta}</span></div>`;
-    }).join("");
-    if (rows) teile.push(`<p class="muted" style="margin:8px 0 4px">Je Thema: deine ältere Hälfte der Antworten gegen die neuere — steigt der Wert, sitzt das Thema zunehmend.</p>${rows}`);
-    ewHtml = `<div class="card"><h3>Werde ich besser? 📈</h3>${teile.join("")}</div>`;
+  // "Werde ich besser?" hat keine eigene Sektion mehr (Jennifer 22.07.): der
+  // Gesamt-Satz steht jetzt ueber den Themen, die Themen-Deltas als Pfeil in der
+  // jeweiligen Zeile. Der alte Balken-Trend (eine Saeule je Runde) ist raus — er
+  // verglich Runden verschiedener Laenge und Schwierigkeit miteinander.
+  let ewSatz = "";
+  if (ew.gesamt) {
+    const g = ew.gesamt;
+    ewSatz = g.delta >= 5 ? `<b>Es wird besser:</b> die ${ew.fenster} Übungstage davor ${g.vorher} %, deine letzten ${ew.fenster} <b>${g.jetzt} %</b> — <span class="delta up">+${g.delta}</span>. Weiter genau so! 🎉`
+      : g.delta <= -5 ? `Zuletzt <b>${g.jetzt} %</b> nach ${g.vorher} % an den ${ew.fenster} Übungstagen davor. Meist heißt das: du übst gerade mutig die schweren Sachen — genau richtig jetzt.`
+      : `<b>Stabil bei ${g.jetzt} %</b> über deine letzten ${ew.fenster} Übungstage (davor ${g.vorher} %). Sicherheit, auf die du bauen kannst.`;
+    ewSatz = `<p class="an-zeile ew-satz">${ewSatz}</p>`;
   }
   const maxTag = Math.max(1, ...st.tage14.map((d) => d.n));
   const karten14 = st.tage14.reduce((a, d) => a + d.n, 0);
@@ -2246,28 +2301,11 @@ function statInhaltHtml() {
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
     <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="stat-sek">Beherrschung nach Thema</h2>
-    ${(() => {
-      // Rote Bereiche (unter 50 %, mind. 3 echte Versuche) direkt uebbar:
-      // ein Sammel-Button + ein Chip je wackligem Unterthema (Jennifer 21.07.).
-      const rote = [];
-      for (const tt of st.proThema)
-        for (const s of tt.unterthemen)
-          if (s.n >= 3 && s.quote != null && s.quote < 50)
-            rote.push({ key: tt.slug + "/" + s.u, label: labelU(s.u), quote: s.quote });
-      if (!rote.length) return "";
-      rote.sort((a, b) => a.quote - b.quote);
-      const alle = JSON.stringify(rote.map((r) => r.key));
-      return `<div class="card rot-uebung">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>🔴 Wackel-Runde</b>
-          <span class="muted" style="font-size:.82rem">10 Karten, Schwerstes zuerst — genau da, wo es noch rot ist.</span></div>
-        <button class="btn small" data-rot='${alle}' style="margin:8px 0 6px">⚡ 10 Karten aus allen roten Bereichen</button>
-        <div class="rot-chips">${rote.map((r) => `<button class="tag-hebel tag-rot" data-rot='${JSON.stringify([r.key])}' title="10 Karten ${esc(r.label)} üben">${esc(r.label)} ${r.quote} % ›</button>`).join(" ")}</div>
-      </div>`;
-    })()}
-    <div class="card"><p class="muted" style="margin-top:0">Antippen zum Aufklappen. Balken & %-Zahl = Ø Punktequote. Trenner in jedem Balken: <b>50 %</b> Bestehensgrenze · <b>75 %</b> sicherer Bereich · <b>90 %</b> besteht auf jeden Fall. Füllung: <span class="siegel rot">!</span> rot unter 50 · gelb ab 50 · grün ab 90, <span class="siegel gut">✓</span> ab 75 · <span class="siegel gold">🏅</span> ab 90.</p>${themenRows}</div>
-    <h2 class="stat-sek">Entwicklung</h2>
-    ${ewHtml}
-    ${trendHtml}
+    <div class="card">${ewSatz}
+      ${rote.size ? `<div class="wackel-zeile"><span><b>🔴 ${rote.size} wacklige ${rote.size === 1 ? "Stelle" : "Stellen"}</b> — sie sind unten mit ● markiert.</span>
+        <button class="btn small" data-rot='${JSON.stringify([...rote.keys()])}'>⚡ 10 Karten daraus üben</button></div>` : ""}
+      <p class="muted" style="margin-top:${ewSatz || rote.size ? "10px" : "0"}">Antippen zum Aufklappen, ⚡ startet 10 Karten dazu. Balken = Ø Punktequote, der Pfeil rechts vergleicht deine letzten ${ew.fenster} Übungstage mit den ${ew.fenster} davor.</p>
+      <p class="muted tz-note" style="margin:0 0 10px">Trenner im Balken: <b>50 %</b> Bestehensgrenze · <b>75 %</b> sicherer Bereich · <b>90 %</b> besteht auf jeden Fall. Füllung rot unter 50, gelb ab 50, grün ab 85. Siegel <span class="siegel rot">!</span> unter 50 · <span class="siegel gut">✓</span> ab 75 · <span class="siegel gold">🏅</span> ab 90.</p>${themenRows}</div>
     <h2 class="stat-sek">Aktivität</h2>
     <div class="card"><h3>Letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
       <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & die Trainings-Spiele.</p></div>`

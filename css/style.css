@@ -981,7 +981,7 @@ button.ans:disabled { cursor: default; }
 .hm-s1 { background: color-mix(in srgb, var(--ok) 26%, var(--card)); color: var(--ink); }
 .hm-s2 { background: color-mix(in srgb, var(--ok) 50%, var(--card)); color: var(--ink); }
 .hm-s3 { background: color-mix(in srgb, var(--ok) 76%, var(--card)); color: #fff; }
-.hm-s4 { background: var(--ok); color: #fff; box-shadow: 0 0 6px color-mix(in srgb, #d4a017 55%, transparent); }
+.hm-s4 { background: linear-gradient(135deg, #e8b923, #c8930d); color: #fff; box-shadow: 0 0 8px color-mix(in srgb, #d4a017 60%, transparent); }
 .hm-fut { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--line) 85%, transparent); font-weight: 400; }
 .hm-exam { background: color-mix(in srgb, #d4a017 16%, var(--card)); border: 1.5px solid #d4a017; font-size: 1rem; }
 .hm-heute { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--accent); font-weight: 700; }
@@ -1068,10 +1068,16 @@ button.ans:disabled { cursor: default; }
 /* Kalender kleiner + Zonen-Farben wie die Tagesziel-Bar (Jennifer 21.07., 2. Runde) */
 .hm-kal { gap: 3px; }
 .hm-zelle { aspect-ratio: auto; height: 34px; border-radius: 8px; font-size: .66rem; font-weight: 600; }
-.hm-s1 { background: color-mix(in srgb, #e08a2e 45%, var(--card)); color: var(--ink); }
-.hm-s2 { background: color-mix(in srgb, #d9b93a 55%, var(--card)); color: var(--ink); }
+.hm-s1 { background: color-mix(in srgb, #e08a2e 60%, var(--card)); color: var(--ink); }
+.hm-s2 { background: color-mix(in srgb, #d9b93a 72%, var(--card)); color: var(--ink); }
 .hm-s3 { background: color-mix(in srgb, var(--ok) 62%, var(--card)); color: #fff; }
-.hm-s4 { background: linear-gradient(135deg, var(--ok), #d4a017); color: #fff; box-shadow: 0 0 6px color-mix(in srgb, #d4a017 55%, transparent); }
+/* Streckziel = eindeutig GOLD (Jennifer 22.07.): der alte Gruen-Gold-Verlauf las
+   sich wie "irgendwo zwischen gut und mittel" — dabei ist es der beste Tag. */
+.hm-s4 {
+  background: linear-gradient(135deg, #e8b923, #c8930d); color: #fff;
+  box-shadow: 0 0 0 1.5px #b98708 inset, 0 0 8px color-mix(in srgb, #d4a017 65%, transparent);
+  text-shadow: 0 1px 1px rgba(80, 55, 0, .35);
+}
 .hm-exam { font-size: .9rem; }
 
 /* 50/75/90-Trenner in den Beherrschungs-Balken */
@@ -1081,7 +1087,52 @@ button.ans:disabled { cursor: default; }
 .bar.thin .bar-marke { top: -1px; bottom: -1px; }
 .siegel.rot { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
 
-/* Wackel-Runde: rote Bereiche direkt ueben */
-.rot-uebung { border-left: 3px solid var(--bad); }
-.rot-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag-rot { background: var(--bad-bg); color: var(--bad); }
+/* Wackel-Runde (Jennifer 22.07. neu): keine eigene Karte mehr, sondern eine
+   schmale Zeile ueber den Themen + Markierung und Blitz an der Kategorie selbst. */
+.wackel-zeile {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: 8px 10px; border-radius: 10px; background: var(--bad-bg);
+  border-left: 3px solid var(--bad); font-size: .88rem;
+}
+.wackel-zeile > span { flex: 1 1 auto; min-width: 0; }
+.wackel-punkt { color: var(--bad); font-size: .7em; vertical-align: middle; margin-left: 4px; }
+.ew-satz { margin: 0 0 6px; }
+
+/* Kleiner Uebe-Blitz in jeder Unterthema-Zeile */
+.ueb-mini {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper-2); color: var(--ink-soft);
+  font-size: .82rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.ueb-mini:hover { background: var(--sel-bg); border-color: var(--accent); transform: translateY(-1px); }
+.ueb-mini.rot { background: var(--bad-bg); border-color: color-mix(in srgb, var(--bad) 45%, transparent); color: var(--bad); }
+.progress-row.sub.ist-wacklig .lbl { color: var(--bad); }
+/* Der Blitz nimmt Platz weg — Zahlenspalte etwas breiter, damit "1.5/2 P. · 18 s"
+   nicht mehr umbricht, und der Balken gibt dafuer nach. */
+.progress-row.sub .val { min-width: 76px; }
+.progress-row.sub .bar { flex: 1 1 28%; }
+@media (max-width: 460px) {
+  .progress-row.sub { gap: var(--sp-2); }
+  .ueb-mini { width: 27px; height: 27px; border-radius: 8px; }
+  .progress-row.sub .val { min-width: 62px; }
+}
+.topic-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.btn.small.ghost {
+  background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); font-weight: 600;
+}
+.btn.small.ghost.rot { background: var(--bad-bg); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+
+/* Chart-Beschriftung: Kopf, Zwischenueberschriften, direkte Wertlabels */
+.hm-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.hm-head h3 { margin: 0; }
+.hm-rest { margin-left: auto; font-size: .8rem; }
+.hm-sub { margin: 14px 0 0; font-size: .82rem; font-weight: 700; color: var(--ink-soft); }
+.kt-wert { font-size: 11px; font-weight: 700; fill: var(--accent); font-family: Karla, sans-serif; }
+.hm-key { display: inline-block; width: 14px; height: 0; vertical-align: middle; border-top: 2px solid var(--accent); }
+.hm-key.fein { border-top-width: 1px; opacity: .45; }
+.hm-ruhe { opacity: .45; font-size: .82em; }
+/* Am Desktop skaliert das SVG sonst auf ~2x und die Achsen-Beschriftung wird
+   riesig — die Charts sind fuer Handy-Breite gezeichnet. */
+@media (min-width: 640px) { .hm-trend { max-width: 480px; margin-inline: auto; } }
+.hm-stern { font-size: .62em; margin-left: 1px; font-weight: 400; }

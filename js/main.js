@@ -1371,9 +1371,21 @@ const sprachDraehte = () => {
   document.getElementById("abbruch").onclick = abbrechen;
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
 };
-// Im Wiedergeben-Ablauf (Paraphrase + Abstempeln) laeuft keine sichtbare Uhr
-// (Jennifer, 09.08.): getickt wird nur, wenn ein echter Countdown (Deadline)
-// gewaehlt wurde. Die Fragezeit wird still weiter verbucht (bankZeit).
+// Die Wiedergabe-Uebung (Paraphrase) ist Extra-Arbeit, keine Antwortzeit
+// (Jennifer, 09.08.): die Optionen sind noch nicht sichtbar, also haelt hier
+// auch ein gewaehlter Countdown an (eingefroren als restSek, Anzeige ⏸) und
+// die Fragezeit wird nicht verbucht. Weiter geht die Uhr erst bei den Antworten.
+function friereTimerEin() {
+  stopTimer(); qStart = null;
+  if (R.deadline) { R.restSek = Math.max(0, Math.round((R.deadline - Date.now()) / 1000)); delete R.deadline; C.save(); }
+  if (R.restSek != null && R.cfg.timerModus !== "aus") {
+    const el = document.getElementById("t-anzeige");
+    if (el) el.textContent = `⏸ ${fmtUhr(R.restSek)}`;
+  }
+}
+function tauTimerAuf() {
+  if (R.restSek != null && R.cfg.timerModus !== "aus") { R.deadline = Date.now() + R.restSek * 1000; delete R.restSek; C.save(); }
+}
 function zeigParaphrase() {
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
@@ -1387,10 +1399,11 @@ function zeigParaphrase() {
         <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter zu den Antworten ›</button></div>
       </div>
     </div></div>`);
-  qStart = Date.now(); if (R.deadline) startTick(); sprachDraehte();
+  friereTimerEin(); sprachDraehte();
   document.getElementById("paraOk").onclick = () => {
     r.para = document.getElementById("paraTxt").value.trim() || null;
-    r.paraDone = true; bankZeit(); C.save();
+    r.paraDone = true; C.save();
+    tauTimerAuf();
     zeigFrage();
   };
 }
@@ -1412,10 +1425,11 @@ function zeigSprach() {
           <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter ›</button></div>
         </div>
       </div></div>`);
-    qStart = Date.now(); if (R.deadline) startTick(); sprachDraehte();
+    friereTimerEin(); sprachDraehte();
     document.getElementById("paraOk").onclick = () => {
       r.para = document.getElementById("paraTxt").value.trim() || null;
-      r.paraDone = true; bankZeit(); C.save();
+      r.paraDone = true; C.save();
+      tauTimerAuf();
       zeigSprach();
     };
     return;

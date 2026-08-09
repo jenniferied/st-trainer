@@ -882,17 +882,23 @@ function waehleFragen(reps, n, strat) {
     return zieheGewichtet(pool, n, hart);
   }
 
-  // smart = Spaced Repetition: Fälliges/Wackliges zuerst, dann Neues, dann Bald-Fälliges
-  const SR_TAGE = [0, 1, 2, 4, 6, 9]; // Soll-Abstand in Tagen je Level 0-5; Level < 0 = sofort fällig
+  // smart = Spaced Repetition: Wackliges/Fälliges zuerst, dann Neues; Gemeistertes
+  // (Level >= 3) kommt erst NACH dem Neuen dran, auch wenn es fällig ist — Roses
+  // Wunsch (09.08.): wiederholen soll sich, was wackelt oder neu ist, Gekonntes
+  // immer seltener und später.
+  // Soll-Abstand in Tagen je Level 0-5; Level < 0 = sofort fällig. Max 14 Tage,
+  // damit vor der Klausur (18.09.) alles mindestens noch einmal vorbeikommt.
+  const SR_TAGE = [0, 1, 3, 5, 8, 14];
   const jetzt = Date.now();
-  const neu = [], faellig = [], bald = [];
+  const neu = [], faellig = [], faelligStark = [], bald = [];
   for (const q of reps) {
     const e = L[q.id];
     if (!e || !e.seen) { neu.push({ q }); continue; }
     const ueber = (jetzt - (e.ts || 0)) / 86400000 - SR_TAGE[Math.max(0, Math.min(5, e.lvl))];
-    (ueber >= 0 ? faellig : bald).push({ q, ueber, lvl: e.lvl });
+    (ueber < 0 ? bald : e.lvl >= 3 ? faelligStark : faellig).push({ q, ueber, lvl: e.lvl });
   }
   faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
+  faelligStark.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
   bald.sort((a, b) => b.ueber - a.ueber);
   // Neue Fragen nicht rein zufällig: Unterthemen, die in der Historie schwach waren,
   // bekommen bevorzugt UNGESEHENE Fragen. Die echte Klausur besteht aus lauter neuen
@@ -904,8 +910,8 @@ function waehleFragen(reps, n, strat) {
   neu.length = 0; neu.push(...neuSortiert);
   const out = [];
   const nimm = (arr, limit) => { for (const x of arr) { if (out.length >= limit) return; if (!out.includes(x.q)) out.push(x.q); } };
-  nimm(faellig, Math.ceil(n * 0.7)); // max ~70% Wiederholung, damit immer Neues dabei ist
-  nimm(neu, n); nimm(faellig, n); nimm(bald, n);
+  nimm(faellig, Math.ceil(n * 0.7)); // max ~70% wacklige Wiederholung, damit immer Neues dabei ist
+  nimm(neu, n); nimm(faellig, n); nimm(faelligStark, n); nimm(bald, n);
   return out.slice(0, n);
 }
 

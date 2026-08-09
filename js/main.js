@@ -344,8 +344,9 @@ function sternSchrittHtml(sich) {
 // die Selbsterklaerung ("Warum, glaubst du, war das falsch?") wie eingestellt —
 // locker mit Skip-Link (Standard) oder streng ohne (Einstellungen).
 function bindUebe() {
+  // data-uebe darf mehrere Themen tragen (kommagetrennt) — fuer den ST-I–III-Block
   app.querySelectorAll("[data-uebe]").forEach((b) => b.onclick = () => starte({
-    modus: "eigene", anzahl: 10, auswahl: "smart", themen: [b.dataset.uebe],
+    modus: "eigene", anzahl: 10, auswahl: "smart", themen: b.dataset.uebe.split(","),
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
     sprache: C.state().settings.sprache || "schwer",
     paraphrase: true,
@@ -623,11 +624,22 @@ function home() {
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="halbe"><b>🕧 Halbe Klausur</b><span>21 Fragen · Exam.UP-Look · pausierbar</span></button>
-      <button class="mode-card" data-go="spaced"><b>🧠 Schlaues Wiederholen</b><span>Spaced Repetition: Fälliges zuerst + Neues</span></button>
+      <button class="mode-card" data-go="spaced"><b>🧠 Schlaues Wiederholen</b><span>Nur Wackliges + Neues zuerst — Gekonntes kommt seltener und später</span></button>
       <button class="mode-card" data-go="schnell"><b>⚡ Schnelle 10er</b><span>10 Fragen, sofortiges Feedback</span></button>
       <button class="mode-card" data-go="fehler"><b>🔁 Fehler-Training</b><span>Nur Fragen, die noch wackeln</span></button>
       <button class="mode-card wide" data-go="sprach"><b>🗣 Sprachverständnis</b><span>Fragen knacken: erst paraphrasieren, dann jede Option einzeln beurteilen — entschärft NICHT-Fragen</span></button>
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
+    </div>
+
+    <h2 class="mt">Ein Thema üben</h2>
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="thema-uebe" data-uebe="schulrecht" style="--tc:var(--c-sr)">Schulrecht ›</button>
+        <button class="thema-uebe" data-uebe="schulqualitaet" style="--tc:var(--c-sq)">Schulqualität ›</button>
+        <button class="thema-uebe" data-uebe="unterricht-motivierend" style="--tc:var(--c-um)">Motivation ›</button>
+        <button class="thema-uebe" data-uebe="schultheorie-1,schultheorie-2,schultheorie-3" style="--tc:var(--c-st1)">Schultheorie I–III ›</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0;font-size:.8rem">Ein Tipp = 10 schlaue Karten nur aus dem Thema. Es kommt, was wackelt oder neu ist — was du kannst, kommt seltener und später wieder.</p>
     </div>
 
     <h2 class="mt">Stöbern</h2>

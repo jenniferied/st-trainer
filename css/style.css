@@ -1136,3 +1136,7 @@ button.ans:disabled { cursor: default; }
    riesig — die Charts sind fuer Handy-Breite gezeichnet. */
 @media (min-width: 640px) { .hm-trend { max-width: 480px; margin-inline: auto; } }
 .hm-stern { font-size: .62em; margin-left: 1px; font-weight: 400; }
+
+/* Themen-Schnellwahl auf Home: ein Tipp = 10 smarte Karten nur aus dem Thema */
+button.thema-uebe { border: 1.5px solid var(--tc, var(--ink-soft)); color: var(--tc, var(--ink)); background: transparent; border-radius: 999px; padding: 7px 13px; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+button.thema-uebe:active { background: var(--tc, var(--ink-soft)); color: #fff; }

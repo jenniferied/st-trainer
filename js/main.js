@@ -631,17 +631,6 @@ function home() {
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
     </div>
 
-    <h2 class="mt">Ein Thema üben</h2>
-    <div class="card">
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        <button class="thema-uebe" data-uebe="schulrecht" style="--tc:var(--c-sr)">Schulrecht ›</button>
-        <button class="thema-uebe" data-uebe="schulqualitaet" style="--tc:var(--c-sq)">Schulqualität ›</button>
-        <button class="thema-uebe" data-uebe="unterricht-motivierend" style="--tc:var(--c-um)">Motivation ›</button>
-        <button class="thema-uebe" data-uebe="schultheorie-1,schultheorie-2,schultheorie-3" style="--tc:var(--c-st1)">Schultheorie I–III ›</button>
-      </div>
-      <p class="muted" style="margin:8px 0 0;font-size:.8rem">Ein Tipp = 10 schlaue Karten nur aus dem Thema. Es kommt, was wackelt oder neu ist — was du kannst, kommt seltener und später wieder.</p>
-    </div>
-
     <h2 class="mt">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
 
@@ -975,12 +964,19 @@ function builder({ preset }) {
   const timerAn = istKlausur || preset === "halbe";   // Voreinstellung: Timer laeuft
   const fixAnzahl = istKlausur ? 42 : null;
   const nta = C.state().settings.nta;
+  // Beherrschung neben jeder Checkbox (Roses Wunsch 09.08.): dieselbe Punkte-
+  // quote wie in der Statistik-Sektion. Ohne echte Versuche bleibt die Zeile leer.
+  const stat = C.statistik();
+  const statThema = Object.fromEntries(stat.proThema.map((x) => [x.slug, x]));
+  const quoteHtml = (q) => q == null ? "" : ` <span class="muted">· ${q} %</span>`;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
+    const sT = statThema[slug];
+    const subQ = Object.fromEntries((sT?.unterthemen || []).map((s) => [s.u, s.quote]));
     return `<label class="check" style="--tc:${t.color}">
       <input type="checkbox" class="th" value="${slug}" checked>
-      <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b></span></label>
-      ${subs.map(([u, n], i) => `<label class="check sub"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}" checked> ${esc(labelU(u))} <span class="muted">(${n})</span></label>`).join("")}`;
+      <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b>${quoteHtml(sT?.quote)}</span></label>
+      ${subs.map(([u, n], i) => `<label class="check sub"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}" checked> ${esc(labelU(u))} <span class="muted">(${n})</span>${quoteHtml(subQ[u])}</label>`).join("")}`;
   }).join("");
 
   h(`<div class="fade-in">

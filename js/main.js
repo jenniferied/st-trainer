@@ -1371,12 +1371,15 @@ const sprachDraehte = () => {
   document.getElementById("abbruch").onclick = abbrechen;
   const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
 };
+// Im Wiedergeben-Ablauf (Paraphrase + Abstempeln) laeuft keine sichtbare Uhr
+// (Jennifer, 09.08.): getickt wird nur, wenn ein echter Countdown (Deadline)
+// gewaehlt wurde. Die Fragezeit wird still weiter verbucht (bankZeit).
 function zeigParaphrase() {
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
   h(`<div class="fade-in">${sprachKopf()}
     <div class="card">
-      <div class="q-head"><span class="muted" style="font-size:.82rem">Erst die Frage knacken — die Antworten kommen gleich ${M.infoBtn("paraphrasieren")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+      <div class="q-head"><span class="muted" style="font-size:.82rem">Erst die Frage knacken — die Antworten kommen gleich ${M.infoBtn("paraphrasieren")}</span></div>
       ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
       <div class="selbst-box">
         <div class="selbst-kopf"><b>Was will diese Frage von dir?</b></div>
@@ -1384,7 +1387,7 @@ function zeigParaphrase() {
         <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter zu den Antworten ›</button></div>
       </div>
     </div></div>`);
-  qStart = Date.now(); startTick(); sprachDraehte();
+  qStart = Date.now(); if (R.deadline) startTick(); sprachDraehte();
   document.getElementById("paraOk").onclick = () => {
     r.para = document.getElementById("paraTxt").value.trim() || null;
     r.paraDone = true; bankZeit(); C.save();
@@ -1401,7 +1404,7 @@ function zeigSprach() {
   if ((R.cfg.modus === "sprach" || R.cfg.paraphrase) && !r.paraDone) {
     h(`<div class="fade-in">${sprachKopf()}
       <div class="card">
-        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 1 von 3 · nur die Frage ${M.infoBtn("paraphrasieren")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 1 von 3 · nur die Frage ${M.infoBtn("paraphrasieren")}</span></div>
         ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
         <div class="selbst-box">
           <div class="selbst-kopf"><b>Was will diese Frage von dir?</b></div>
@@ -1409,7 +1412,7 @@ function zeigSprach() {
           <div class="btn-row" style="margin-top:8px"><button class="btn small" id="paraOk">Weiter ›</button></div>
         </div>
       </div></div>`);
-    qStart = Date.now(); startTick(); sprachDraehte();
+    qStart = Date.now(); if (R.deadline) startTick(); sprachDraehte();
     document.getElementById("paraOk").onclick = () => {
       r.para = document.getElementById("paraTxt").value.trim() || null;
       r.paraDone = true; bankZeit(); C.save();
@@ -1426,7 +1429,7 @@ function zeigSprach() {
     const nr = r.optOrder.length - offenOpt.length + 1;
     h(`<div class="fade-in">${sprachKopf()}
       <div class="card">
-        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 2 von 3 · Aussage ${nr}/${r.optOrder.length} ${M.infoBtn("abstempeln")}</span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span></div>
+        <div class="q-head"><span class="muted" style="font-size:.82rem">Schritt 2 von 3 · Aussage ${nr}/${r.optOrder.length} ${M.infoBtn("abstempeln")}</span></div>
         <div class="q-fall" style="font-size:.86rem">${esc(q.frage)}</div>
         <div class="sprach-opt"><p>${esc(q.optionen[oi].text)}</p></div>
         <div class="btn-row">
@@ -1435,7 +1438,7 @@ function zeigSprach() {
         </div>
         <p class="muted" style="margin:10px 0 0;font-size:.8rem">Beurteile nur diese eine Aussage für sich. Ob am Ende die zutreffenden oder die nicht-zutreffenden gekreuzt werden, dreht die App danach richtig — das übernimmt der Fragen-Stamm.</p>
       </div></div>`);
-    qStart = Date.now(); startTick(); sprachDraehte();
+    qStart = Date.now(); if (R.deadline) startTick(); sprachDraehte();
     const stempel = (wert) => { r.urteile[oi] = wert; bankZeit(); C.save(); zeigSprach(); };
     document.getElementById("stimmt").onclick = () => stempel(true);
     document.getElementById("stimmtNicht").onclick = () => stempel(false);
@@ -1450,7 +1453,7 @@ function zeigSprach() {
   }
   h(`<div class="fade-in">${sprachKopf()}
     <div class="card">
-      <div class="q-head"><span id="qmeta" style="display:contents"></span><span class="q-zeit" id="q-zeit" style="margin-left:auto"></span><span class="q-pts">${q.maxPunkte} P.</span></div>
+      <div class="q-head"><span id="qmeta" style="display:contents"></span><span class="q-pts" style="margin-left:auto">${q.maxPunkte} P.</span></div>
       ${fallHtml(q)}<div class="q-text">${esc(q.frage)}</div>${bildHtml(q)}
       <div class="explain good" style="margin:8px 0"><span class="bt">${dreht
         ? "Diese Frage will die NICHT-zutreffenden — gekreuzt wurden also automatisch deine ✗-Urteile."
@@ -1461,7 +1464,7 @@ function zeigSprach() {
       <div id="fbzone"></div>
       <div class="btn-row mt"><button class="btn hidden" id="weiter">${R.idx + 1 === R.runde.length ? "Abschließen" : "Weiter"}</button></div>
     </div></div>`);
-  startTick(); sprachDraehte();
+  if (R.deadline) startTick(); sprachDraehte();
   qStart = null; // Nachdenkzeit stand mit dem letzten Stempel fest — Lesen zaehlt nicht
   const erg = C.scoreFrage(q, r.gewaehlt);
   document.getElementById("weiter").onclick = () => naechste();

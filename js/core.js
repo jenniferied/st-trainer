@@ -767,7 +767,7 @@ export function splitFortschritt(qs) {
 }
 // Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original);
 // Quarantäne-Fragen (in offener Probeklausur) zählen erst, wenn sie freigespielt sind.
-const zaehlt = (q) => q.quizbar && !q.archiv && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach" && !pkGesperrt().has(q.id);
+const zaehlt = (q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach" && !pkGesperrt().has(q.id);
 export function themaFortschritt(thema) {
   return splitFortschritt(POOL.filter((q) => q.oberthema === thema && zaehlt(q)));
 }

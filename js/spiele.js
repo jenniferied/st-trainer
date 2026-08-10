@@ -164,9 +164,15 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
   // Fehler in frueheren vp-Runden je Item: falsch beantwortete kommen eher wieder
   const itemFehler = {};
   for (const a of C.state().antwortLog) if (a.modus === "vp" && !a.voll) itemFehler[a.qid] = (itemFehler[a.qid] || 0) + 1;
+  // Rotation (Roses Feedback 10.08.): zuletzt gespielte Gruppen stark abwerten,
+  // sonst gewinnt die schwaechste Gruppe jeden Tag aufs Neue mit denselben Karten.
+  const itemGruppe = {};
+  for (const g of VIG.gruppen) for (const i of g.items) itemGruppe[i.id] = g.id;
+  const zuletzt = [...new Set(C.state().antwortLog.filter((a) => a.modus === "vp").slice(-3 * VP_RUNDE).map((a) => itemGruppe[a.qid]).filter(Boolean))];
+  const malus = (g) => !zuletzt.includes(g.id) ? 1 : (g.id === zuletzt[zuletzt.length - 1] ? 0.1 : 0.35);
   const gruppe = gruppeId
     ? VIG.gruppen.find((g) => g.id === gruppeId)
-    : zieh(VIG.gruppen, 1, (g) => (gew[g.oberthema + "/" + g.unterthema] || 1) * (1 + Math.min(2, g.items.reduce((s, i) => s + (itemFehler[i.id] || 0), 0) / 3)))[0];
+    : zieh(VIG.gruppen, 1, (g) => malus(g) * (gew[g.oberthema + "/" + g.unterthema] || 1) * (1 + Math.min(2, g.items.reduce((s, i) => s + (itemFehler[i.id] || 0), 0) / 3)))[0];
   if (!gruppe) return zurueckFn();
   const items = zieh(gruppe.items, Math.min(VP_RUNDE, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
   const t = C.THEMEN[gruppe.oberthema] || {};

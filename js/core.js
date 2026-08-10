@@ -767,7 +767,7 @@ export function splitFortschritt(qs) {
 }
 // Einfache-Sprache-Varianten zählen nicht doppelt in Fortschritt/Lernscore (sie vertreten ihr Original);
 // Quarantäne-Fragen (in offener Probeklausur) zählen erst, wenn sie freigespielt sind.
-const zaehlt = (q) => q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach" && !pkGesperrt().has(q.id);
+const zaehlt = (q) => q.quizbar && !q.archiv && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach" && !pkGesperrt().has(q.id);
 export function themaFortschritt(thema) {
   return splitFortschritt(POOL.filter((q) => q.oberthema === thema && zaehlt(q)));
 }
@@ -820,7 +820,16 @@ export function baueRunde(cfg) {
   const grp = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
   const gruppen = new Map();
   for (const q of qs) { const g = grp(q); (gruppen.get(g) || gruppen.set(g, []).get(g)).push(q); }
-  const reps = [...gruppen.values()].map((arr) => arr[Math.floor(Math.random() * arr.length)]);
+  // Vertreter-Wahl je Varianten-Gruppe: ungesehene Mitglieder zuerst, darunter
+  // nicht-direkte (Roses Wunsch 10.08.): gesehene Wortlaut-Fragen bleiben im
+  // Bestand, aber ihre neuen indirekten Geschwister (-aw) kommen bevorzugt dran.
+  const Lrep = state().leitner;
+  const repRang = (q) => ((Lrep[q.id]?.seen ? 2 : 0) + (q.direktheit === "direkt" ? 1 : 0));
+  const reps = [...gruppen.values()].map((arr) => {
+    const best = Math.min(...arr.map(repRang));
+    const kand = arr.filter((q) => repRang(q) === best);
+    return kand[Math.floor(Math.random() * kand.length)];
+  });
   const auswahl = waehleFragen(reps, nMax, strat);
   shuffle(auswahl); // Anzeige-Reihenfolge mischen (auch bei Klausur-Mix wie im Ernstfall)
   return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));
@@ -829,6 +838,18 @@ export function baueRunde(cfg) {
 // Strategien der Fragen-Auswahl. reps = ein Vertreter je Varianten-Gruppe.
 function waehleFragen(reps, n, strat) {
   n = Math.min(n, reps.length);
+  // Archiv-Fragen (alte Wortlaut-Fassungen vor dem Umbau 10.08., archiv:true)
+  // kommen IMMER ganz nach hinten: sie fuellen eine Runde nur auf, wenn alle
+  // anderen Fragen nicht reichen — und nie zusammen mit ihrer umgeschriebenen
+  // Fassung in derselben Runde (Jennifers Regel 10.08.).
+  const archiv = reps.filter((q) => q.archiv);
+  if (archiv.length) {
+    const haupt = waehleFragen(reps.filter((q) => !q.archiv), n, strat);
+    if (haupt.length >= n) return haupt;
+    const drin = new Set(haupt.map((q) => q.id));
+    const frei = shuffle(archiv.filter((q) => !drin.has(q.id.replace(/-alt$/, ""))));
+    return haupt.concat(frei.slice(0, n - haupt.length));
+  }
   const L = state().leitner;
   if (strat === "zufall") return shuffle([...reps]).slice(0, n);
 
@@ -867,6 +888,7 @@ function waehleFragen(reps, n, strat) {
       if (s && s.p / s.n < 0.5) w *= 2.5;          // real schlecht verstanden
       else if (s && s.n >= 2 && s.p / s.n >= 0.9) w *= 0.4; // sitzt laengst
       if (boost[q.oberthema + "/" + q.unterthema]) w *= 1.5;
+      if (q.direktheit === "direkt") w *= 0.5;     // Wortlaut-Fragen sind nicht klausurnah
       return w;
     };
     return zieheGewichtet([...reps], n, gew);
@@ -897,16 +919,19 @@ function waehleFragen(reps, n, strat) {
     const ueber = (jetzt - (e.ts || 0)) / 86400000 - SR_TAGE[Math.max(0, Math.min(5, e.lvl))];
     (ueber < 0 ? bald : e.lvl >= 3 ? faelligStark : faellig).push({ q, ueber, lvl: e.lvl });
   }
-  faellig.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
-  faelligStark.sort((a, b) => a.lvl - b.lvl || b.ueber - a.ueber);
-  bald.sort((a, b) => b.ueber - a.ueber);
+  // Direkte (Wortlaut-)Fragen bei gleichem Level ans Ende — die Klausur fragt
+  // nie im Folien-Wortlaut, also sollen indirekte Wiederholungen zuerst kommen.
+  const direktNach = (a, b) => ((a.q.direktheit === "direkt") - (b.q.direktheit === "direkt"));
+  faellig.sort((a, b) => a.lvl - b.lvl || direktNach(a, b) || b.ueber - a.ueber);
+  faelligStark.sort((a, b) => a.lvl - b.lvl || direktNach(a, b) || b.ueber - a.ueber);
+  bald.sort((a, b) => direktNach(a, b) || b.ueber - a.ueber);
   // Neue Fragen nicht rein zufällig: Unterthemen, die in der Historie schwach waren,
   // bekommen bevorzugt UNGESEHENE Fragen. Die echte Klausur besteht aus lauter neuen
   // Fragen — gekonnt sein muss das Thema, nicht die (auswendig gelernte) Frage.
   const boost = schwacheUnterthemen();
   // Persoenliche Fragen (an Roses Lebenswelt angedockt, persoenlich:true) kommen
   // bevorzugt frueh dran — Relevanz ist der staerkste Motivations-Hebel.
-  const neuSortiert = zieheGewichtet(neu, neu.length, (x) => (boost[x.q.oberthema + "/" + x.q.unterthema] || 1) * (x.q.persoenlich ? 2 : 1));
+  const neuSortiert = zieheGewichtet(neu, neu.length, (x) => (boost[x.q.oberthema + "/" + x.q.unterthema] || 1) * (x.q.persoenlich ? 2 : 1) * (x.q.direktheit === "direkt" ? 0.35 : 1));
   neu.length = 0; neu.push(...neuSortiert);
   const out = [];
   const nimm = (arr, limit) => { for (const x of arr) { if (out.length >= limit) return; if (!out.includes(x.q)) out.push(x.q); } };

@@ -21,6 +21,47 @@ export const QUELLEN_ORDNUNG = [
 export const quelleLabel = (q) => (QUELLEN_ORDNUNG.find(([k]) => k === q) || [q, q])[1];
 export const quelleRank = (q) => { const i = QUELLEN_ORDNUNG.findIndex(([k]) => k === q); return i < 0 ? 99 : i; };
 
+// ---------- Pingo-Filter (globaler Schalter in den Einstellungen) ----------
+// Rose kann das Ueben auf die Fragen aus den Pingo-Abstimmungen der Vorlesung
+// begrenzen (pingo-2025 + pingo-2026). Der Schalter steht EINMAL global und wird
+// direkt in baueRunde() gelesen, nicht durch alle starte()-Aufrufe gefaedelt —
+// sonst waere garantiert ein Modus vergessen worden.
+// Ausgenommen sind die drei echten Simulationen: volle Klausur, halbe Klausur,
+// Probeklausur. Die sollen die echte Klausur abbilden (repraesentativer Themen-Mix,
+// unbekannte Fragen) — 42 Fragen aus 41 waeren ein Wiedererkennungstest.
+// BEWUSST NICHT an examLook gehaengt: die Klausuransicht in der Eigenen Runde ist
+// eine ANSICHT (Exam.UP-Look + Fragen-Navigation), keine Simulation. Haengt der
+// Filter an examLook, waehlt der Baukasten nur die Pingo-Unterthemen an, zieht
+// dann aber ungefiltert — eine Runde ueber den ganzen Bestand, der still ein
+// Drittel der Unterthemen fehlt. Probeklausuren laufen ohnehin an baueRunde vorbei.
+export const istPingo = (q) => String(q.quelle || "").startsWith("pingo");
+export const nurPingo = () => !!state().settings.nurPingo;
+export const SIM_MODI = ["klausur", "halbe", "probeklausur"];
+export const pingoFilterGilt = (cfg = {}) => nurPingo() && !SIM_MODI.includes(cfg.modus);
+
+// Verfuegbare Pingo-Fragen je Unterthema (Schluessel "oberthema/unterthema"),
+// nach denselben Regeln, die auch baueRunde anlegt: quizbar, laut Rose relevant,
+// keine Einfache-Sprache-Variante, nicht in Probeklausur-Quarantaene. Die
+// Oberflaeche zeigt damit Zahlen, die zum Filter passen — eine Zahl, die luegt,
+// ist schlimmer als gar keine.
+export function pingoCounts() {
+  const sperr = pkGesperrt();
+  const o = {}, gesehen = new Set();
+  for (const q of POOL) {
+    if (!istPingo(q) || !q.quizbar || q.relevanz === "laut-rose-nicht-relevant") continue;
+    if ((q.sprache || "schwer") === "einfach" || sperr.has(q.id)) continue;
+    // Umformulierungen derselben Frage zaehlen einmal — baueRunde zieht je
+    // Varianten-Gruppe genau einen Vertreter, sonst waere die Zahl zu hoch
+    const grp = q.sprachVarianteVon || q.variantenVon || q.id;
+    if (gesehen.has(grp)) continue;
+    gesehen.add(grp);
+    const k = q.oberthema + "/" + q.unterthema;
+    o[k] = (o[k] || 0) + 1;
+  }
+  return o;
+}
+export const pingoGesamt = () => Object.values(pingoCounts()).reduce((a, b) => a + b, 0);
+
 // Farbabstufung für Unterthemen: Basis-Hex Richtung hell/dunkel mischen
 // (Mix-Ziele als CSS-Variablen, damit Night Mode passende Ziele setzen kann)
 export function subColor(thema, idx) {
@@ -807,6 +848,9 @@ export function baueRunde(cfg) {
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
   if (cfg.quellen?.length) qs = qs.filter((q) => cfg.quellen.includes(q.quelle));
+  // Globaler Pingo-Filter: greift in JEDEM Uebungsmodus (Schnellrunde, Baukasten,
+  // Wackel-Runde, Unterthema-Blitz, Empfehlungen) — ausser in Klausur-Simulationen
+  if (pingoFilterGilt(cfg)) qs = qs.filter(istPingo);
   // Auswahl-Strategie: wie wird aus dem gefilterten Pool die Runde gebaut?
   //   smart   = Spaced Repetition (Wackliges/Fälliges zuerst, dazu Neues) — die Wissenschaft
   //   fokus   = nur Ungelerntes & Schwieriges, das Härteste zuerst
@@ -983,6 +1027,9 @@ export function timerMinuten(anzahl, modus) {
 // Eine Session entsteht beim Erstellen (Preset/Baukasten) und lebt in state().offen,
 // bis sie fertig gewertet oder verworfen/abgebrochen wird.
 export function erstelleSession(cfg) {
+  // Im Session-Snapshot festhalten, ob die Runde aus dem Pingo-Filter kam —
+  // sonst sind spaeter zwei Runden nicht mehr auseinanderzuhalten
+  if (pingoFilterGilt(cfg)) cfg.nurPingo = true;
   const runde = baueRunde(cfg);
   if (!runde.length) return null;
   const sess = { id: neueId(), erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0 };
@@ -1019,6 +1066,8 @@ export function werteAus(runde, meta) {
     id: meta.sessionId || "s-" + Date.now(), ts: Date.now(), erstellt: meta.erstellt || Date.now(),
     fertig: true, status: meta.status || "fertig",
     modus: meta.modus, timerModus: meta.timerModus, dauerSek: meta.dauerSek, sprache: meta.sprache || "schwer",
+    // nur lokal + im Lernstand-Sync; die Supabase-Tabelle sessions kennt die Spalte nicht
+    nurPingo: !!(meta.cfg && meta.cfg.nurPingo),
     versuchVon: meta.versuchVon || null, versuchNr: meta.versuchNr || null,
     anzahl: runde.length, beantwortet: proFrage.length,
     punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: meta.status !== "abgebrochen" && punkte >= bestehenBei,

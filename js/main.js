@@ -621,6 +621,7 @@ function home() {
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
     <h2 class="mt">Neue Session</h2>
+    ${C.nurPingo() ? `<p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">🎯 Du übst gerade nur mit den ${C.pingoGesamt()} Pingo-Fragen. Die Klausur-Simulationen laufen weiter über alles. <button class="btn ghost small" id="pingoAus">Alle Fragen</button></p>` : ""}
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="halbe"><b>🕧 Halbe Klausur</b><span>21 Fragen · Exam.UP-Look · pausierbar</span></button>
@@ -673,6 +674,9 @@ function home() {
   const tb = document.getElementById("themeBtn");
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
+  // Ein-Tipp-Ausstieg aus dem Pingo-Filter, ohne den Umweg ueber die Einstellungen
+  const pAus = document.getElementById("pingoAus");
+  if (pAus) pAus.onclick = () => { C.state().settings.nurPingo = false; C.save(); home(); };
 
   bindUebe(); // Ein-Tipp-Runde zum naechsten Stern + Statistik-Hebel
   belebeStats(document.getElementById("homeRoot")); // Statistik wohnt jetzt hier
@@ -846,6 +850,15 @@ function einstellungen() {
       <div class="pillzeile" id="methodenPills"></div>
     </div>
     <div class="card">
+      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Welche Fragen</span>
+      <p style="margin:0 0 8px">Nur Pingo-Fragen<br><span class="muted" style="font-size:.85rem">Die ${C.pingoGesamt()} Fragen aus den Pingo-Abstimmungen der Vorlesung (2025 und SoSe 26) — die, die am nächsten am echten Klausurstil sind.</span></p>
+      <div class="seg" id="pingoSeg">
+        ${[["aus", "Alle Fragen"], ["an", "🎯 Nur Pingo"]].map(([v, l]) =>
+          `<button data-v="${v}" class="${(C.nurPingo() ? "an" : "aus") === v ? "on" : ""}">${l}</button>`).join("")}
+      </div>
+      <p class="muted" style="margin:8px 0 0">Gilt überall: Schnellrunde, Baukasten, Wackel-Runden, Themen-Blitz und der Fragen-Detektiv. Die Klausur-Simulationen — ganz, halb und die Probeklausuren — bleiben davon unberührt, die sollen die echte Klausur abbilden. Zu manchen Unterthemen (z. B. Parsons, Fend, Grundgesetz) gibt es gar keine Pingo-Fragen; die sind dann im Baukasten ausgegraut.</p>
+    </div>
+    <div class="card">
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
@@ -875,6 +888,7 @@ function einstellungen() {
       ["📅 Verteiltes Üben", true, "relearning"],
       [`💬 Selbsterklärung${seModus() === "streng" ? " (streng)" : ""}`, seModus() !== "aus", "selbsterklaerung"],
       ["🗣 Einfache Sprache", s.settings.sprache === "einfach", null],
+      ["🎯 Nur Pingo-Fragen", !!s.settings.nurPingo, null],
     ];
     document.getElementById("methodenPills").innerHTML = pills.map(([l, an, key]) =>
       `<span class="pill ${an ? "an" : ""}">${l}${an ? "" : " · aus"}${key ? " " + M.infoBtn(key) : ""}</span>`).join("");
@@ -883,6 +897,11 @@ function einstellungen() {
   document.querySelectorAll("#seSeg button").forEach((b) => b.onclick = () => {
     C.state().settings.selbstErkl = b.dataset.v; C.save();
     document.querySelectorAll("#seSeg button").forEach((x) => x.classList.toggle("on", x === b));
+    malPills();
+  });
+  document.querySelectorAll("#pingoSeg button").forEach((b) => b.onclick = () => {
+    C.state().settings.nurPingo = b.dataset.v === "an"; C.save();
+    document.querySelectorAll("#pingoSeg button").forEach((x) => x.classList.toggle("on", x === b));
     malPills();
   });
   document.getElementById("exportBtn").onclick = C.exportState;
@@ -969,14 +988,27 @@ function builder({ preset }) {
   const stat = C.statistik();
   const statThema = Object.fromEntries(stat.proThema.map((x) => [x.slug, x]));
   const quoteHtml = (q) => q == null ? "" : ` <span class="muted">· ${q} %</span>`;
+  // Pingo-Filter: gilt in allen Bau-Presets ausser den echten Simulationen
+  // (volle + halbe Klausur). Muss exakt derselben Bedingung folgen wie
+  // C.pingoFilterGilt() in der Engine — sonst waehlt der Baukasten Unterthemen ab,
+  // die die Runde danach doch bräuchte. Die Zahlen hinter den Unterthemen zeigen
+  // dann die PINGO-Menge, sonst verspricht die Liste Fragen, die nicht kommen.
+  const pFilter = C.nurPingo() && !C.SIM_MODI.includes(P.modus);
+  const pC = pFilter ? C.pingoCounts() : null;
   const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
     const subs = C.unterthemen(slug);
     const sT = statThema[slug];
     const subQ = Object.fromEntries((sT?.unterthemen || []).map((s) => [s.u, s.quote]));
-    return `<label class="check" style="--tc:${t.color}">
-      <input type="checkbox" class="th" value="${slug}" checked>
-      <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b>${quoteHtml(sT?.quote)}</span></label>
-      ${subs.map(([u, n], i) => `<label class="check sub"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}" checked> ${esc(labelU(u))} <span class="muted">(${n})</span>${quoteHtml(subQ[u])}</label>`).join("")}`;
+    const zahl = (u, n) => pFilter ? (pC[slug + "/" + u] || 0) : n;
+    const themaLeer = pFilter && subs.every(([u]) => zahl(u) === 0);
+    return `<label class="check${themaLeer ? " leer" : ""}" style="--tc:${t.color}">
+      <input type="checkbox" class="th" value="${slug}"${themaLeer ? " data-leer=\"1\" disabled" : " checked"}>
+      <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b>${quoteHtml(sT?.quote)}${themaLeer ? ` <span class="muted">· keine Pingo-Fragen</span>` : ""}</span></label>
+      ${subs.map(([u, n], i) => {
+        const nn = zahl(u, n);
+        const leer = pFilter && nn === 0;
+        return `<label class="check sub${leer ? " leer" : ""}"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}"${leer ? " data-leer=\"1\" disabled" : " checked"}> ${esc(labelU(u))} <span class="muted">(${nn}${pFilter ? " Pingo" : ""})</span>${quoteHtml(subQ[u])}</label>`;
+      }).join("")}`;
   }).join("");
 
   h(`<div class="fade-in">
@@ -984,6 +1016,10 @@ function builder({ preset }) {
     ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall. Das 📕-Skript (alle Folien als PDF) liegt dabei offen, wie in der echten Klausur.</p>
       <p class="muted" style="margin:8px 0 0"><b>Taktik fürs Scoring:</b> Keine Frage leer lassen (unter 0 P. geht eine Frage nie). Erst sicher falsche Optionen streichen, dann kreuzen, sobald du dir besser als 1-zu-3 sicher bist. Zwei Durchgänge: erst die sicheren Fragen, dann die kniffligen.</p></div>` : ""}
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
+    ${C.nurPingo() ? `<div class="card" style="border-left:4px solid var(--c-sq)"><p style="margin:0">🎯 <b>Nur Pingo-Fragen</b> ist an${!pFilter
+      ? " — für Klausur-Simulationen gilt der Filter nicht. Die laufen immer über den ganzen Bestand, damit sie die echte Klausur abbilden."
+      : `: gezogen wird aus den ${C.pingoGesamt()} Pingo-Fragen. Ausgegraute Unterthemen haben keine.`}</p>
+      <p class="muted" style="margin:6px 0 0">Umschalten in den Einstellungen.</p></div>` : ""}
     ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
@@ -1025,7 +1061,11 @@ function builder({ preset }) {
     seg.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on"); updateHint();
   }));
   app.querySelectorAll(".th").forEach((cb) => cb.onchange = () => {
-    app.querySelectorAll(`.uth[data-th="${cb.value}"]`).forEach((u) => { u.checked = cb.checked; u.disabled = !cb.checked; });
+    // Unterthemen ohne Pingo-Fragen bleiben aus und deaktiviert, egal was oben passiert
+    app.querySelectorAll(`.uth[data-th="${cb.value}"]`).forEach((u) => {
+      if (u.dataset.leer) return;
+      u.checked = cb.checked; u.disabled = !cb.checked;
+    });
   });
   const segVal = (id) => app.querySelector(`#${id} button.on`)?.dataset.v;
   const updateHint = () => {
@@ -1167,7 +1207,9 @@ function starte(cfg) {
   const sess = C.erstelleSession(cfg);
   if (!sess || sess.runde.length < Math.min(cfg.anzahl, 5)) {
     if (sess) C.verwerfeOffene(sess.id);
-    sag("Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
+    sag(C.pingoFilterGilt(cfg)
+      ? "Zu wenig Pingo-Fragen für diese Auswahl. Nimm mehr Themen dazu oder stell in den Einstellungen wieder auf alle Fragen um."
+      : "Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
   }
   laufLos(sess);
 }
@@ -1906,6 +1948,7 @@ const bindAnsicht = () => app.querySelectorAll('[data-exf="ansicht"] button').fo
 const exFilter = (q) => {
   if (EXF.quelle === "og" && q.quelle === "generiert") return false;
   if (EXF.quelle === "ki" && q.quelle !== "generiert") return false;
+  if (EXF.quelle === "pingo" && !C.istPingo(q)) return false;
   if (EXF.quelle === "unsicher" && q.loesungSicherheit !== "unsicher") return false;
   if (EXF.typ !== "alle" && q.fragetyp !== EXF.typ) return false;
   if (EXF.status !== "alle") {
@@ -1918,6 +1961,9 @@ const exFilter = (q) => {
   return true;
 };
 function explore() {
+  // Steht der globale Pingo-Filter, startet auch das Stoebern beim ersten Mal
+  // dort. Umstellen bleibt moeglich: Explore ist zum Gucken da, nicht zum Ueben.
+  if (C.nurPingo() && !EXF.pingoInit) { EXF.quelle = "pingo"; EXF.pingoInit = true; }
   // Fragen aus noch nicht bestandenen Probeklausuren sind hier unsichtbar —
   // wer sie stoebern koennte, wuerde die Probeklausur spoilern.
   const sperr = C.pkGesperrt();
@@ -1926,7 +1972,7 @@ function explore() {
   const seg = (id, opts) => `<div class="seg" data-exf="${id}">${opts.map(([v, l]) =>
     `<button data-v="${v}" class="${EXF[id] === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
   const filterRow = `<div class="card" style="padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-    ${seg("quelle", [["alle", "Alle"], ["og", "Original"], ["ki", "KI"], ["unsicher", "unbestätigt"]])}
+    ${seg("quelle", [["alle", "Alle"], ["pingo", "🎯 Pingo"], ["og", "Original"], ["ki", "KI"], ["unsicher", "unbestätigt"]])}
     ${seg("typ", [["alle", "Alle Typen"], ["negation", "NICHT"], ["anwendung", "Anwendung"]])}
     ${seg("status", [["alle", "Jeder Stand"], ["neu", "Neu"], ["wackelt", "Wackelt"], ["sitzt", "Sitzt"]])}
   </div>`;

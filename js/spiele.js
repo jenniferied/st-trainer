@@ -408,9 +408,14 @@ export function dtSpiel(zurueckFn) {
   const pool = C.pool().filter((q) => q.quizbar && q.konzept && q.relevanz !== "laut-rose-nicht-relevant"
     && (q.sprache || "schwer") !== "einfach" && !sperr.has(q.id) && q.frage.length > 30);
   if (pool.length < 10) return zurueckFn();
+  // Globaler Pingo-Filter gilt fuer die GEUEBTEN Fragen; die Konzept-Decoys kommen
+  // weiter aus dem ganzen Bestand — sonst waeren die Chips im kleinen Pingo-Pool
+  // schnell aufgebraucht und das Spiel raet sich von allein.
+  const basis = C.nurPingo() ? pool.filter(C.istPingo) : pool;
+  if (basis.length < DT_RUNDE) return zurueckFn();
   const gew = themenGewichte();
   // Negationen bewusst haeufiger (Roses teuerster Fragetyp) + schwache Unterthemen
-  const fragen = zieh(pool, DT_RUNDE, (q) => (q.fragetyp === "negation" ? 2.5 : q.fragetyp === "anwendung" ? 1.5 : 1) * (gew[q.oberthema + "/" + q.unterthema] || 1));
+  const fragen = zieh(basis, DT_RUNDE, (q) => (q.fragetyp === "negation" ? 2.5 : q.fragetyp === "anwendung" ? 1.5 : 1) * (gew[q.oberthema + "/" + q.unterthema] || 1));
   let idx = 0, punkte = 0, t0 = Date.now();
   const mal = () => {
     const q = fragen[idx];

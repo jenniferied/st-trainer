@@ -378,6 +378,7 @@ function tageszielHtml(tz, sich) {
       <i class="fill ${zone}" style="width:${pct}%"></i>
       <span class="mark" style="left:${minP}%"></span><span class="mark" style="left:${zielP}%"></span>
     </div>
+    ${Mk.markenHtml(tz, minP, zielP)}
     <p class="muted tz-msg">${msg}</p>${note}
   </div>`;
 }

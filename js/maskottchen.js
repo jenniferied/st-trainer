@@ -63,11 +63,75 @@ function herzenHeute(tz) {
   return (n > 0 ? 1 : 0) + (n >= tz.minimum ? 1 : 0) + (n >= tz.ziel ? 1 : 0);
 }
 
+/* ---------- Was das Ei sagt ----------
+   Das Ei SPRICHT, es wird nicht beschrieben: "Ich hab mich bewegt" statt "Das
+   Ei hat sich bewegt". So war es von Anfang an in der Werkstatt gedacht
+   (figuren.js), im Trainer stand aber die beschreibende Fassung.
+
+   Der Satz reagiert zuerst auf HEUTE und erst dann auf die Stufe — was gerade
+   passiert ist, interessiert mehr als der Gesamtstand. Mehrere Saetze je Lage,
+   damit es sich nicht abnutzt; ausgewaehlt wird nach Kalendertag statt zufaellig,
+   sonst springt der Text bei jedem Neuzeichnen.
+
+   Ton: nie Druck, nie Schuld. "Noch nichts heute" ist eine Feststellung, kein
+   Vorwurf — das Ei wartet einfach und findet das in Ordnung. */
+/* Schwellen am 12.08. halbiert (Jennifer): vorher 0/20/45, jetzt 0/10/22.
+   Mit 45 Herzen bis zum Riss waere Rose Wochen unterwegs gewesen, ohne dass
+   sich sichtbar etwas tut — bei einer Belohnungswaehrung ist das zu lang.
+   Ihr Stand von 26 Herzen liegt damit bereits auf der letzten Stufe. */
 const STUFEN = [
-  { ab: 0,  satz: "Da liegt ein Ei im Nest. Keine Ahnung, wo das herkommt." },
-  { ab: 20, satz: "Das Ei hat sich bewegt. Nur ein bisschen, aber es hat." },
-  { ab: 45, satz: "Es knackt. Da will jemand raus — bald ist es so weit." },
+  { ab: 0,  satz: "Ich bin einfach hier hingeploppt. Mal sehen, was aus mir wird." },
+  { ab: 10, satz: "Ich hab mich bewegt. Nur ein bisschen, aber ich hab." },
+  { ab: 22, satz: "Es knackt. Nicht erschrecken — ich glaub, es geht bald los." },
 ];
+
+const SPRUCH = {
+  // Nachts leise. Kein Wort ueber offene Karten — abends soll das Ei nicht mahnen.
+  nacht: [
+    "Ich mach die Augen zu. Bis morgen.",
+    "Schlaf gut. Ich bin morgen noch da.",
+    "So spaet noch? Ich leg mich hin.",
+  ],
+  // Noch nichts heute: warten, ohne zu draengeln.
+  ruhig: [
+    "Ich lieg hier und warte. Kein Stress.",
+    "Noch nichts passiert heute. Ist okay, ich hab Zeit.",
+    "Ich bin da, wenn du magst. Eine Karte reicht mir schon.",
+    "Heute noch gar nichts. Macht nichts, ich mag auch kurze Tage.",
+  ],
+  // Angefangen — das ist der wichtigste Moment, den feiert das Ei am meisten.
+  start: [
+    "Du hast angefangen. Genau das zaehlt bei mir am meisten.",
+    "Da ist mein erstes Herz heute. Angefangen ist das Schwerste.",
+    "Oh, du bist da. Das reicht mir schon fuer heute.",
+  ],
+  // Minimum geschafft.
+  mitte: [
+    "Zwei Herzen heute. Das war schon ein richtiger Tag.",
+    "Ich hab zwei bekommen. Von mir aus kannst du jetzt aufhoeren.",
+    "Zwei. Und ich hab nicht mal was dafuer tun muessen.",
+  ],
+  // Tagespensum voll.
+  voll: [
+    "Drei Herzen. Mehr kriege ich an einem Tag gar nicht.",
+    "Das war alles, was heute ging. Ich bin satt.",
+    "Voll. Ab jetzt uebst du nur noch fuer dich, nicht fuer mich.",
+  ],
+};
+/* Nach Kalendertag statt zufaellig: innerhalb eines Tages bleibt der Satz
+   stehen, auch wenn die Karte zwischendurch neu gezeichnet wird. */
+function spruchVon(liste, tag) { return liste[tag % liste.length]; }
+
+function satzVon(stufe, hh, nacht) {
+  const tag = new Date().getDate();
+  if (nacht) return spruchVon(SPRUCH.nacht, tag);
+  if (hh >= 3) return spruchVon(SPRUCH.voll, tag);
+  if (hh === 2) return spruchVon(SPRUCH.mitte, tag);
+  if (hh === 1) return spruchVon(SPRUCH.start, tag);
+  // Noch nichts heute: abwechselnd der Stufensatz und ein Wartesatz, damit die
+  // Stufe nicht untergeht, der Text aber auch nicht jeden Morgen gleich ist.
+  return tag % 2 === 0 ? STUFEN[stufe].satz : spruchVon(SPRUCH.ruhig, tag);
+}
 export const stufeVon = (herzen) => { let i = 0; STUFEN.forEach((s, k) => { if (herzen >= s.ab) i = k; }); return i; };
 
 /* ---------- Das Ei, Blockgrafik ----------
@@ -280,6 +344,31 @@ function auswahlHtml() {
   </div>`;
 }
 
+/* ---------- Die Herzen als Meilensteine unter der Tagesziel-Bar ----------
+   Bisher stand nur in der Blase, wie viele Herzen heute dazukamen — man sah
+   nicht, WO die naechste Schwelle liegt. Als Marken unter der Leiste ist beides
+   auf einen Blick da: was schon zaehlt (voll) und was als naechstes kommt (blass).
+
+   Die drei Herzen sitzen auf denselben Schwellen wie herzenHeute(): Anfangen,
+   Minimum, Tagespensum. Der Stern am Ende ist das Streckziel — dieselbe Regel
+   wie in herzenStand(). Die Bar laeuft von 0 bis Streckziel, darum liegt der
+   Stern immer bei 100 %.
+
+   Erste und letzte Marke werden nicht zentriert, sonst haengen sie halb ueber
+   dem Rand der Karte. */
+export function markenHtml(tz, minP, zielP) {
+  if (!tz) return "";
+  const n = tz.n || 0;
+  const marke = (pos, zeichen, erreicht, titel, klasse) =>
+    `<span class="tz-marke${erreicht ? " an" : ""}${klasse ? " " + klasse : ""}" style="left:${pos}%" title="${titel}">${zeichen}</span>`;
+  return `<div class="tz-marken" aria-hidden="true">
+    ${marke(0, "♥", n > 0, "fürs Anfangen", "erste")}
+    ${marke(minP, "♥", n >= tz.minimum, `Minimum: ${tz.minimum}`)}
+    ${marke(zielP, "♥", n >= tz.ziel, `Tagespensum: ${tz.ziel}`)}
+    ${marke(100, "✦", n >= tz.stretch, `Streckziel: ${tz.stretch}`, "stern letzte")}
+  </div>`;
+}
+
 /* Alles, was die Blase SAGT, an einer Stelle — und zwar genau der Fassung, die
    die App zeigt. Die Testseite (playground/rose/maskottchen/viewer/) ruft
    dieselbe Funktion mit gedrehten Werten auf; damit kann die Vorschau nicht von
@@ -292,7 +381,7 @@ export function blaseText({ herzen, sterne, tage, stunde, hh }) {
   return {
     stufe, nacht,
     gruss: grussVon(stunde),
-    satz: nacht ? "Das Ei ist still. Morgen früh sind wir wieder da." : STUFEN[stufe].satz,
+    satz: satzVon(stufe, hh, nacht),
     meta: `<b>${herzen}</b> ♥${sterne ? ` · <b>${sterne}</b> ★` : ""} aus ${tage} Übungstagen — ` +
       (naechste ? `noch <b>${naechste.ab - herzen}</b> ♥ bis es weitergeht` : "gleich passiert was") + "." +
       // Was heute schon dazukam. Nachts bleibt das weg — kein Abend-Mahnmal.
@@ -346,7 +435,8 @@ export function binde(wurzel, neuZeichnen) {
     neuZeichnen();
   });
   wurzel.querySelectorAll("[data-mk-nimm]").forEach((b) => b.onclick = () => {
-    C.state().mk = { ...(C.state().mk || {}), ei: b.dataset.mkNimm };
+    // ts stempelt die Wahl: beim Merge gewinnt die zuletzt getroffene.
+    C.state().mk = { ...(C.state().mk || {}), ei: b.dataset.mkNimm, ts: Date.now() };
     C.save();
     angesehen = false;
     neuZeichnen();

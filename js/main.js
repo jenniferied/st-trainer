@@ -785,6 +785,7 @@ function home() {
   const pAus = document.getElementById("pingoAus");
   if (pAus) pAus.onclick = () => { C.state().settings.nurPingo = false; C.save(); home(); };
 
+  Mk.binde(app, home); // Ei: Ankunft quittieren, Variante waehlen
   bindUebe(); // Ein-Tipp-Runde zum naechsten Stern + Statistik-Hebel
   belebeStats(document.getElementById("homeRoot")); // Statistik wohnt jetzt hier
 

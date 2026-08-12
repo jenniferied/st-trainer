@@ -16,16 +16,15 @@
         Hinweis, der etwas ueber den Charakter andeutet und nichts verraet
      3. danach die kompakte Ansicht mit Herzen
 
-   WICHTIG: Der Ankunfts-Schalter liegt ABSICHTLICH geraetelokal und nicht im
-   synchronisierten state. Sonst wuerde ein Test auf Jennifers Geraet Rose die
-   Ankunft wegnehmen, bevor sie sie gesehen hat. Die gewaehlte Ei-Variante
-   dagegen gehoert in den state, damit sie ueber den Sync mitwandert.
+   WICHTIG: Ob die Ankunft laeuft, haengt allein daran, ob schon ein Ei gewaehlt
+   wurde (state.settings.mkEi). Solange keins gewaehlt ist, kommt sie bei jedem
+   Oeffnen wieder. Beim Testen mit Roses Sync-Code also NICHT auswaehlen — sonst
+   ist der Moment fuer sie weg, bevor sie ihn hatte.
 
    Entwurf, Archiv und Werkstatt: playground/rose/maskottchen/ */
 import * as C from "./core.js";
 
 const REDUCE_MOTION = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-const ANKUNFT_KEY = "st-mk-ankunft";   // geraetelokal, siehe Kopfkommentar
 
 /* ---------- Herzen aus der echten Uebungshistorie ----------
    Fuer vergangene Tage ist der damalige Tagesplan nicht gespeichert; wir
@@ -141,19 +140,27 @@ export function eiHtml(variante, stufe) {
   }).join("\n");
 }
 
-/* ---------- Zustand des Ankunfts-Ablaufs ---------- */
-const phase = () => localStorage.getItem(ANKUNFT_KEY) || "";       // "" | "gesehen" | "fertig"
-const setzePhase = (p) => localStorage.setItem(ANKUNFT_KEY, p);
-export function zuruecksetzen() { localStorage.removeItem(ANKUNFT_KEY); C.state().settings.mkEi = null; C.save(); }
+/* ---------- Zustand des Ankunfts-Ablaufs ----------
+   Einzige Wahrheit ist, OB ein Ei gewaehlt wurde. Solange keins gewaehlt ist,
+   kommt die Ankunft bei jedem Oeffnen wieder — wer nicht aussucht, verliert den
+   Moment nicht. Der Schritt "schon nachgesehen" haelt nur bis zum Neuladen,
+   damit es nicht bei der Karte haengen bleibt. */
+const gewaehlt = () => !!C.state().settings.mkEi;
+let angesehen = false;
+export function zuruecksetzen() { C.state().settings.mkEi = null; C.save(); angesehen = false; }
 
 /* Welches Ei die Auswahl gerade zeigt (nur waehrend der Auswahl). */
 let blaetterIdx = 0;
 
 /* ---------- Ansichten ---------- */
+const STORCH = ["        ▁▄▖        ", "       ▟◉ ▝▄▄▄▄▄   ", "      ▟███▙        ", "     ▟█████▙       ", "     ▜█████▛       ", "       ╱ ╲         ", "      ╱   ╲        "];
+const storchHtml = () => STORCH.join("\n");
+
 function ankunftHtml() {
   return `<div class="mk-ankunft">
-    <div class="mk-ank-kopf">🥚 Da war jemand am Nest.</div>
-    <p class="mk-ank-text">Etwas ist angekommen, während du geübt hast. Es liegen drei da — eins davon darf bei dir bleiben.</p>
+    <pre class="mk-storch${REDUCE_MOTION ? "" : " mk-schwebt"}" aria-hidden="true">${storchHtml()}</pre>
+    <div class="mk-ank-kopf">Etwas ist angekommen.</div>
+    <p class="mk-ank-text">Da war jemand am Nest, während du geübt hast. Es liegen drei da — eins davon darf bei dir bleiben.</p>
     <button class="btn small" data-mk-ankunft="gesehen">Nachsehen</button>
   </div>`;
 }
@@ -195,23 +202,22 @@ function standHtml(tz) {
     <div class="mk-text">
       <p class="mk-satz"><b>${grussVon(stunde)}.</b> ${satz}</p>
       <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}.${heute}
-        · <button class="mk-link" data-mk-ankunft="gesehen">anderes Ei</button></p>
+        · <button class="mk-link" data-mk-ankunft="wechseln">anderes Ei</button></p>
     </div>
   </div>`;
 }
 
 export function html(tz) {
-  const p = phase();
-  if (!p) return ankunftHtml();
-  if (p === "gesehen") return auswahlHtml();
-  return standHtml(tz);
+  if (gewaehlt()) return standHtml(tz);
+  return angesehen ? auswahlHtml() : ankunftHtml();
 }
 
 /* ---------- Klicks und Wischen ---------- */
 export function binde(wurzel, neuZeichnen) {
   wurzel.querySelectorAll("[data-mk-ankunft]").forEach((b) => b.onclick = () => {
     blaetterIdx = eiIndex();
-    setzePhase("gesehen");
+    angesehen = true;
+    if (b.dataset.mkAnkunft === "wechseln") C.state().settings.mkEi = null, C.save();
     neuZeichnen();
   });
   wurzel.querySelectorAll("[data-mk-nav]").forEach((b) => b.onclick = () => {
@@ -221,7 +227,7 @@ export function binde(wurzel, neuZeichnen) {
   wurzel.querySelectorAll("[data-mk-nimm]").forEach((b) => b.onclick = () => {
     C.state().settings.mkEi = b.dataset.mkNimm;
     C.save();
-    setzePhase("fertig");
+    angesehen = false;
     neuZeichnen();
   });
   // Wischen am Handy: Rose übt mobil, Pfeile allein wären zu klein

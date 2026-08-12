@@ -1589,6 +1589,9 @@ button.ans:disabled { cursor: default; }
 
 .mk-ankunft { border: 1.5px dashed var(--accent); border-radius: var(--radius);
   padding: 13px 14px 14px; margin: 0 0 11px; text-align: center; }
+.mk-storch { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1; white-space: pre; margin: 0 auto 8px; color: var(--mk-fell);
+  display: block; width: max-content; }
 .mk-ank-kopf { font-weight: 700; font-size: 1.02rem; }
 .mk-ank-text { margin: 4px auto 10px; font-size: .9rem; color: var(--ink-soft); max-width: 42ch; }
 .mk-karussell { display: flex; align-items: center; justify-content: center; gap: 10px;

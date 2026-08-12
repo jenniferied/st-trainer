@@ -52,7 +52,7 @@
 
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
-import { liesHeute, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte } from "./geteilt-tagesstand.js";
+import { liesHeute, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -200,7 +200,11 @@ export function zeigeGeStand(a) {
     // "offen / erledigt"). Gleiches Wort, gleiche Punktgroesse, gleicher Takt —
     // Rose soll es an beiden Stellen ohne Nachdenken wiedererkennen.
     if (s.offen.length) {
-      teile.push(`<span class="stand-badge neu kompakt"><i class="puls">✦</i> offen</span>`);
+      // .dringend (rot, schneller Puls) und die ZAHL kamen am 12.08. nachmittags
+      // dazu — beides, damit dieser Link und der Gegenlink im GE-Trainer dasselbe
+      // sagen und gleich aussehen. Wortwahl aus offenText(), damit sie nicht in
+      // zwei Dateien getrennt driftet; Farbe und ihre Grenze im CSS, Block 2b.
+      teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
       worte.push("heute noch offen: " + s.offen.map(spielName).join(", "));
     } else if (s.frisch) {
       teile.push(`<span class="stand-badge sitzt kompakt">✓ heute</span>`);
@@ -218,7 +222,7 @@ export function zeigeGeStand(a) {
     } else if (s.los) {
       // Kein Zahlenpaar, weil wir das heutige Tagesziel drueben gar nicht
       // kennen — und weil "0 von 40" sich wie ein Rueckstand liest.
-      teile.push(`<span class="tag-pille los"><i class="puls los-zeichen">!</i>${losText()}</span>`);
+      teile.push(`<span class="tag-pille los"><i class="puls dringend los-zeichen">!</i>${losText()}</span>`);
       worte.push(losWorte("GE"));
     }
     feld.innerHTML = teile.join("");

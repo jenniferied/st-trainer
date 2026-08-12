@@ -112,9 +112,13 @@ export function hubHtml() {
     const n = s.n;
     // Exakt dasselbe Bauteil wie im Querlink oben rechts (Muster-Block im CSS):
     // gleiches Wort, gleiche Punktgroesse, gleicher Takt. Nicht nachbauen.
+    // .dringend (rot, schneller Puls) seit 12.08. nachmittags: DAS hier sind die
+    // Dailies, die Jennifer gemeint hat ("auf jeden Fall Rot ... fuer offene
+    // Dailies"). Die Themenkarten im Stoebern bleiben ausdruecklich blau/still —
+    // Begruendung und Grenze stehen im CSS, Block 2b.
     const stand = n
       ? `<span class="stand-badge sitzt kompakt" title="heute schon ${n}× geübt">✓ geübt</span>`
-      : `<span class="stand-badge neu kompakt"><i class="puls">✦</i> offen</span>`;
+      : `<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> offen</span>`;
     return `<div class="spiel-card ${n ? "done" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
          aria-label="${s.name}${n ? " — heute schon geübt" : " — heute noch offen"}">
         <span class="info-btn spiel-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>

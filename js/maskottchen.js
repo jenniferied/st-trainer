@@ -211,13 +211,13 @@ const VOLL = "█▟▙▐▌▝▘▄▀";
    eine zweite Farbe auf denselben Bloecken; die Sonderzeichen (Herz, Stern,
    Ring) sitzen als eigene Marken obendrauf. */
 export const EIER = [
-  { key: "herzchen", name: "Herzchen", fell: "#cf8fa0", muster: "#a4677a", akzent: "#f6e3ea",
+  { key: "herzchen", name: "Herzchen", fell: "#cf8fa0", muster: "#a4677a", akzent: "#f6e3ea", tinte: "#5b2f3c",
     regel: () => false, marken: [[2, 3, "♥"], [3, 7, "♥"], [4, 5, "♥"]],
     teaser: "Es ist leicht warm und klopft. Ganz leise, aber regelmäßig." },
-  { key: "sternchen", name: "Sternchen", fell: "#ceae5e", muster: "#9c8240", akzent: "#fdf3d4",
+  { key: "sternchen", name: "Sternchen", fell: "#ceae5e", muster: "#9c8240", akzent: "#fdf3d4", tinte: "#4e3f1c",
     regel: (z, sp) => (z + sp) % 5 === 0, marken: [[2, 6, "✦"], [4, 3, "✦"]],
     teaser: "Kühl wie ein Kieselstein, aber im Dunkeln sieht man es trotzdem." },
-  { key: "gestreift", name: "Gestreift", fell: "#c3b596", muster: "#8b7f66",
+  { key: "gestreift", name: "Gestreift", fell: "#c3b596", muster: "#8b7f66", akzent: "#f2ece0", tinte: "#46402f",
     regel: (z, sp) => sp % 3 === 1,
     teaser: "Warm. Und es hat sich schon zweimal gedreht, als du weggeschaut hast." },
 ];
@@ -296,73 +296,138 @@ export function eiHtml(variante, stufe) {
    Uebernommen aus der Werkstatt (playground/rose/maskottchen/figuren.js), damit
    Entwurf und App dieselbe Figur zeigen. Dort ist ST die Katze und GE der Hund.
 
-   BEWUSSTER STILBRUCH: das Ei ist aus Halbbloecken gebaut (█▟▙), das Tier aus
-   Strichzeichen (╭─╮│). Nebeneinander waere das ein Fehler — nacheinander ist es
-   die Verwandlung. Das Schluepfen ist genau der Moment, an dem ein Stilwechsel
-   erzaehlt wird statt auffaellt: die Schale bricht, und was herauskommt, ist
-   anders gezeichnet, weil es etwas anderes ist. Darum darf die Leiter auch nie
-   ohne die Figuren live gehen.
+   DURCHGEHEND BLOCKGRAFIK, seit 12.08.2026 nachmittags. Vorher war das Tier
+   aus Strichzeichen (╭─╮│) und der Stilbruch zum Ei als Erzaehlung des
+   Schluepfens gedacht. Jennifer hat sich fuer die Block-Aesthetik entschieden.
+   Zwei Gruende, die dafuer sprechen:
+     - Die Mini-Pets im spaeteren Shop sind gefuellte Blockgrafik. Neben einem
+       Strich-Tier waere das gebrochen.
+     - Die Tiere brauchen jetzt nur noch Blockzeichen. Die alten Gesichtszeichen
+       (◉ ᵕ ‿) waren die einzigen, die auf Android in einen Ersatzfont fallen
+       und die Zeile verschieben konnten.
+   Der Riss im Ei bleibt bewusst Strichzeichen (╷ ╲ ╱), das gefaellt so besser.
 
-   Gefaerbt wird wie beim Ei ueber eine Maske: Umriss und Ohren in der Fellfarbe,
-   Augen und Maul in der Musterfarbe. Zwei Farben, dieselben zwei wie am Ei —
+   Was der Wechsel kostet: den Schluepf-Moment trug bisher der Stilwechsel.
+   Jetzt traegt ihn die SILHOUETTE - aus einem hohen, oben schmalen Ei wird ein
+   kleiner, breiter, flacher Blob mit Augen.
+
+   Gefaerbt wie das Ei ueber eine Maske, mit denselben Farben der Variante -
    so bleibt das Tier erkennbar dasselbe Wesen wie das Ei davor. */
-const GESICHT = "◉◡▬ᵕᗢ‿▼✦"; // alles, was Musterfarbe bekommt
 
-function blobZeilen(sub, auge, maul) {
-  const ohren = sub >= 2 ? "   ▲     ▲   " : "             ";
-  return [
-    ohren,
-    "  ╭───────╮  ",
-    "  │       │  ",
-    "  │ " + (sub >= 1 ? auge : "◦") + "   " + (sub >= 1 ? auge : "◦") + " │  ",
-    "  │   " + maul + "   │  ",
-    "  ╰───────╯  ",
-  ];
+/* Alle Zellen, die als gefuellte Flaeche zaehlen. Wer hier ein Zeichen
+   vergisst, macht es unsichtbar-FALSCH statt sichtbar kaputt: die Zelle
+   bekommt keinen span und erbt die Textfarbe der Seite. */
+const VOLL_TIER = "█▟▙▐▌▝▘▄▀";
+
+/* Drei Groessen. Die Figur waechst in der BREITE - 9 Zellen als Blob, 11 als
+   Jungtier, 13 erwachsen. Am Handy besser zu sehen als Wachstum in der Hoehe,
+   und die Tagesziel-Karte bleibt dabei ruhig.
+
+   Zwei Zahlen darin sind nicht willkuerlich:
+     - AUGEN SIND ZWEI ZELLEN BREIT (ausser beim Blob, der ist zu klein dafuer).
+       Eine Monospace-Zelle ist etwa doppelt so hoch wie breit; ein einzelnes
+       Vollzeichen las sich als Schlitz, nicht als Auge.
+     - ES GIBT EINE HELLE SCHNAUZE. Augen und Maul direkt auf der Fellflaeche
+       lesen sich als Loecher im Tier statt als Gesicht. */
+const KOERPER = {
+  blob: {
+    zeilen: ["  ▄▄▄▄▄  ", " ▟█████▙ ", " ▐█████▌ ", " ▐█████▌ ", " ▝▀▀▀▀▀▘ "],
+    augen: [[2, 2], [2, 6]], augenBreit: 1, schnauze: [], maul: [[3, 4]], brust: [],
+  },
+  jung: {
+    zeilen: ["  ▄▄▄▄▄▄▄  ", " ▟███████▙ ", " ▐███████▌ ", " ▐███████▌ ", " ▝▀▀▀▀▀▀▀▘ "],
+    augen: [[2, 2], [2, 7]], augenBreit: 2, schnauze: [[3, 4], [3, 5], [3, 6]], maul: [[3, 5]], brust: [],
+  },
+  erwachsen: {
+    zeilen: ["  ▄▄▄▄▄▄▄▄▄  ", " ▟█████████▙ ", " ▐█████████▌ ",
+             " ▐█████████▌ ", " ▐█████████▌ ", " ▝▀▀▀▀▀▀▀▀▀▘ "],
+    augen: [[2, 3], [2, 8]], augenBreit: 2,
+    schnauze: [[4, 5], [4, 6], [4, 7]], maul: [[4, 6]], brust: [[3, 2], [3, 10]],
+  },
+};
+
+/* Die Katze: zwei schmale Spitzen mittig auf dem Kopf. Drueben im GE-Trainer
+   sitzt der Hund mit Schlappohren an den Seiten - die OHRENZEILE ist der ganze
+   Unterschied zwischen den beiden Tieren, alles andere ist identisch. */
+const OHREN = { blob: ["  ▟▙ ▟▙  "], jung: ["  ▟▙   ▟▙  "], erwachsen: ["  ▟▙     ▟▙  "] };
+
+/* Eine Zelle setzen - Zeichen UND Farbschluessel zugleich, damit die beiden
+   Ebenen nie auseinanderlaufen koennen. ch === null laesst das Zeichen stehen. */
+function setzTier(zeilen, maske, z, sp, ch, k) {
+  if (z < 0 || z >= zeilen.length) return;
+  const a = zeilen[z].split(""), b = maske[z].split("");
+  if (sp < 0 || sp >= a.length) return;
+  if (ch !== null) a[sp] = ch;
+  b[sp] = k;
+  zeilen[z] = a.join(""); maske[z] = b.join("");
 }
 
-function katzeZeilen(jung, auge, maul) {
-  if (jung) return [
-    "   ▲     ▲   ",
-    "  ╭───────╮  ",
-    "  │  \\ /  │  ",
-    "  │ " + auge + "   " + auge + " │  ",
-    "  │   ▼   │  ",
-    "  │  ╰" + maul + "╯  │  ",
-    "  ╰───────╯  ",
-  ];
-  return [
-    "   ▲         ▲   ",
-    "  ╭───────────╮  ",
-    "  │  \\  |  /  │  ",
-    "  │           │  ",
-    "  │ " + auge + "       " + auge + " │  ",
-    "  │╴    ▼    ╴│  ",
-    "  │   ╰─" + maul + "─╯   │  ",
-    "  ╰───────────╯  ",
-    "    ╵       ╵    ",
-  ];
-}
-
-/* Nachts schlaeft es, wie das Ei nachts leise ist. Sonst dieselbe Logik wie in
-   der Werkstatt: offene Augen, freundliches Maul. */
-export function figurHtml(variante, stufe, nacht) {
+function figurEbenen(variante, stufe, nacht) {
   const st = STUFEN[stufe];
-  const auge = nacht ? "▬" : "◉";
-  const maul = nacht ? "‿" : "ᵕ";
-  const zeilen = st.art === "blob" ? blobZeilen(st.sub, auge, maul)
-    : katzeZeilen(st.art === "jung", auge, maul);
-  const FELL = variante.fell, MUSTER = variante.muster;
-  return zeilen.map((zeile) => {
+  const k = KOERPER[st.art];
+  /* Erst Stufe 5 laesst die Ohren wachsen. Bis dahin soll offen bleiben, was
+     daraus wird - das Raetsel haelt also drei Stufen laenger als bis zum
+     Schluepfen. */
+  const ohren = (st.art !== "blob" || st.sub >= 2) ? OHREN[st.art] : [];
+  const hoch = ohren.length;
+  const zeilen = ohren.concat(k.zeilen);
+
+  /* OHRANSATZ SCHLIESSEN: die Kopf-Oberkante ist ein Halbblock und fuellt nur
+     die untere Zellhaelfte, die Ohrenzeile darueber fuellt ihre Zelle ganz.
+     Ohne das bliebe eine halbe Zelle Luft und die Ohren saehen aus wie
+     aufgesetzte Schornsteine. */
+  if (hoch) {
+    const unten = zeilen[hoch - 1], kopf = zeilen[hoch].split("");
+    for (let sp = 0; sp < unten.length; sp++) if (unten[sp] !== " " && kopf[sp] === "▄") kopf[sp] = "█";
+    zeilen[hoch] = kopf.join("");
+  }
+
+  /* Das Muster der Schale wird zum Fell: dieselbe regel(), die das Ei zeichnet.
+     Eier ohne Regel (Herzchen) tragen stattdessen ihre Marke auf der Brust. */
+  const maske = zeilen.map((zeile, z) =>
+    zeile.split("").map((ch, sp) => (VOLL_TIER.indexOf(ch) < 0 ? " " : variante.regel(z, sp) ? "M" : "F")).join(""));
+
+  /* Frisch geschluepft hat es nur eine Ahnung von Augen: helle Flecken, noch
+     keine Pupille, und noch kein Maul. */
+  const ahnung = st.art === "blob" && st.sub < 1;
+  if (!ahnung) k.schnauze.forEach((s) => setzTier(zeilen, maske, s[0] + hoch, s[1], null, "A"));
+
+  /* Offenes Auge volle Zelle, nachts eine halbe: ein Lid, das faellt - und
+     kein Sonderzeichen, das in einen Ersatzfont fallen koennte. */
+  const augeCh = nacht ? "▄" : "█";
+  k.augen.forEach((a) => {
+    for (let i = 0; i < k.augenBreit; i++) {
+      setzTier(zeilen, maske, a[0] + hoch, a[1] + i, ahnung ? "▄" : augeCh, ahnung ? "A" : "T");
+    }
+  });
+  if (!ahnung) k.maul.forEach((m) => setzTier(zeilen, maske, m[0] + hoch, m[1], "▄", "T"));
+
+  const marke = (variante.marken || [])[0];
+  if (marke && st.art !== "blob") k.brust.forEach((b) => setzTier(zeilen, maske, b[0] + hoch, b[1], marke[2], "A"));
+
+  return { zeilen, maske };
+}
+
+export function figurHtml(variante, stufe, nacht) {
+  const { zeilen, maske } = figurEbenen(variante, stufe, nacht);
+  const FARBE = {
+    F: variante.fell, M: variante.muster,
+    A: variante.akzent || variante.muster, T: variante.tinte || variante.muster,
+  };
+  return zeilen.map((zeile, i) => {
     let out = "", puffer = "", k = null;
     const spuelen = () => {
       if (!puffer) return;
-      out += k === " " ? puffer : `<span style="color:${k === "G" ? MUSTER : FELL}">${puffer}</span>`;
+      /* Die Brustmarke ist kein Blockzeichen. Ohne eigenen Zellhintergrund
+         scheint die Karte durch und es sieht aus wie ein Loch im Tier. */
+      const stil = k === "A" ? `color:${FARBE.A};background:${FARBE.F}` : `color:${FARBE[k]}`;
+      out += k === " " ? puffer : `<span style="${stil}">${puffer}</span>`;
       puffer = "";
     };
-    for (const ch of zeile) {
-      const kk = ch === " " ? " " : GESICHT.indexOf(ch) >= 0 ? "G" : "F";
+    for (let j = 0; j < zeile.length; j++) {
+      const kk = maske[i][j] || " ";
       if (kk !== k) { spuelen(); k = kk; }
-      puffer += ch;
+      puffer += zeile[j];
     }
     spuelen();
     return out;

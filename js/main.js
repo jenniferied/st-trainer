@@ -189,11 +189,20 @@ const qBadges = (q) =>
 // Nacharbeit) — genau dieselbe Invariante wie bei pingoFilterGilt(cfg).
 // Zwei Bugs in zwei Tagen kamen aus der Doppelung: ein globaler Schalter hat den
 // Baukasten ueberstimmt. Darum liest JEDE Stelle diese eine Funktion, und die
-// liest zuerst die laufende Runde. Der alte Wert "aus" mappt auf "standard".
+// liest zuerst die laufende Runde.
+//
+// VORBELEGUNG SEIT 12.08. ABENDS (Jennifer): "streng" ist der Default, nicht
+// mehr "standard". Nur ein ausdrueckliches "standard" schaltet den
+// Ueberspringen-Link ein; alles andere — nicht gesetzt, unbekannt, der alte
+// Wert "aus" — bedeutet jetzt "erst erklaeren". Begruendung: wer die Abfrage
+// ueberhaupt einschaltet, will den Denkmoment; ein Link, der ihn wegklickt,
+// gehoert dann nicht in die Voreinstellung, sondern in die Ausnahme. Das gilt
+// dadurch auch fuer alle Modus-Kacheln auf einen Schlag, weil keine von ihnen
+// eine eigene Strenge mitbringt — sie erben alle diese eine Vorbelegung.
 const seModus = (cfg) => {
   const c = cfg || R?.cfg;
   const v = c && c.erklaerStreng != null ? c.erklaerStreng : C.state().settings.selbstErkl;
-  return v === "streng" ? "streng" : "standard";
+  return v === "standard" ? "standard" : "streng";
 };
 // Gilt in ALLEN Modi mit Sofort-Feedback (Jennifer 21.07.: die fruehere
 // Schnelle-10er-Ausnahme ist raus — sie hat nur verwirrt). Klausur-Durchlaeufe
@@ -291,34 +300,32 @@ function erklaerFlow(q, r, erg, done) {
   fz.innerHTML = `<div class="fb-banner part"><span>🤔 ${info} — aber welche?</span></div>`;
   const zone = document.createElement("div");
   fz.appendChild(zone);
+  // Ab hier laeuft "raten" GENAU wie "begruenden" — das ist seit dem 12.08.
+  // abends Absicht (Jennifer). Vorher hing hier eine Stufe 2 dran: nach der
+  // Aufloesung nochmal ein Textfeld, "was hattest du nicht auf dem Schirm?".
+  // Die ist raus, aus zwei Gruenden.
+  //
+  // (1) Sie fragte dasselbe wie der Abgleich direkt darunter ("Entspricht das
+  //     deiner Erklaerung? — Nein, war was anderes"), einmal als Tipparbeit,
+  //     einmal als ein Klick. Beide standen im fertigen Bildschirm untereinander.
+  // (2) Das Generieren, auf dem der Effekt beruht, ist im Modus "raten" schon
+  //     passiert — naemlich VOR der Aufloesung, unter Unsicherheit. Ein zweites
+  //     Tippen danach kostet am Handy dasselbe und bringt weniger.
+  //
+  // Der Nebeneffekt ist der eigentliche Gewinn: der Unterschied zwischen den
+  // beiden Modi liegt jetzt vollstaendig VOR der Aufloesung und laesst sich in
+  // einem Satz sagen — bei "raten" siehst du vorher nicht, welche Kreuze falsch
+  // waren. Damit bedeutet auch der Ueberspringen-Link in beiden Modi wieder
+  // dasselbe (frueher liess er in "raten" zusaetzlich Stufe 2 wegfallen).
+  //
+  // r.selbst.text2 aus alten Runden bleibt gespeichert und wird von core.js
+  // weiter durch Snapshot und Merge getragen — geschrieben wird es nur nicht mehr.
   selbstErklStart(zone, erg, (selbst) => {
     selbst.modus = "raten";
     r.selbst = selbst; C.save();
+    tauSelbstAuf();   // getippt ist getippt — ab hier laeuft die Uhr wieder
     zeigeFeedback(q, r);
     if (selbst.text) llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
-    // Stufe 2: jetzt liegt die Aufloesung offen — nicht Erkanntes kurz festhalten
-    if (!selbst.skip) {
-      const anker = document.getElementById("abgleich");
-      const nb = document.createElement("div");
-      if (anker) anker.parentNode.insertBefore(nb, anker); else fz.appendChild(nb);
-      nb.innerHTML = `<div class="selbst-box"><div class="selbst-kopf"><b>Jetzt siehst du die Auflösung — was hattest du nicht auf dem Schirm?</b> ${M.infoBtn("selbsterklaerung")}</div>
-        <textarea id="selbst2Txt" rows="2" placeholder="Kurz festhalten — genau das bleibt hängen"></textarea>
-        <div class="btn-row" style="margin-top:8px"><button class="btn small" id="selbst2Ok">Merken</button></div>
-        ${seModus() === "streng" ? "" : `<button class="linkish" id="selbst2Skip">Überspringen</button>`}</div>`;
-      const zu = (txt) => {
-        r.selbst.text2 = txt || null; C.save();
-        nb.innerHTML = txt ? `<div class="llm-fb"><span class="llm-fb-kopf">📝 Notiert — gute Falle erkannt</span><div>${esc(txt)}</div></div>` : "";
-        tauSelbstAuf();   // erst HIER, nicht beim done() unten: Stufe 2 ist noch Tippzeit
-        done();
-      };
-      nb.querySelector("#selbst2Ok").onclick = () => zu(nb.querySelector("#selbst2Txt").value.trim());
-      const sk = nb.querySelector("#selbst2Skip");
-      if (sk) sk.onclick = () => zu("");
-      // Locker: Weiter geht auch ohne Nachkommentar; streng gate't bis "Merken"
-      if (seModus() !== "streng") done();
-      return;
-    }
-    tauSelbstAuf();   // uebersprungen = keine Stufe 2 mehr, Uhr laeuft weiter
     done();
   }, "Welche deiner Kreuze waren wohl falsch (a, b, c ...) — und warum? Fehlt eine richtige?");
 }
@@ -1113,25 +1120,25 @@ const AUSWAHL_OPT = [
    ERKLAER_TEXT zeigt den ABLAUF des gewaehlten Modus als Kette. Eine Kette ist
    hier besser als Prosa, weil der Unterschied zwischen den Modi genau in der
    Zahl der Stationen liegt (drei gegen fuenf) — das sieht man, ohne zu lesen.
-   STRENG_TEXT haengt an BEIDEN Achsen, nicht nur an der Strenge. Der Grund ist
-   nicht Kosmetik: im Modus "raten" aendert das Ueberspringen die FORM des
-   Ablaufs, es faellt naemlich Stufe 2 komplett weg (erklaerFlow, "if
-   (!selbst.skip)"). Im Modus "begruenden" ist es bloss ein Link mehr. Ein
-   gemeinsamer Satz fuer beide Faelle waere fuer je einen davon gelogen. */
+   STRENG_TEXT hing bis zum Abend des 12.08. an BEIDEN Achsen, weil das
+   Ueberspringen in "raten" zusaetzlich eine zweite Tippstufe wegfallen liess.
+   Diese Stufe ist raus (siehe erklaerFlow), und damit heisst der Link in
+   beiden Modi wieder dasselbe — zwei Saetze statt vier.
+
+   Die vier Kombinationen aus Modus x Strenge gibt es weiterhin, und keine
+   sperrt etwas in der anderen; im Baukasten steht das nicht mehr als Satz,
+   weil es seit der Verschachtelung ohnehin zu sehen ist. Was NICHT symmetrisch
+   ist und deshalb hier stehen bleibt: die Strenge wird gemerkt
+   (settings.selbstErkl, Vorbelegung "streng"), der Modus nicht — oben startet
+   der Baukasten jedes Mal wieder auf "Begruenden". */
 const ERKLAER_TEXT = {
   aus: "<b>Ablauf:</b> falsch gekreuzt → Auflösung → Erklärungen. Ohne Zwischenschritt, am schnellsten.",
-  begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung. <i>Ein Tipp-Schritt, der leichtere von beiden.</i>",
-  raten: "<b>Ablauf:</b> falsch gekreuzt → du siehst nur, <b>wie viele</b> daneben lagen, nicht welche → du tippst, welche du meinst und warum → Auflösung + KI-Rückmeldung → du hältst fest, was du nicht auf dem Schirm hattest. <i>Zwei Tipp-Schritte, der anspruchsvollere von beiden.</i>",
+  begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung.",
+  raten: "<b>Ablauf:</b> derselbe wie bei Begründen, mit <b>einem</b> Unterschied: du siehst vorher nur, <b>wie viele</b> Kreuze daneben lagen — nicht welche. Du musst also erst selbst herausfinden, wo es klemmte. <i>Der anspruchsvollere Weg.</i>",
 };
 const STRENG_TEXT = {
-  begruenden: {
-    standard: "Unter dem Textfeld steht ein Link ‚Nur die Antwort zeigen'. Wer ihn nimmt, springt direkt zur Erklärung.",
-    streng: "Kein Überspringen-Link. Die Erklärung erscheint erst nach dem Knopf ‚Erklärung ansehen'.",
-  },
-  raten: {
-    standard: "Unter dem Textfeld steht ein Link ‚Nur die Antwort zeigen'. <b>Achtung, hier ändert er mehr als bei ‚Begründen':</b> wer ihn nimmt, überspringt auch den zweiten Schritt — der Ablauf verkürzt sich also wirklich. Und ‚Weiter' geht schon, während der zweite Schritt noch offen steht.",
-    streng: "Kein Überspringen-Link, in keinem der beiden Schritte. Weiter geht es erst nach ‚Merken' am Ende.",
-  },
+  standard: "Unter dem Textfeld steht zusätzlich ein Link ‚Nur die Antwort zeigen', der direkt zur Erklärung springt.",
+  streng: "Kein Überspringen-Link — die Erklärung kommt erst, wenn du etwas geschrieben und auf ‚Erklärung ansehen' gedrückt hast. <i>So voreingestellt, weil der Denkmoment der ganze Zweck der Abfrage ist.</i>",
 };
 // Seit 21.07. (Jennifers Wunsch): ALLE Optionen sind in JEDEM Modus da — die
 // Presets sind nur Voreinstellungen. Einzige Ausnahme: die volle Klausur-
@@ -1211,10 +1218,9 @@ function builder({ preset }) {
       <p class="muted" id="erklaerModusHint" style="margin-top:7px"></p>
       <p class="feld-warnung hidden" id="erklaerHint"></p>
       <div class="field unter" id="strengFeld" style="margin-top:12px"><span class="flabel">↳ Dazu, in beiden Fällen: darfst du überspringen?</span><div class="seg" id="streng">
-        ${[["standard", "Mit Überspringen"], ["streng", "Erst erklären"]].map(([v, l]) =>
+        ${[["streng", "Erst erklären"], ["standard", "Mit Überspringen"]].map(([v, l]) =>
           `<button data-v="${v}" class="${strengVor === v ? "on" : ""}">${l}</button>`).join("")}</div>
-      <p class="muted" id="strengHint" style="margin-top:7px"></p>
-      <p class="muted" style="margin-top:7px">Diese Zeile gilt für <b>Begründen und Erst raten gleichermaßen</b> — macht vier Varianten, und keine der beiden Zeilen sperrt etwas in der anderen. Gemerkt wird nur diese untere Wahl; oben startet der Baukasten jedes Mal wieder auf ‚Begründen'.</p></div></div>` : ""}
+      <p class="muted" id="strengHint" style="margin-top:7px"></p></div></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
       <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>` : ""}
@@ -1290,9 +1296,8 @@ function builder({ preset }) {
     const eStreng = segVal("streng") || strengVor;
     const emh = document.getElementById("erklaerModusHint");
     if (emh) emh.innerHTML = ERKLAER_TEXT[eModus] || "";
-    // Die Strenge liest sich in jedem Modus anders — deshalb beide Achsen.
     const sh = document.getElementById("strengHint");
-    if (sh) sh.innerHTML = (STRENG_TEXT[eModus] || {})[eStreng] || "";
+    if (sh) sh.innerHTML = STRENG_TEXT[eStreng] || "";
     // Die EINZIGE echte Blockade im Baukasten, und sie kommt von aussen: ohne
     // Sofort-Feedback gibt es keinen Moment zwischen Antwort und Aufloesung, in
     // dem Rose noch selbst denken koennte. Steht darum direkt unter der Wahl,

@@ -21,11 +21,14 @@ export const QUELLEN_ORDNUNG = [
 export const quelleLabel = (q) => (QUELLEN_ORDNUNG.find(([k]) => k === q) || [q, q])[1];
 export const quelleRank = (q) => { const i = QUELLEN_ORDNUNG.findIndex(([k]) => k === q); return i < 0 ? 99 : i; };
 
-// ---------- Pingo-Filter (globaler Schalter in den Einstellungen) ----------
+// ---------- Pingo-Filter (Option pro Runde) ----------
 // Rose kann das Ueben auf die Fragen aus den Pingo-Abstimmungen der Vorlesung
-// begrenzen (pingo-2025 + pingo-2026). Der Schalter steht EINMAL global und wird
-// direkt in baueRunde() gelesen, nicht durch alle starte()-Aufrufe gefaedelt —
-// sonst waere garantiert ein Modus vergessen worden.
+// begrenzen (pingo-2025 + pingo-2026). Der Schalter stand vom 11.-12.08. global
+// in den Einstellungen und steht seit 12.08. (Jennifer) dort, wo die Runde
+// zusammengestellt wird: eine Option je Runde, wie Timer oder Feedback.
+// settings.nurPingo ist seitdem nur noch die GEMERKTE Wahl — der Vorschlag fuer
+// die naechste Runde und der Wert, den die Schnellstart-Knoepfe ohne eigenen
+// Baukasten uebernehmen. Verbindlich ist immer cfg.nurPingo der laufenden Runde.
 // Ausgenommen sind die drei echten Simulationen: volle Klausur, halbe Klausur,
 // Probeklausur. Die sollen die echte Klausur abbilden (repraesentativer Themen-Mix,
 // unbekannte Fragen) — 42 Fragen aus 41 waeren ein Wiedererkennungstest.
@@ -35,9 +38,10 @@ export const quelleRank = (q) => { const i = QUELLEN_ORDNUNG.findIndex(([k]) => 
 // dann aber ungefiltert — eine Runde ueber den ganzen Bestand, der still ein
 // Drittel der Unterthemen fehlt. Probeklausuren laufen ohnehin an baueRunde vorbei.
 export const istPingo = (q) => String(q.quelle || "").startsWith("pingo");
-export const nurPingo = () => !!state().settings.nurPingo;
+// Gemerkte Wahl aus der letzten Runde — NICHT die Bedingung fuer den Filter.
+export const nurPingoGemerkt = () => !!state().settings.nurPingo;
 export const SIM_MODI = ["klausur", "halbe", "probeklausur"];
-export const pingoFilterGilt = (cfg = {}) => nurPingo() && !SIM_MODI.includes(cfg.modus);
+export const pingoFilterGilt = (cfg = {}) => !!cfg.nurPingo && !SIM_MODI.includes(cfg.modus);
 
 // Verfuegbare Pingo-Fragen je Unterthema (Schluessel "oberthema/unterthema"),
 // nach denselben Regeln, die auch baueRunde anlegt: quizbar, laut Rose relevant,
@@ -1027,9 +1031,10 @@ export function timerMinuten(anzahl, modus) {
 // Eine Session entsteht beim Erstellen (Preset/Baukasten) und lebt in state().offen,
 // bis sie fertig gewertet oder verworfen/abgebrochen wird.
 export function erstelleSession(cfg) {
-  // Im Session-Snapshot festhalten, ob die Runde aus dem Pingo-Filter kam —
-  // sonst sind spaeter zwei Runden nicht mehr auseinanderzuhalten
-  if (pingoFilterGilt(cfg)) cfg.nurPingo = true;
+  // Im Session-Snapshot festhalten, ob der Pingo-Filter in dieser Runde WIRKLICH
+  // galt — sonst sind spaeter zwei Runden nicht mehr auseinanderzuhalten. In den
+  // Simulationen greift er nie, dort muss auch nichts angekreuzt bleiben.
+  cfg.nurPingo = pingoFilterGilt(cfg);
   const runde = baueRunde(cfg);
   if (!runde.length) return null;
   const sess = { id: neueId(), erstellt: Date.now(), cfg, runde, idx: 0, restSek: null, dauerSek: 0 };

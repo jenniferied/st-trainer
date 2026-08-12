@@ -153,11 +153,16 @@ const qBadges = (q) =>
 // ueberlegen, warum es falsch war, DANN die kuratierte Erklaerung — beides wird
 // gespeichert (Hypercorrection-Auswertung spaeter). Drei Stufen in den
 // Einstellungen: standard (Skip-Link sichtbar) / streng (ohne Skip) / aus.
-const seModus = () => C.state().settings.selbstErkl || "standard";
+// Seit 12.08. (Jennifer) sagt diese Einstellung nur noch, WIE STRENG die Abfrage
+// ist — ob sie kommt, entscheidet die Runde (cfg.erklaerModus). Der alte Wert
+// "aus" wird bewusst auf "standard" gemappt: er hat die Abfrage frueher ueberall
+// still abgeschaltet, auch dort, wo im Baukasten "Begruenden" ausgewaehlt war.
+const seModus = () => (C.state().settings.selbstErkl === "streng" ? "streng" : "standard");
 // Gilt in ALLEN Modi mit Sofort-Feedback (Jennifer 21.07.: die fruehere
 // Schnelle-10er-Ausnahme ist raus — sie hat nur verwirrt). Klausur-Durchlaeufe
 // haben ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
-const seAktiv = () => seModus() !== "aus";
+// Ausserhalb der Runden (Explore, Nacharbeit) ist sie damit immer an.
+const seAktiv = () => true;
 
 function selbstErklStart(zone, erg, done, frageText) {
   const frage = frageText || (erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?");
@@ -210,11 +215,22 @@ function llmSelbstFeedback(q, text, gewaehlt, erg) {
 //                tippt, welche es waren und warum (+ KI-Feedback) — nach der
 //                Aufloesung haelt sie nicht erkannte Fallen nochmal kurz fest
 // KI ist ueberall nur Verstaerkung — ohne Function laeuft der feste Ablauf.
-function erklaerFlow(q, r, erg, done) {
+function erklaerFlow(q, r, erg, done0) {
   C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
-  const modus = erg.voll ? "aus" : (R?.cfg?.erklaerModus || (seModus() === "aus" ? "aus" : "begruenden"));
+  const modus = erg.voll ? "aus" : (R?.cfg?.erklaerModus || "begruenden");
   const fz = document.getElementById("fbzone");
-  if (modus === "aus" || !fz) { zeigeFeedback(q, r); done(); return; }
+  if (modus === "aus" || !fz) { zeigeFeedback(q, r); done0(); return; }
+  // Selbst erklaeren ist Extra-Arbeit, keine Antwortzeit (Jennifer 12.08., gleiche
+  // Logik wie bei der Paraphrase): der Countdown haelt an, solange Rose tippt, und
+  // laeuft erst weiter, wenn die Frage abgeschlossen ist. Nur auftauen, wenn hier
+  // auch wirklich eingefroren wurde — sonst wuerde eine wiederaufgenommene Session
+  // ihre Restzeit aus einem alten restSek neu aufziehen.
+  let eingefroren = false;
+  if (R) { friereTimerEin(); eingefroren = true; }
+  const done = () => {
+    if (eingefroren) { eingefroren = false; tauTimerAuf(); if (R?.deadline) startTick(); }
+    done0();
+  };
 
   if (modus === "begruenden") {
     faerbeAntworten(q, r, false);
@@ -348,7 +364,7 @@ function bindUebe() {
   app.querySelectorAll("[data-uebe]").forEach((b) => b.onclick = () => starte({
     modus: "eigene", anzahl: 10, auswahl: "smart", themen: b.dataset.uebe.split(","),
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
-    sprache: C.state().settings.sprache || "schwer",
+    sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
     paraphrase: true,
   }));
   // Wackel-Runde: schnelle 10er nur aus roten Unterthemen, Schwerstes zuerst
@@ -356,14 +372,14 @@ function bindUebe() {
   app.querySelectorAll("[data-rot]").forEach((b) => b.onclick = () => starte({
     modus: "eigene", anzahl: 10, auswahl: "fokus", unterthemen: JSON.parse(b.dataset.rot),
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
-    sprache: C.state().settings.sprache || "schwer",
+    sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
   }));
   // Unterthema-Runde (Jennifer 22.07.): der kleine Blitz an jeder Zeile der
   // Beherrschungs-Liste — 10 smarte Karten aus genau diesem Unterthema.
   app.querySelectorAll("[data-uebe-unter]").forEach((b) => b.onclick = () => starte({
     modus: "eigene", anzahl: 10, auswahl: "smart", unterthemen: JSON.parse(b.dataset.uebeUnter),
     timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
-    sprache: C.state().settings.sprache || "schwer",
+    sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
     paraphrase: true,
   }));
 }
@@ -621,7 +637,7 @@ function home() {
     ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
 
     <h2 class="mt">Neue Session</h2>
-    ${C.nurPingo() ? `<p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">🎯 Du übst gerade nur mit den ${C.pingoGesamt()} Pingo-Fragen. Die Klausur-Simulationen laufen weiter über alles. <button class="btn ghost small" id="pingoAus">Alle Fragen</button></p>` : ""}
+    ${C.nurPingoGemerkt() ? `<p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">🎯 Zuletzt hast du nur mit den ${C.pingoGesamt()} Pingo-Fragen geübt — Schnellstarts von hier übernehmen das. Im Baukasten steht der Schalter je Runde, die Klausur-Simulationen laufen immer über alles. <button class="btn ghost small" id="pingoAus">Alle Fragen</button></p>` : ""}
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
       <button class="mode-card" data-go="halbe"><b>🕧 Halbe Klausur</b><span>21 Fragen · Exam.UP-Look · pausierbar</span></button>
@@ -843,20 +859,11 @@ function einstellungen() {
       <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Lernmethoden</span>
       <p style="margin:0 0 8px">Selbsterklärung bei Fehlern ${M.infoBtn("selbsterklaerung")}<br><span class="muted" style="font-size:.85rem">Erst kurz selbst überlegen, warum es falsch war — dann kommt die Erklärung.</span></p>
       <div class="seg" id="seSeg">
-        ${[["standard", "Standard"], ["streng", "Streng"], ["aus", "Aus"]].map(([v, l]) =>
+        ${[["standard", "Standard"], ["streng", "Streng"]].map(([v, l]) =>
           `<button data-v="${v}" class="${seModus() === v ? "on" : ""}">${l}</button>`).join("")}
       </div>
-      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne Link — erst erklären, dann weiter. Gilt in allen Modi mit Sofort-Feedback; Klausur-Durchläufe (Feedback erst am Ende) bleiben ohne.</p>
+      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne Link — erst erklären, dann weiter. <b>Ob</b> die Erklär-Abfrage kommt, stellst du seit dem 12.08. je Runde ein (‚Erklär-Abfrage bei Fehlern' beim Zusammenstellen) — hier geht es nur darum, wie streng sie ist. Der Timer hält an, solange du tippst.</p>
       <div class="pillzeile" id="methodenPills"></div>
-    </div>
-    <div class="card">
-      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Welche Fragen</span>
-      <p style="margin:0 0 8px">Nur Pingo-Fragen<br><span class="muted" style="font-size:.85rem">Die ${C.pingoGesamt()} Fragen aus den Pingo-Abstimmungen der Vorlesung (2025 und SoSe 26) — die, die am nächsten am echten Klausurstil sind.</span></p>
-      <div class="seg" id="pingoSeg">
-        ${[["aus", "Alle Fragen"], ["an", "🎯 Nur Pingo"]].map(([v, l]) =>
-          `<button data-v="${v}" class="${(C.nurPingo() ? "an" : "aus") === v ? "on" : ""}">${l}</button>`).join("")}
-      </div>
-      <p class="muted" style="margin:8px 0 0">Gilt überall: Schnellrunde, Baukasten, Wackel-Runden, Themen-Blitz und der Fragen-Detektiv. Die Klausur-Simulationen — ganz, halb und die Probeklausuren — bleiben davon unberührt, die sollen die echte Klausur abbilden. Zu manchen Unterthemen (z. B. Parsons, Fend, Grundgesetz) gibt es gar keine Pingo-Fragen; die sind dann im Baukasten ausgegraut.</p>
     </div>
     <div class="card">
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
@@ -886,8 +893,7 @@ function einstellungen() {
     const pills = [
       ["🧠 Abrufübung", true, "retrieval"],
       ["📅 Verteiltes Üben", true, "relearning"],
-      [`💬 Selbsterklärung${seModus() === "streng" ? " (streng)" : ""}`, seModus() !== "aus", "selbsterklaerung"],
-      ["🗣 Einfache Sprache", s.settings.sprache === "einfach", null],
+      [`💬 Selbsterklärung${seModus() === "streng" ? " (streng)" : ""}`, true, "selbsterklaerung"],
       ["🎯 Nur Pingo-Fragen", !!s.settings.nurPingo, null],
     ];
     document.getElementById("methodenPills").innerHTML = pills.map(([l, an, key]) =>
@@ -897,11 +903,6 @@ function einstellungen() {
   document.querySelectorAll("#seSeg button").forEach((b) => b.onclick = () => {
     C.state().settings.selbstErkl = b.dataset.v; C.save();
     document.querySelectorAll("#seSeg button").forEach((x) => x.classList.toggle("on", x === b));
-    malPills();
-  });
-  document.querySelectorAll("#pingoSeg button").forEach((b) => b.onclick = () => {
-    C.state().settings.nurPingo = b.dataset.v === "an"; C.save();
-    document.querySelectorAll("#pingoSeg button").forEach((x) => x.classList.toggle("on", x === b));
     malPills();
   });
   document.getElementById("exportBtn").onclick = C.exportState;
@@ -993,33 +994,39 @@ function builder({ preset }) {
   // C.pingoFilterGilt() in der Engine — sonst waehlt der Baukasten Unterthemen ab,
   // die die Runde danach doch bräuchte. Die Zahlen hinter den Unterthemen zeigen
   // dann die PINGO-Menge, sonst verspricht die Liste Fragen, die nicht kommen.
-  const pFilter = C.nurPingo() && !C.SIM_MODI.includes(P.modus);
-  const pC = pFilter ? C.pingoCounts() : null;
-  const themenBoxen = Object.entries(C.THEMEN).map(([slug, t]) => {
-    const subs = C.unterthemen(slug);
-    const sT = statThema[slug];
-    const subQ = Object.fromEntries((sT?.unterthemen || []).map((s) => [s.u, s.quote]));
-    const zahl = (u, n) => pFilter ? (pC[slug + "/" + u] || 0) : n;
-    const themaLeer = pFilter && subs.every(([u]) => zahl(u) === 0);
-    return `<label class="check${themaLeer ? " leer" : ""}" style="--tc:${t.color}">
-      <input type="checkbox" class="th" value="${slug}"${themaLeer ? " data-leer=\"1\" disabled" : " checked"}>
-      <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b>${quoteHtml(sT?.quote)}${themaLeer ? ` <span class="muted">· keine Pingo-Fragen</span>` : ""}</span></label>
-      ${subs.map(([u, n], i) => {
-        const nn = zahl(u, n);
-        const leer = pFilter && nn === 0;
-        return `<label class="check sub${leer ? " leer" : ""}"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}"${leer ? " data-leer=\"1\" disabled" : " checked"}> ${esc(labelU(u))} <span class="muted">(${nn}${pFilter ? " Pingo" : ""})</span>${quoteHtml(subQ[u])}</label>`;
-      }).join("")}`;
-  }).join("");
+  // Pingo ist seit 12.08. eine Option DIESER Runde, kein globaler Zustand mehr —
+  // die gemerkte Wahl ist nur der Vorschlag. In den echten Simulationen gibt es
+  // den Schalter gar nicht, dort greift der Filter nie (C.pingoFilterGilt).
+  const pingoWaehlbar = !C.SIM_MODI.includes(P.modus);
+  const pingoVor = pingoWaehlbar && C.nurPingoGemerkt();
+  // Die Themenliste haengt am Schalter: sobald er umgelegt wird, wird sie neu
+  // gezeichnet. Zahlen, die zum Filter passen, sind der ganze Zweck der Uebung —
+  // eine Zahl, die luegt, ist schlimmer als gar keine.
+  const themenBoxenHtml = (pFilter) => {
+    const pC = pFilter ? C.pingoCounts() : null;
+    return Object.entries(C.THEMEN).map(([slug, t]) => {
+      const subs = C.unterthemen(slug);
+      const sT = statThema[slug];
+      const subQ = Object.fromEntries((sT?.unterthemen || []).map((s) => [s.u, s.quote]));
+      const zahl = (u, n) => pFilter ? (pC[slug + "/" + u] || 0) : n;
+      const themaLeer = pFilter && subs.every(([u]) => zahl(u) === 0);
+      return `<label class="check${themaLeer ? " leer" : ""}" style="--tc:${t.color}">
+        <input type="checkbox" class="th" value="${slug}"${themaLeer ? " data-leer=\"1\" disabled" : " checked"}>
+        <span><span class="chip" style="--tc:${t.color}">${t.kurz}</span> <b>${t.name}</b>${quoteHtml(sT?.quote)}${themaLeer ? ` <span class="muted">· keine Pingo-Fragen</span>` : ""}</span></label>
+        ${subs.map(([u, n]) => {
+          const nn = zahl(u, n);
+          const leer = pFilter && nn === 0;
+          return `<label class="check sub${leer ? " leer" : ""}"><input type="checkbox" class="uth" data-th="${slug}" value="${slug}/${u}"${leer ? " data-leer=\"1\" disabled" : " checked"}> ${esc(labelU(u))} <span class="muted">(${nn}${pFilter ? " Pingo" : ""})</span>${quoteHtml(subQ[u])}</label>`;
+        }).join("")}`;
+    }).join("");
+  };
 
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>${P.titel}</h1></div>
     ${istKlausur ? `<div class="card"><p>42 Fragen quer durch alle Themen, im Look von <b>Exam.UP</b> (der Prüfungsplattform der Uni) wie in der echten Klausur. Feedback gibt's erst am Ende — genau wie im Ernstfall. Das 📕-Skript (alle Folien als PDF) liegt dabei offen, wie in der echten Klausur.</p>
       <p class="muted" style="margin:8px 0 0"><b>Taktik fürs Scoring:</b> Keine Frage leer lassen (unter 0 P. geht eine Frage nie). Erst sicher falsche Optionen streichen, dann kreuzen, sobald du dir besser als 1-zu-3 sicher bist. Zwei Durchgänge: erst die sicheren Fragen, dann die kniffligen.</p></div>` : ""}
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
-    ${C.nurPingo() ? `<div class="card" style="border-left:4px solid var(--c-sq)"><p style="margin:0">🎯 <b>Nur Pingo-Fragen</b> ist an${!pFilter
-      ? " — für Klausur-Simulationen gilt der Filter nicht. Die laufen immer über den ganzen Bestand, damit sie die echte Klausur abbilden."
-      : `: gezogen wird aus den ${C.pingoGesamt()} Pingo-Fragen. Ausgegraute Unterthemen haben keine.`}</p>
-      <p class="muted" style="margin:6px 0 0">Umschalten in den Einstellungen.</p></div>` : ""}
+    ${!pingoWaehlbar && C.nurPingoGemerkt() ? `<div class="card" style="border-left:4px solid var(--c-sq)"><p style="margin:0">🎯 Hier gilt <b>Nur Pingo-Fragen</b> nicht — Klausur-Simulationen laufen immer über den ganzen Bestand, damit sie die echte Klausur abbilden.</p></div>` : ""}
     ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
       ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
@@ -1034,8 +1041,9 @@ function builder({ preset }) {
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
     ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span><div class="seg" id="erklaer">
       ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Erst raten"]].map(([v, l]) =>
-        `<button data-v="${v}" class="${v === (seModus() === "aus" ? "aus" : "begruenden") ? "on" : ""}">${l}</button>`).join("")}</div>
-      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. (Streng/locker stellst du in den Einstellungen.)</p></div>` : ""}
+        `<button data-v="${v}" class="${v === "begruenden" ? "on" : ""}">${l}</button>`).join("")}</div>
+      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. <b>Der Timer hält an, solange du tippst.</b> (Streng/locker stellst du in den Einstellungen.)</p>
+      <p class="muted" id="erklaerHint" style="margin-top:6px"></p></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
       <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>
@@ -1048,11 +1056,12 @@ function builder({ preset }) {
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Ansicht</span><div class="seg" id="ansicht">
       <button data-v="uebung" class="${P.ansicht === "exam" ? "" : "on"}">Übungs-Ansicht</button><button data-v="exam" class="${P.ansicht === "exam" ? "on" : ""}">Klausuransicht</button></div>
       <p class="muted">Klausuransicht = Exam.UP-Look wie in der echten Klausur, mit Fragen-Navigation — läuft immer mit Original-Sprache.</p></div>` : ""}
-    ${!istKlausur && C.pool().some((q) => q.sprache === "einfach") ? `<div class="field"><span class="flabel">Sprache</span><div class="seg" id="sprache">
-      <button data-v="schwer" class="${(C.state().settings.sprache || "schwer") === "schwer" ? "on" : ""}">Original (Klausur)</button>
-      <button data-v="einfach" class="${C.state().settings.sprache === "einfach" ? "on" : ""}">Einfache Sprache</button></div>
-      <p class="muted">Einfache Varianten, wo vorhanden — sonst die Original-Frage. Deine Wahl wird gemerkt. Klausur-Simulationen laufen immer mit Original-Sprache (wie im Ernstfall).</p></div>` : ""}
-    <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list">${themenBoxen}</div></div>
+    ${pingoWaehlbar ? `<div class="field"><span class="flabel">Welche Fragen</span><div class="seg" id="pingo">
+      <button data-v="aus" class="${pingoVor ? "" : "on"}">Alle Fragen</button>
+      <button data-v="an" class="${pingoVor ? "on" : ""}">🎯 Nur Pingo</button></div>
+      <p class="muted">Nur Pingo: gezogen wird aus den ${C.pingoGesamt()} Fragen der Pingo-Abstimmungen (2025 und SoSe 26) — die, die am nächsten am echten Klausurstil sind. Unterthemen ohne Pingo-Fragen (u. a. Parsons, Fend, Grundgesetz) sind dann ausgegraut. Deine Wahl wird gemerkt.</p>
+      <p class="muted" id="pingoWarn" style="margin-top:6px"></p></div>` : ""}
+    <div class="field"><span class="flabel">Themen & Unterthemen</span><div class="opt-list" id="themenListe">${themenBoxenHtml(pingoVor)}</div></div>
     <button class="btn" id="los">Session erstellen & starten</button>
   </div>`);
 
@@ -1060,30 +1069,71 @@ function builder({ preset }) {
   app.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.onclick = () => {
     seg.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on"); updateHint();
   }));
-  app.querySelectorAll(".th").forEach((cb) => cb.onchange = () => {
-    // Unterthemen ohne Pingo-Fragen bleiben aus und deaktiviert, egal was oben passiert
-    app.querySelectorAll(`.uth[data-th="${cb.value}"]`).forEach((u) => {
-      if (u.dataset.leer) return;
-      u.checked = cb.checked; u.disabled = !cb.checked;
-    });
-  });
   const segVal = (id) => app.querySelector(`#${id} button.on`)?.dataset.v;
+  const pingoAn = () => pingoWaehlbar && segVal("pingo") === "an";
+  // Nach jedem Neuzeichnen der Themenliste neu verdrahten
+  const bindThemen = () => {
+    app.querySelectorAll(".th").forEach((cb) => cb.onchange = () => {
+      // Unterthemen ohne Pingo-Fragen bleiben aus und deaktiviert, egal was oben passiert
+      app.querySelectorAll(`.uth[data-th="${cb.value}"]`).forEach((u) => {
+        if (u.dataset.leer) return;
+        u.checked = cb.checked; u.disabled = !cb.checked;
+      });
+      updateHint();
+    });
+    app.querySelectorAll(".uth").forEach((cb) => cb.onchange = () => updateHint());
+  };
   const updateHint = () => {
     const n = fixAnzahl || +(segVal("anz") || 10);
     const t = segVal("timer");
     document.getElementById("timerHint").textContent = t === "aus" ? "Ohne Zeitdruck üben." : `≈ ${C.timerMinuten(n, t)} Minuten für ${n} Fragen (${t === "nta" ? "mit" : "ohne"} Nachteilsausgleich, relativ zur echten Klausur).`;
     const ah = document.getElementById("auswahlHint");
     if (ah) ah.textContent = (AUSWAHL_OPT.find(([v]) => v === segVal("auswahl")) || [])[2] || "";
+    // Warnung, BEVOR die Runde startet: reichen die Pingo-Fragen fuer die
+    // gewaehlten Unterthemen ueberhaupt? pingoCounts() zaehlt nach denselben
+    // Regeln wie baueRunde, die Zahl stimmt also mit dem ueberein, was kommt.
+    const pw = document.getElementById("pingoWarn");
+    if (pw) {
+      if (!pingoAn()) pw.textContent = "";
+      else {
+        const pC = C.pingoCounts();
+        const da = [...app.querySelectorAll(".uth:checked")].reduce((s, x) => s + (pC[x.value] || 0), 0);
+        pw.innerHTML = da === 0
+          ? `⚠️ <b>Zu diesen Unterthemen gibt es keine Pingo-Fragen.</b> Häkchen erweitern oder auf ‚Alle Fragen' stellen.`
+          : da < n
+            ? `⚠️ Das reicht nicht ganz: <b>${da} von ${n}</b> Fragen sind hier als Pingo-Fragen verfügbar. Die Runde wird entsprechend kürzer.`
+            : `🎯 ${da} Pingo-Fragen stehen für diese Auswahl bereit.`;
+      }
+    }
+    // Erklaer-Abfrage braucht Sofort-Feedback — sonst gibt es keinen Moment,
+    // in dem Rose vor der Aufloesung noch selbst denken koennte
+    const eh = document.getElementById("erklaerHint");
+    if (eh) eh.textContent = (segVal("fb") || P.fb) === "ende" && segVal("erklaer") !== "aus"
+      ? "Kommt nur bei ‚Sofort je Frage' — mit Feedback erst am Ende gibt es keinen Moment dafür."
+      : "";
   };
+  bindThemen();
   updateHint();
+  // Pingo-Schalter zeichnet die Themenliste neu (Zahlen + Ausgrauung haengen dran).
+  // Muss NACH der generischen .seg-Verdrahtung stehen, sonst gewinnt die.
+  const pingoSeg = document.getElementById("pingo");
+  if (pingoSeg) pingoSeg.querySelectorAll("button").forEach((b) => b.onclick = () => {
+    pingoSeg.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on");
+    document.getElementById("themenListe").innerHTML = themenBoxenHtml(b.dataset.v === "an");
+    bindThemen(); updateHint();
+  });
   document.getElementById("los").onclick = () => {
     const unterthemen = [...app.querySelectorAll(".uth:checked")].map((x) => x.value);
     if (!unterthemen.length) { sag("Mindestens ein Thema auswählen 🙂"); return; }
-    // Klausur-/Exam-Modi immer in Original-Sprache (wie im Ernstfall); Übungswahl wird gemerkt
     const examLook = istKlausur || segVal("ansicht") === "exam";
-    // Invariante: Exam-Ansichten laufen immer mit Original-Sprache (wie im Ernstfall)
-    const sprache = examLook ? "schwer" : (segVal("sprache") || C.state().settings.sprache || "schwer");
-    if (!examLook && segVal("sprache")) { C.state().settings.sprache = segVal("sprache"); C.save(); }
+    // Sprache: der Umschalter ist am 12.08. aus dem Baukasten geflogen (Jennifer) —
+    // Pingo hat seinen Platz bekommen. Alle Runden laufen jetzt in Original-Sprache.
+    // Die einfachen Varianten liegen weiter im Bestand, die Filterlogik in
+    // baueRunde() bleibt stehen; es fehlt nur die Bedienung.
+    const sprache = "schwer";
+    // Pingo-Wahl dieser Runde merken — als Vorschlag fuer die naechste und fuer
+    // die Schnellstart-Knoepfe, die keinen eigenen Baukasten haben
+    if (pingoWaehlbar) { C.state().settings.nurPingo = pingoAn(); C.save(); }
     starte({
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
       auswahl: segVal("auswahl") || P.auswahl || "smart",
@@ -1092,9 +1142,10 @@ function builder({ preset }) {
       feedback: istKlausur ? "ende" : istSprach || segVal("stempeln") === "an" ? "sofort" : segVal("fb") || "ende",
       examLook, unterthemen,
       sprache,
+      nurPingo: pingoAn(),
       paraphrase: !examLook && !istSprach && segVal("para") === "an",
       stempeln: !examLook && !istSprach && segVal("stempeln") === "an",
-      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || (seModus() === "aus" ? "aus" : "begruenden"),
+      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "begruenden",
     });
   };
 }
@@ -1186,7 +1237,7 @@ function pkScreen(nr) {
   }));
   app.querySelectorAll("[data-open]").forEach((el) => el.onclick = () => sessionDetail(el.dataset.open, () => pkScreen(nr)));
   const uj = document.getElementById("uebeJetzt");
-  if (uj) uj.onclick = () => starte({ modus: "schnell", anzahl: 10, auswahl: "smart", timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: C.state().settings.sprache || "schwer" });
+  if (uj) uj.onclick = () => starte({ modus: "schnell", anzahl: 10, auswahl: "smart", timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: "schwer", nurPingo: C.nurPingoGemerkt() });
   const pw = document.getElementById("pkWeiter");
   if (pw) pw.onclick = () => resumeSession(p.offen.id);
   const los = document.getElementById("pkLos");
@@ -1963,7 +2014,7 @@ const exFilter = (q) => {
 function explore() {
   // Steht der globale Pingo-Filter, startet auch das Stoebern beim ersten Mal
   // dort. Umstellen bleibt moeglich: Explore ist zum Gucken da, nicht zum Ueben.
-  if (C.nurPingo() && !EXF.pingoInit) { EXF.quelle = "pingo"; EXF.pingoInit = true; }
+  if (C.nurPingoGemerkt() && !EXF.pingoInit) { EXF.quelle = "pingo"; EXF.pingoInit = true; }
   // Fragen aus noch nicht bestandenen Probeklausuren sind hier unsichtbar —
   // wer sie stoebern koennte, wuerde die Probeklausur spoilern.
   const sperr = C.pkGesperrt();
@@ -2107,7 +2158,7 @@ function lernkarte(sperr) {
   const uebenBtn = (unterthemen, label) => `<button class="btn small" data-kt-uebe='${JSON.stringify(unterthemen)}'>⚡ 10 Karten ${esc(label)} üben</button>`;
   const bindKtUebe = () => panel.querySelectorAll("[data-kt-uebe]").forEach((b) => b.onclick = () => starte({
     modus: "schnell", anzahl: 10, auswahl: "smart", unterthemen: JSON.parse(b.dataset.ktUebe),
-    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: C.state().settings.sprache || "schwer",
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
   }));
   const statZeile = (arr) => {
     const q = Math.round(arr.reduce((s, d) => s + d.quote, 0) / arr.length);

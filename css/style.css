@@ -281,10 +281,43 @@ button { font: inherit; cursor: pointer; }
   background: color-mix(in srgb, var(--ge) 10%, transparent);
 }
 :root[data-theme="dunkel"] .app-link { --ge: #7fa9cf; }
+/* Zustand des GE-Trainers im Link (Jennifer 12.08.). Wird von nachbar.js
+   gefuellt und bleibt leer, solange nichts Belastbares bekannt ist — dann sieht
+   der Link genau so aus wie vorher. Deshalb kein reservierter Platz, kein
+   Platzhalter-Strich, kein Ladezustand. */
+.ge-stand:empty { display: none; }
+.ge-stand { display: inline-flex; align-items: center; gap: 4px; margin-left: 5px; }
+.ge-stand .q-pille { margin-left: 0; font-size: .68rem; padding: 0 5px; }
+.ge-offen, .ge-frisch {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: .68rem; font-weight: 800; border-radius: 999px; padding: 0 6px; white-space: nowrap;
+}
+.ge-offen { background: var(--accent); color: var(--accent-ink); }
+.ge-frisch { background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+/* Unter 400 px muessen Titel, Link, Theme und Zahnrad zusammen in EINE Zeile.
+   Dort schrumpft die Quote auf ihren Punkt zusammen: die Farbe ist die
+   Botschaft, die Ziffern sind der Zusatz — und beides steht vollstaendig im
+   title und im aria-label. Damit bleibt Platz fuer "✦ offen", das hier den
+   Vorrang hat. */
+.ge-stand .q-pille.q1 { --q-punkt: #e08a2e; }
+.ge-stand .q-pille.q2 { --q-punkt: #d9b93a; }
+.ge-stand .q-pille.q3 { --q-punkt: var(--ok); }
+.ge-stand .q-pille.q4 { --q-punkt: #0b6f3c; }
+:root[data-theme="dunkel"] .ge-stand .q-pille.q4 { --q-punkt: #16b262; }
+@media (max-width: 399px) {
+  .ge-stand .q-pille {
+    width: 9px; height: 9px; padding: 0; font-size: 0; border: none;
+    border-radius: 50%; background: var(--q-punkt);
+  }
+}
 /* Am Handy steht nur "GE ↗" — mehr passt neben Titel, Theme und Zahnrad nicht
-   in eine Zeile. Sobald Platz da ist, steht der volle Name da. */
+   in eine Zeile. Sobald Platz da ist, steht der volle Name da. Die Schwelle lag
+   bei 480 px und ist am 12.08. auf 560 gewandert: seit der Link den Zustand des
+   GE-Trainers mittraegt, ist er breiter, und "-Trainer" ist daran das am
+   wenigsten Informative — es darf als Erstes weichen, damit der Seitentitel
+   nicht schon auf dem Tablet abgeschnitten wird. */
 .app-link .nur-breit { display: none; }
-@media (min-width: 480px) { .app-link .nur-breit { display: inline; } }
+@media (min-width: 560px) { .app-link .nur-breit { display: inline; } }
 
 /* Fortschrittsbalken */
 .bar { height: 12px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
@@ -1529,8 +1562,10 @@ button.ans:disabled { cursor: default; }
 .mk-punkte .an { color: var(--accent); }
 .mk-teaser { margin: 8px auto 11px; font-size: .92rem; font-style: italic; max-width: 40ch; }
 
+@keyframes mkSchweben { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-2px) rotate(-1.5deg) } }
+.mk-schwebt { animation: mkSchweben 4.2s ease-in-out infinite; }
 @keyframes mkAtmen { 0%,100% { transform: translateY(0) } 50% { transform: translateY(1px) } }
 @keyframes mkWackeln { 0%,88%,100% { transform: rotate(0) } 91% { transform: rotate(-4deg) } 94% { transform: rotate(4deg) } 97% { transform: rotate(-2deg) } }
 .mk-atmet { animation: mkAtmen 3.4s ease-in-out infinite; }
 .mk-wackelt { animation: mkWackeln 3.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .mk-atmet, .mk-wackelt { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mk-atmet, .mk-wackelt, .mk-schwebt { animation: none; } }

@@ -48,6 +48,18 @@ export function herzenStand(tz) {
   return { herzen, sterne, tage };
 }
 
+/* Gruss nach Tageszeit. Nachts bewusst leise — das Ei soll abends nicht an
+   offene Karten erinnern. */
+const grussVon = (h) => h < 5 ? "Nanu, so spät noch" : h < 11 ? "Guten Morgen" : h < 14 ? "Hallo" : h < 18 ? "Hey" : h < 22 ? "Guten Abend" : "Psst";
+
+/* Was das Ei heute schon bekommen hat: eins fuers Anfangen, eins fuers
+   Minimum, eins fuers Tagespensum — dieselbe Rechnung wie fuer die Historie. */
+function herzenHeute(tz) {
+  if (!tz) return 0;
+  const n = tz.n || 0;
+  return (n > 0 ? 1 : 0) + (n >= tz.minimum ? 1 : 0) + (n >= tz.ziel ? 1 : 0);
+}
+
 const STUFEN = [
   { ab: 0,  satz: "Da liegt ein Ei im Nest. Keine Ahnung, wo das herkommt." },
   { ab: 20, satz: "Das Ei hat sich bewegt. Nur ein bisschen, aber es hat." },
@@ -69,15 +81,22 @@ const EI_FORM = [
 ];
 const VOLL = "█▟▙▐▌▝▘▄▀";
 
-/* Die drei Eier. Der Hinweis deutet Temperament an und verraet nichts.
-   Im GE-Trainer liegen bewusst ANDERE drei. */
+/* Die drei Eier dieses Trainers. Im GE-Trainer liegen DREI ANDERE — zusammen
+   sind es sechs individuelle, keins doppelt.
+   Jedes hat eigene Farben, ein eigenes Muster und einen
+   Hinweis, der Temperament andeutet und nichts verraet. Musterung laeuft ueber
+   eine zweite Farbe auf denselben Bloecken; die Sonderzeichen (Herz, Stern,
+   Ring) sitzen als eigene Marken obendrauf. */
 export const EIER = [
-  { key: "streifen", name: "Gestreift", muster: (z, sp) => sp % 3 === 1,
+  { key: "herzchen", name: "Herzchen", fell: "#cf8fa0", muster: "#a4677a", akzent: "#f6e3ea",
+    regel: () => false, marken: [[2, 3, "♥"], [3, 7, "♥"], [4, 5, "♥"]],
+    teaser: "Es ist leicht warm und klopft. Ganz leise, aber regelmäßig." },
+  { key: "sternchen", name: "Sternchen", fell: "#ceae5e", muster: "#9c8240", akzent: "#fdf3d4",
+    regel: (z, sp) => (z + sp) % 5 === 0, marken: [[2, 6, "✦"], [4, 3, "✦"]],
+    teaser: "Kühl wie ein Kieselstein, aber im Dunkeln sieht man es trotzdem." },
+  { key: "gestreift", name: "Gestreift", fell: "#c3b596", muster: "#8b7f66",
+    regel: (z, sp) => sp % 3 === 1,
     teaser: "Warm. Und es hat sich schon zweimal gedreht, als du weggeschaut hast." },
-  { key: "tupfen", name: "Getupft", muster: (z, sp) => (z * 3 + sp) % 5 === 0,
-    teaser: "Kühl und ruhig. Wenn man die Hand drauflegt, wird es langsam wärmer." },
-  { key: "zickzack", name: "Zickzack", muster: (z, sp) => (z + sp) % 4 === 0,
-    teaser: "Es knistert leise, sobald man näher kommt. Neugierig, würde ich sagen." },
 ];
 export const eiIndex = () => {
   const k = C.state().settings.mkEi;
@@ -88,25 +107,28 @@ export const eiIndex = () => {
 function eiEbenen(variante, stufe) {
   const zeilen = EI_FORM.slice();
   const maske = EI_FORM.map((zeile, z) =>
-    zeile.split("").map((ch, sp) => (VOLL.indexOf(ch) < 0 ? " " : variante.muster(z, sp) ? "M" : "F")).join(""));
+    zeile.split("").map((ch, sp) => (VOLL.indexOf(ch) < 0 ? " " : variante.regel(z, sp) ? "M" : "F")).join(""));
   const setz = (z, sp, text, m) => {
     const a = zeilen[z].split(""), b = maske[z].split("");
     for (let i = 0; i < text.length; i++) { a[sp + i] = text[i]; b[sp + i] = m; }
     zeilen[z] = a.join(""); maske[z] = b.join("");
   };
+  (variante.marken || []).forEach((m) => setz(m[0], m[1], m[2], "A"));
   if (stufe >= 1) setz(2, 5, "╷", "R");
   if (stufe >= 2) { setz(2, 4, "╲╱", "R"); setz(3, 5, "╱", "R"); }
   return { zeilen, maske };
 }
-const FARBE = { F: "var(--mk-fell)", M: "var(--mk-muster)", R: "var(--mk-riss)" };
-
 export function eiHtml(variante, stufe) {
+  const FARBE = { F: variante.fell, M: variante.muster, A: variante.akzent || variante.muster, R: "var(--mk-riss)" };
   const { zeilen, maske } = eiEbenen(variante, stufe);
   return zeilen.map((zeile, i) => {
     let out = "", puffer = "", k = null;
     const spuelen = () => {
       if (!puffer) return;
-      out += k === " " ? puffer : `<span style="color:${FARBE[k]}">${puffer}</span>`;
+      // Marken (Herz, Stern) brauchen die Eifarbe als Zellhintergrund, sonst
+      // scheint die Seite durch und es sieht aus wie ein Loch im Ei.
+      const stil = k === "A" ? `color:${FARBE.A};background:${FARBE.F}` : `color:${FARBE[k]}`;
+      out += k === " " ? puffer : `<span style="${stil}">${puffer}</span>`;
       puffer = "";
     };
     for (let j = 0; j < zeile.length; j++) {
@@ -143,7 +165,7 @@ function auswahlHtml() {
     <div class="mk-ank-kopf">Welches nimmst du mit?</div>
     <div class="mk-karussell" data-mk-swipe>
       <button class="mk-pfeil" data-mk-nav="-1" aria-label="Vorheriges Ei">‹</button>
-      <pre class="mk-ei gross" aria-hidden="true">${eiHtml(v, 0)}</pre>
+      <pre class="mk-ei gross${REDUCE_MOTION ? "" : " mk-schwebt"}" aria-hidden="true">${eiHtml(v, 0)}</pre>
       <button class="mk-pfeil" data-mk-nav="1" aria-label="Nächstes Ei">›</button>
     </div>
     <div class="mk-punkte">${punkte}</div>
@@ -159,15 +181,20 @@ function standHtml(tz) {
   const stunde = new Date().getHours();
   const nacht = stunde >= 22 || stunde < 6;
   const v = EIER[eiIndex()];
-  const anim = REDUCE_MOTION || stufe === 0 ? "" : stufe === 1 ? " mk-atmet" : " mk-wackelt";
+  const anim = REDUCE_MOTION ? "" : stufe === 0 ? " mk-schwebt" : stufe === 1 ? " mk-atmet" : " mk-wackelt";
   const satz = nacht ? "Das Ei ist still. Morgen früh sind wir wieder da." : STUFEN[stufe].satz;
-  const rest = naechste ? `noch ${naechste.ab - st.herzen} ♥ bis es weitergeht` : "gleich passiert was";
+  const rest = naechste ? `noch <b>${naechste.ab - st.herzen}</b> ♥ bis es weitergeht` : "gleich passiert was";
   const sterne = st.sterne ? ` · <b>${st.sterne}</b> ★` : "";
+  const hh = herzenHeute(tz);
+  // Was heute schon dazukam. Nachts bleibt das weg — kein Abend-Mahnmal.
+  const heute = nacht ? ""
+    : hh === 0 ? " Heute noch keins — das erste kommt mit der ersten Karte."
+    : ` Heute schon <b>${hh}</b> ♥ dazu${hh < 3 ? ", da geht noch was." : " — mehr geht an einem Tag nicht."}`;
   return `<div class="mk-zeile">
     <pre class="mk-ei${anim}" aria-hidden="true">${eiHtml(v, stufe)}</pre>
     <div class="mk-text">
-      <p class="mk-satz">${satz}</p>
-      <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}
+      <p class="mk-satz"><b>${grussVon(stunde)}.</b> ${satz}</p>
+      <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}.${heute}
         · <button class="mk-link" data-mk-ankunft="gesehen">anderes Ei</button></p>
     </div>
   </div>`;

@@ -261,7 +261,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, mkChat: [], mkChatGeloeschtBis: 0, settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
@@ -1248,6 +1248,122 @@ export function syncSession(s) {
   } });
   save(); flushSync();
 }
+// ---------- Chatverlauf des Maskottchens (gesynct) ----------
+// Bis zum 12.08. lag der Verlauf geraetelokal in localStorage und verfiel mit dem
+// Kalendertag. Jennifer will ihn gespeichert und "immer sofort ueber alle Geraete"
+// synchron haben — damit ist die alte Entscheidung ("NICHT im Lernstand, nicht im
+// Snapshot, nicht in signatur()") aufgehoben. Der Verlauf faehrt jetzt im Lernstand
+// mit, mit denselben Regeln wie alles andere hier: Vereinigung ueber stabile Ids,
+// nie "der neuere Stand gewinnt".
+//
+// Form je Nachricht: { id, role: "user" | "assistant", content, ts }
+//   role/content heissen absichtlich wie im geteilten Baustein und in der Edge
+//   Function — so ist derselbe Array zugleich Anzeige-Zustand und Prompt-Verlauf,
+//   ohne Umbau dazwischen (llm.js wirft id und ts beim Senden ohnehin weg).
+//   id  ist der Schluessel der Vereinigung. Er laesst sich NICHT wie bei Antworten
+//       aus dem Inhalt ableiten: "Was mach ich als Naechstes?" darf zehnmal im
+//       Verlauf stehen und ist zehnmal eine eigene Nachricht. Also Zeitstempel plus
+//       Zufall. Praefix "c-", damit eine Chat-Id in der geloescht-Liste nie mit
+//       einer Session-Id oder einer aid verwechselt wird.
+//   ts  ist zugleich die Sortierung, streng monoton vergeben (siehe chatSagen):
+//       ein Schnellantwort-Chip schreibt Frage und Antwort in derselben
+//       Millisekunde, ohne den Bump stuende die Antwort mal ueber der Frage.
+//
+// DECKEL: die neuesten MK_CHAT_MAX Nachrichten, gezaehlt — ausdruecklich NICHT nach
+// Alter. Ein Altersdeckel haengt an Date.now() und ist damit auf zwei Geraeten nie
+// derselbe Schnitt: das eine wirft eine Nachricht raus, das andere reicht sie beim
+// naechsten Sync zurueck, das erste wirft sie wieder raus — dasselbe Ping-Pong, das
+// weiter unten beim Maskottchen schon einmal Roses Ei-Wahl gekostet hat. "Die
+// neuesten 50 der Vereinigung" ist dagegen eine reine Funktion der Daten und auf
+// jedem Geraet dieselbe Menge, also nach EINEM Merge konvergent.
+// Warum 50: der Prompt sieht ohnehin nur die letzten 20 (MAX_NACHRICHTEN im
+// geteilten Baustein) — das sind zwei verschiedene Zahlen mit zwei verschiedenen
+// Aufgaben, keine davon ist ein Tippfehler der anderen. 50 haelt die paar
+// Gespraeche davor noch lesbar. Zur Groesse: die Kreatur antwortet mit max_tokens
+// 300, also rund 1200 Zeichen im schlimmsten Fall — 50 Nachrichten sind damit
+// ueblicherweise 20 bis 50 kB, die bei jedem Sync mitfahren. Die 4000 Zeichen
+// unten sind nur die Notbremse fuer einen hineinkopierten Text, nicht der
+// Normalfall; wird die Zeile trotzdem spuerbar, ist diese Zahl die Stellschraube.
+const MK_CHAT_MAX = 50;
+const MK_CHAT_ZEICHEN = 4000;
+
+// Deterministischer Notnagel fuer eine Nachricht ohne Id (kann eigentlich nicht
+// vorkommen, das Feld ist von Anfang an dabei). Muss deterministisch sein: eine
+// zufaellige Ersatz-Id waere bei jedem Merge eine andere und der Verlauf wuerde
+// sich mit jedem Sync selbst verdoppeln.
+const chatHash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+
+function chatSauber(m) {
+  if (!m || (m.role !== "user" && m.role !== "assistant")) return null;
+  if (typeof m.content !== "string" || !m.content.trim()) return null;
+  const ts = Number(m.ts) || 0;
+  const content = m.content.slice(0, MK_CHAT_ZEICHEN);
+  const id = typeof m.id === "string" && m.id ? m.id : "c-" + ts + "-" + m.role[0] + chatHash(content);
+  return { id, role: m.role, content, ts };
+}
+
+// Sortierung mit Tie-Break ueber die Id: bei gleichem ts (zwei Geraete, zwei
+// Nachrichten in derselben Millisekunde) muessen beide Geraete dieselbe Reihenfolge
+// waehlen, sonst schneidet der Deckel unterschiedliche Nachrichten weg.
+const chatVor = (a, b) => (a.ts - b.ts) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+// Vereinigen, Weggewischtes fallen lassen, sortieren, deckeln. Idempotent —
+// zweimal angewandt kommt dasselbe raus, darauf beruht die Konvergenz.
+function chatNormieren(liste, weg) {
+  const m = new Map();
+  for (const roh of liste || []) {
+    const s = chatSauber(roh);
+    if (!s || s.ts <= (weg || 0)) continue;
+    m.set(s.id, s);
+  }
+  return [...m.values()].sort(chatVor).slice(-MK_CHAT_MAX);
+}
+
+export const chatVerlauf = () => chatNormieren(state().mkChat, state().mkChatGeloeschtBis);
+
+// Eine Nachricht anhaengen und SOFORT syncen. Das "sofort" ist Jennifers Wort:
+// syncBald() waere hier falsch, ein Chat ist der Ort, an dem man das andere Geraet
+// unmittelbar erwartet. syncLernstand() bricht nichts ab, es haengt sich hinten an
+// die laufende Kette (und schluckt einen zweiten Aufruf, wenn schon einer wartet).
+export function chatSagen(role, content) {
+  const st = state();
+  const liste = chatNormieren(st.mkChat, st.mkChatGeloeschtBis);
+  const letzte = liste.length ? liste[liste.length - 1].ts : 0;
+  // Monoton: neuer als die letzte Nachricht UND neuer als der Loesch-Stand, sonst
+  // wischt der naechste Merge weg, was gerade erst getippt wurde.
+  const ts = Math.max(Date.now(), letzte + 1, (st.mkChatGeloeschtBis || 0) + 1);
+  const eintrag = chatSauber({ id: "c-" + ts + "-" + Math.random().toString(36).slice(2, 8), role, content, ts });
+  if (!eintrag) return null;
+  liste.push(eintrag);
+  st.mkChat = liste.slice(-MK_CHAT_MAX);
+  save();
+  syncLernstand();
+  return eintrag;
+}
+
+// Verlauf wegwischen. Rose koennte hier etwas Persoenliches getippt haben, also
+// muss das loeschbar sein — und ohne Grabstein waere es das nur scheinbar: beim
+// naechsten Sync brachte das andere Geraet alles zurueck.
+//
+// Grabstein ist hier KEINE Id-Liste wie bei den Antworten, sondern eine
+// Wasserlinie: "alles bis einschliesslich diesem Zeitstempel ist weg". Zwei
+// Gruende. Erstens bliebe sonst fuer jede geloeschte Nachricht eine Id in
+// geloescht stehen, und diese Liste wird nie wieder kuerzer — 50 Ids pro
+// Wegwischen, dauerhaft im Lernstand. Zweitens ist Wegwischen hier immer alles
+// auf einmal; einzelne Zeilen zu loeschen gibt es nicht.
+// Die Wasserlinie merged per Math.max und erwischt damit auch Nachrichten, die ein
+// anderes Geraet offline vor dem Wegwischen geschrieben hat und erst danach
+// hochlaedt. Das ist gewollt: "weg" heisst weg, auch das Nachgereichte.
+export function chatVerlaufLoeschen() {
+  const st = state();
+  const juengste = (st.mkChat || []).reduce((m, x) => Math.max(m, Number(x.ts) || 0), 0);
+  st.mkChatGeloeschtBis = Math.max(st.mkChatGeloeschtBis || 0, juengste, Date.now());
+  st.mkChat = [];
+  save();
+  syncLernstand();
+  return st.mkChatGeloeschtBis;
+}
+
 // ---------- Lernstand-Sync (gemeinsamer Stand ueber alle Geraete) ----------
 // Ein Sync-Code = ein Lernstand. Ablauf immer Pull → Merge → Push, damit zwei
 // Geraete, die gleichzeitig ueben, sich nicht gegenseitig ueberschreiben.
@@ -1285,8 +1401,14 @@ function snapshot() {
   const heuteKey = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toDateString(); })();
   const heute = plan && plan.tag === heuteKey
     ? heuteBlock(heuteAntworten(), plan, offenZaehler ? offenZaehler() : null) : null;
+  // mkChat: der Chatverlauf faehrt mit (Jennifer, 12.08.). Hier normiert und nicht
+  // roh durchgereicht, damit auf dem Server nie mehr steht als der Deckel erlaubt —
+  // auch dann nicht, wenn der lokale Stand aus einem alten Backup importiert wurde.
   return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen,
-    geloescht: st.geloescht, mk: st.mk || {}, ...(heute ? { heute } : {}) };
+    geloescht: st.geloescht, mk: st.mk || {},
+    mkChat: chatNormieren(st.mkChat, st.mkChatGeloeschtBis),
+    mkChatGeloeschtBis: st.mkChatGeloeschtBis || 0,
+    ...(heute ? { heute } : {}) };
 }
 
 // Kompakte Signatur eines Stands — jsonb aus Postgres kommt mit anderer Schluessel-
@@ -1315,6 +1437,17 @@ function signatur(d) {
     // ausdruecklich genau einmal vorkommen soll (Jennifer, 12.08.).
     ((d.mk && d.mk.ei) || "") + ":" + ((d.mk && d.mk.ts) || 0) + ":" + ((d.mk && d.mk.stufeMax) || 0) +
       ":" + ((d.mk && d.mk.geschluepft) || 0),
+    // Der Chatverlauf. Er MUSS hier stehen, sonst passiert bei einer neuen
+    // Nachricht gar nichts: der Push-Waechter unten vergleicht nur Signaturen, und
+    // ein Feld, das nur im Snapshot steht, geht nie hoch. Genau daran haengt
+    // Jennifers "immer sofort syncen". Die Ids reichen — Nachrichten werden nie
+    // nachtraeglich geaendert, nur angehaengt oder weggewischt.
+    ids(d.mkChat, (m) => m.id),
+    // Die Loesch-Wasserlinie steht aus demselben Grund hier wie geschluepft: sie
+    // kann sich per Knopfdruck bewegen, ohne dass sich eine Id-Liste aendert (zwei
+    // Wegwischen hintereinander, das zweite auf einem schon leeren Verlauf). Ohne
+    // diese Zeile bliebe das Wegwischen auf dem einen Geraet stehen.
+    (d.mkChatGeloeschtBis || 0),
   ].join("|");
 }
 
@@ -1389,6 +1522,21 @@ export function mergeLernstand(remote) {
   // damit der Wert stabil bleibt und nicht bei jedem Merge hin und her springt.
   const gs = [st.mk.geschluepft, rMk.geschluepft].filter(Boolean);
   if (gs.length) st.mk.geschluepft = Math.min(...gs);
+
+  // Chatverlauf: Vereinigung ueber die Ids, sortiert nach Zeit, dann der Deckel.
+  // Kein "der laengere Verlauf gewinnt" und erst recht kein Ersetzen — Rose tippt
+  // am Handy weiter, waehrend auf dem Tablet noch das Gespraech von vorhin steht,
+  // und danach muessen beide Haelften da sein.
+  // Die Wasserlinie wird ZUERST vereinigt (Maximum), damit der Filter in
+  // chatNormieren schon den geloeschten Stand kennt und Weggewischtes nicht erst
+  // wieder hereinlaeuft. Reihenfolge remote-vor-lokal: bei gleicher Id gewinnt die
+  // lokale Fassung, der Inhalt ist bei gleicher Id ohnehin derselbe.
+  // Ein alter Stand ohne diese Felder ist kein Loeschbefehl: `|| []` bzw. `|| 0`,
+  // der lokale Verlauf bleibt stehen. Umgekehrt kann eine App-Version ohne mkChat
+  // die Server-Zeile zwar ohne Verlauf ueberschreiben — das naechste Geraet mit
+  // dieser Version bringt ihn durch die Vereinigung von selbst zurueck.
+  st.mkChatGeloeschtBis = Math.max(st.mkChatGeloeschtBis || 0, remote.mkChatGeloeschtBis || 0);
+  st.mkChat = chatNormieren([...(remote.mkChat || []), ...(st.mkChat || [])], st.mkChatGeloeschtBis);
 
   rebuildLeitner(); // save() steckt drin
   return signatur(snapshot()) !== vorher;

@@ -17,20 +17,12 @@ window.ST_CONFIG = {
   // Am Vortag faehrt die App das Ziel automatisch runter (locker wiederholen statt pauken).
   // 18.09.2026 von Rose BESTAETIGT (21.07.). GE-Klausur: 10.09.2026.
   klausurTag: "2026-09-18",
-  // Kreaturen-Chat, Stufe 2: freier Text ueber die Edge Function.
-  // ACHTUNG, Stand 12.08. abends: der Zweig art "maskottchen" ist in
-  // supabase/functions/llm/index.ts NOCH GAR NICHT GESCHRIEBEN — dort steht
-  // weiterhin nur `body.art === "chat" ? "chat" : "feedback"`. Stufe 2 heisst
-  // hier also "noch schreiben, DANN deployen", nicht "nur noch deployen".
-  // Der GE-Trainer hat den Zweig seit dem 12.08. (llm-ge/index.ts), er kann
-  // als Vorlage dienen (SYSTEM_MASKOTTCHEN, SCHEMA_MASKOTTCHEN, standBlock).
-  // Bis dahin AUS (Login und Anthropic-Key liegen bei Jennifer). Solange baut
-  // das Sheet gar kein Eingabefeld — Rose sieht nur die Schnellantworten und
-  // nichts, was auf ein fehlendes Feature hindeutet.
-  // Ein Schalter und kein Ausprobieren, weil die derzeit deployte Function ein
-  // unbekanntes art still in den Feedback-Zweig routet und dann Muell liefert
-  // statt eines sauberen Fehlers.
-  mkChatFreitext: true,
+  // Kreaturen-Chat: frei tippen geht IMMER, dafuer gibt es keinen Schalter mehr.
+  // Der frueherer mkChatFreitext stammt aus der Zeit vor dem Deploy des
+  // art-Zweigs "maskottchen" und hat genau den Zustand erzeugt, ueber den
+  // Jennifer sich am 12.08. geaergert hat: statt eines Eingabefelds stand da
+  // "Tipp auf eine Frage." Faellt die Function aus, greift der stille Fallback
+  // in mk-chat.js — Rose sieht nie einen Fehler, nur einen freundlichen Satz.
   // Tagesziel ist seit 18.07. dynamisch (tagesPlan() in core.js rechnet Minimum/
   // Tagespensum/Streckziel taeglich aus dem echten Restbedarf) — kein fester Wert mehr.
 };

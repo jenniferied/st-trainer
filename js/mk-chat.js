@@ -9,19 +9,17 @@
    Snapshot, nichts in signatur(). Roses Lernstand kann er strukturell nicht
    anfassen — der Verlauf liegt geraetelokal in localStorage.
 
-   ZWEI STUFEN:
-     1. Schnellantworten aus dem lokalen Stand. Laufen immer, kosten nichts,
-        brauchen weder Netz noch Edge Function. Das ist der Hauptweg.
-     2. Freier Text ueber die Function. Haengt an ST_CONFIG.mkChatFreitext und
-        bleibt aus, bis die Function mit dem Zweig art "maskottchen" deployt
-        ist. Solange ist das Eingabefeld nicht da — kein ausgegrautes Feld,
-        kein Hinweis auf etwas Fehlendes.
+   ZWEI WEGE, GLEICHRANGIG:
+     1. Frei tippen. Das Eingabefeld ist IMMER da (Jennifer, 12.08.: "man soll
+        frei tippen können beim chat"). Antwortet die Function nicht, greift
+        der stille Fallback — nie ein Fehler, nie eine leere Blase.
+     2. Schnellantworten aus dem lokalen Stand. Eine Abkuerzung, kein Ersatz:
+        sie kosten nichts und brauchen weder Netz noch Edge Function.
 
-   Warum ein expliziter Schalter und kein Ausprobieren: die derzeit deployte
-   Function routet ein UNBEKANNTES art still in den Feedback-Zweig
-   (`body.art === "chat" ? "chat" : "feedback"`) und liefert dann
-   {trifftKern, feedback} oder einen 502 mit kein-schema. Ein Versuch gegen
-   live erzeugt also Muell statt eines sauberen Fehlers. */
+   Den frueheren Schalter ST_CONFIG.mkChatFreitext gibt es nicht mehr. Er
+   stammt aus der Zeit vor dem Deploy des art-Zweigs "maskottchen" und hat
+   genau den Zustand erzeugt, ueber den Jennifer sich geaergert hat: statt
+   eines Eingabefelds stand da "Tipp auf eine Frage." */
 
 import * as C from "./core.js";
 import * as Mk from "./maskottchen.js";
@@ -175,12 +173,11 @@ function fallback(st) {
   return "Ich bin gerade ein bisschen verschlafen und finde die Worte nicht. Was ich aber sehe: " + Chat.heuteSatz(st) + ".";
 }
 
-/* ---------- Stufe 2: freier Text ----------
+/* ---------- Freier Text ----------
    Nicht streamend, mit Absicht: fuer zwei bis drei Saetze lohnt sich SSE
    nicht, und EIN Codepfad fuer beide Apps ist mehr wert als das Tippgefuehl.
    Jeder Fehler wird zu null — der geteilte Baustein macht daraus den
    Fallback-Satz, nie eine Fehlermeldung. */
-const freitext = () => !!url() && !!cfg().mkChatFreitext;
 
 function kopf() {
   const k = cfg().supabaseAnonKey || "";
@@ -188,7 +185,9 @@ function kopf() {
 }
 
 async function senden(messages, st) {
-  if (!freitext() || !budgetFrei()) return null;
+  // Nur noch die Transportfrage: gibt es ueberhaupt einen Endpunkt, und ist
+  // heute noch Budget da? Kein Feature-Schalter mehr.
+  if (!url() || !budgetFrei()) return null;
   try {
     const steuerung = new AbortController();
     const wecker = setTimeout(() => steuerung.abort(), 14000);
@@ -218,18 +217,24 @@ async function senden(messages, st) {
   }
 }
 
-/* ---------- Oeffnen ---------- */
+/* ---------- Das Bild der Kreatur ----------
+   Dasselbe, das auf der Startseite sitzt — der Chat zeichnet nichts Eigenes.
+   Damit waechst der Avatar automatisch mit und kann strukturell nicht in
+   einer anderen Stufe stehen als die Karte darueber. */
+function avatarHtml(s) {
+  return Mk.bildHtml(Mk.EIER[Mk.eiIndex()], s.stufe, Chat.istNacht(s));
+}
+
+/* ---------- Oeffnen ----------
+   Keinen titel mehr: der Name der Kreatur steht im Sheet an ihrer Blase und
+   heisst schlicht "Ei", solange sie eins ist (kreaturName() im Baustein). */
 export function oeffnen() {
-  const st = stand();
   return Chat.chatOeffnen({
-    titel: Mk.chatTitel(st.stufe),
     verlaufKey: "st-mk-chat",
-    hinweis: freitext()
-      ? "Ich weiß, wie dein Tag läuft - vom Stoff versteh ich nichts."
-      : "Ich weiß nur, wie dein Tag läuft. Für den Stoff gibt es den Chat an der Übungsfrage.",
+    hinweis: "Ich weiß, wie dein Tag läuft. Vom Stoff versteh ich nichts - dafür gibt es den Chat an der Übungsfrage.",
     stand,
+    avatarHtml,
     schnellFragen,
-    freitext,
     budgetFrei,
     senden,
     fallback,

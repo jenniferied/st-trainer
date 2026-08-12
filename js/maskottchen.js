@@ -134,6 +134,28 @@ function satzVon(stufe, hh, nacht) {
 }
 export const stufeVon = (herzen) => { let i = 0; STUFEN.forEach((s, k) => { if (herzen >= s.ab) i = k; }); return i; };
 
+/* ---------- Die Sperrklinke: einmal erreicht, bleibt erreicht ----------
+   herzenStand() rechnet die GANZE Historie mit dem HEUTIGEN Tagesziel, und das
+   schwankt taeglich (Zielband 60-100). Gemessen an Roses echtem Stand am 12.08.:
+   bei Ziel 60/80/100 kommen 30/27/25 Herzen heraus — fuenf Herzen Unterschied
+   allein durch die Planaenderung, ohne dass sie irgendetwas anders gemacht hat.
+
+   Solange die Stufen 20 Herzen auseinander lagen, fiel das nicht auf. Je enger
+   die Leiter wird, desto sicherer ueberspringt so ein Rutsch eine Grenze — und
+   dann ist das Tier am naechsten Tag wieder ein Ei. Eine Zahl, die sinkt, ist
+   aergerlich; ein Tier, das ent-schluepft, ist ein Wortbruch.
+
+   Darum merkt sich mk.stufeMax die hoechste je erreichte Stufe. Sie wird nur
+   groesser, synct mit (core.js: snapshot, signatur UND eine eigene Max-Regel im
+   Merge) und gilt geraeteuebergreifend — auch weil settings.tzPlan geraetelokal
+   ist und zwei Geraete am selben Tag verschiedene Herzenzahlen ausrechnen. */
+export function stufeJetzt(herzen) {
+  const mk = C.state().mk || (C.state().mk = {});
+  const stufe = Math.min(Math.max(stufeVon(herzen), mk.stufeMax || 0), STUFEN.length - 1);
+  if (stufe > (mk.stufeMax || 0)) { mk.stufeMax = stufe; C.save(); }
+  return stufe;
+}
+
 /* ---------- Das Ei, Blockgrafik ----------
    Volle Flaeche statt Umriss: ein Ei ist ein Gegenstand, da traegt die
    Fuellung. Die Musterung ist keine andere Zeichenart, sondern nur eine zweite
@@ -374,8 +396,11 @@ export function markenHtml(tz, minP, zielP) {
    dieselbe Funktion mit gedrehten Werten auf; damit kann die Vorschau nicht von
    der App wegdriften, was bei einer nachgebauten Kopie sicher passiert waere.
    Reine Funktion: kein Zugriff auf state, Uhr oder Historie. */
-export function blaseText({ herzen, sterne, tage, stunde, hh }) {
-  const stufe = stufeVon(herzen);
+export function blaseText({ herzen, sterne, tage, stunde, hh, stufeMax }) {
+  // stufeMax ist die Sperrklinke (siehe stufeJetzt): die Stufe faellt nie unter
+  // das schon Erreichte zurueck, auch wenn die Herzenzahl sinkt. Geklemmt, damit
+  // ein gespeicherter Wert aus einer laengeren Leiter hier nicht ins Leere greift.
+  const stufe = Math.min(Math.max(stufeVon(herzen), stufeMax || 0), STUFEN.length - 1);
   const naechste = STUFEN[stufe + 1];
   const nacht = stunde >= 22 || stunde < 6;
   return {
@@ -402,8 +427,10 @@ const wechselHtml = (herzen) => herzen > 0 ? "" :
 
 function standHtml(tz) {
   const st = herzenStand(tz);
+  // stufeJetzt() zieht die Sperrklinke nach; blaseText() bekommt sie herein und
+  // rechnet nicht selbst. Sonst haette die Blase eine andere Stufe als das Bild.
   const t = blaseText({ herzen: st.herzen, sterne: st.sterne, tage: st.tage,
-    stunde: new Date().getHours(), hh: herzenHeute(tz) });
+    stunde: new Date().getHours(), hh: herzenHeute(tz), stufeMax: stufeJetzt(st.herzen) });
   const stufe = t.stufe;
   const v = EIER[eiIndex()];
   const anim = REDUCE_MOTION ? "" : stufe === 0 ? " mk-schwebt" : stufe === 1 ? " mk-atmet" : " mk-wackelt";

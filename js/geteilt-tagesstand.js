@@ -303,6 +303,28 @@ export function nochNichts(h, tsSnapshot) {
   return tagesLos(tsSnapshot);     // gar kein frischer Block -> aus dem Zeitstempel
 }
 
+/* Wann der Anstupser wirklich gezeigt wird — und das ist eine Rangfolge, keine
+   zweite Bedingung: WENN eine Liste offener Tagesaufgaben da ist, gewinnt das
+   Abzeichen, und der Anstupser faellt weg.
+
+   Warum in dieser Richtung, gemessen bei 360 und 320 px: "✦ 3 offen" und
+   "! heute noch nichts" nebeneinander passen bei 360 px noch in beide
+   Kopfzeilen (Seitenueberlauf 0), bei 320 px laeuft die Seite in beiden Apps
+   ueber (31 px in ST, 27 px in GE) — und zwei rot pulsende Dinge nebeneinander
+   sind ohnehin eine Wand aus Alarm. Es muss also eines von beiden weichen.
+
+   Es weicht der Anstupser, nicht das Abzeichen, aus drei Gruenden:
+     - Das Abzeichen sagt MEHR. "3 offen" enthaelt "heute noch nichts fertig",
+       umgekehrt gilt das nicht.
+     - Es sagt das Handlungsfaehige. Was offen ist, kann Rose antippen.
+     - Der Anstupser stuende sonst als einziges da und die Liste waere nur noch
+       im title — auf dem Handy gibt es kein Hover, also waere sie weg.
+   Die Motivations-Absicht bleibt erhalten: das Abzeichen ist dieselbe rote
+   Farbe im selben schnellen Takt (.dringend), es ist nur beschriftet. */
+export function zeigAnstupser(los, offen) {
+  return !!los && !(offen && offen.length);
+}
+
 /* Der Text dazu. Bewusst eine Feststellung und keine Mahnung: "noch" traegt,
    dass der Tag offen ist, nicht dass etwas versaeumt waere. Kein "endlich",
    kein "immer noch", keine Zahl — eine 0 neben einem Ziel liest sich wie ein

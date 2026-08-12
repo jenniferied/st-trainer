@@ -52,7 +52,7 @@
 
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
-import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesZeigen, nochNichts, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
+import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesZeigen, nochNichts, zeigAnstupser, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -210,18 +210,15 @@ export function zeigeGeStand(a) {
 
     const teile = [];
     const worte = [];
-    /* Wenn drueben heute noch gar nichts lief, tritt der Anstupser weiter unten
-       AN DIE STELLE des Offen-Abzeichens, statt danebenzustehen. Die Regel und
-       ihre Begruendung stammen aus dem GE-Trainer (Kopfzeile auf 360 px, und
-       zwei Dinge duerfen nicht gleichzeitig pulsen); hier stand sie bisher
-       nicht, weil der Fall unerreichbar schien: offen != null setzte einen
-       Block von heute voraus, und der hiess "es wurde heute gepusht".
-       Seit tagesZeigen() einen Block mit n = 0 zurueckhaelt, ist er erreichbar —
-       Rose kann drueben noch nichts gemacht haben und trotzdem eine
-       vollstaendige Offen-Liste geschickt haben. Beide Apps sagen es jetzt
-       gleich. "Heute noch nichts" sagt ohnehin das Staerkere; was offen ist,
-       steht weiter im Tooltip. */
-    const losStatt = !s.heute && s.los;
+    /* Abzeichen und Anstupser koennen jetzt gleichzeitig zutreffen — seit
+       tagesZeigen() einen Block mit n = 0 zurueckhaelt, kann drueben eine
+       vollstaendige Offen-Liste vorliegen, ohne dass heute schon etwas lief.
+       Nebeneinander passen die beiden nicht (gemessen: 320 px laeuft ueber) und
+       duerften es auch nicht, weil dann zwei Dinge gleichzeitig rot pulsen.
+       Welches weicht, entscheidet EINE Funktion im geteilten Baustein, damit
+       die beiden Apps es nicht verschieden beantworten: das Abzeichen gewinnt,
+       Begruendung bei zeigAnstupser(). */
+    const anstupser = zeigAnstupser(s.los, s.offen);
     // Dasselbe Bauteil wie auf den Tageskacheln (Muster-Block im CSS,
     // "offen / erledigt"). Gleiches Wort, gleiche Punktgroesse, gleicher Takt —
     // Rose soll es an beiden Stellen ohne Nachdenken wiedererkennen.
@@ -232,9 +229,9 @@ export function zeigeGeStand(a) {
       // zwei Dateien getrennt driftet; Farbe und ihre Grenze im CSS, Block 2b.
       // Zahl UND Namen kommen aus derselben Liste, die der GE-Trainer geschickt
       // hat — deshalb koennen Abzeichen und Tooltip nicht auseinanderlaufen.
-      if (!losStatt) teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
+      teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
       worte.push("heute noch offen: " + s.offen.join(", "));
-    } else if (s.offen && !losStatt) {
+    } else if (s.offen) {
       /* Die LEERE Liste, nicht bloss ein frischer Zeitstempel. Hier stand bis zum
          12.08. abends `s.frisch` — und das war ein Fehler in der verbotenen
          Richtung: ein Snapshot von heute beweist, dass drueben GEUEBT wurde, aber
@@ -254,7 +251,7 @@ export function zeigeGeStand(a) {
     if (s.heute) {
       teile.push(`<span class="tag-pille ${tagesPilleKlasse(s.heute)}">${tagesText(s.heute)}</span>`);
       worte.push(tagesWorte(s.heute, "GE"));
-    } else if (s.los) {
+    } else if (anstupser) {
       // Kein Zahlenpaar, weil wir das heutige Tagesziel drueben gar nicht
       // kennen — und weil "0 von 40" sich wie ein Rueckstand liest.
       teile.push(`<span class="tag-pille los"><i class="puls dringend los-zeichen">!</i>${losText()}</span>`);

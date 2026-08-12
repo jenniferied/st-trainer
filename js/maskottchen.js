@@ -106,12 +106,12 @@ const STUFEN = [
   { ab: 0,  art: "ei",   sub: 0, satz: "Ich bin einfach hier hingeploppt. Mal sehen, was aus mir wird." },
   { ab: 10, art: "ei",   sub: 1, satz: "Ich hab mich bewegt. Nur ein bisschen, aber ich hab." },
   { ab: 22, art: "ei",   sub: 2, satz: "Es knackt. Nicht erschrecken — ich glaub, es geht bald los." },
-  { ab: 31, art: "blob", sub: 0, satz: "Oh. Hallo. Ich bin … irgendwas." },
-  { ab: 34, art: "blob", sub: 1, satz: "Zwei Augen! Die waren gestern noch nicht da." },
-  { ab: 38, art: "blob", sub: 2, satz: "Da wachsen Ohren. Ich glaub, ich werd was Bestimmtes." },
-  { ab: 41, art: "jung", sub: 0, satz: "Jetzt sieht man's. Ich bin eine Katze." },
-  { ab: 45, art: "jung", sub: 1, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
-  { ab: 48, art: "erwachsen", sub: 0, satz: "Ausgewachsen. Ab jetzt sammeln wir zusammen." },
+  { ab: 34, art: "blob", sub: 0, satz: "Oh. Hallo. Ich bin … irgendwas." },
+  { ab: 37, art: "blob", sub: 1, satz: "Zwei Augen! Die waren gestern noch nicht da." },
+  { ab: 41, art: "blob", sub: 2, satz: "Da wachsen Ohren. Ich glaub, ich werd was Bestimmtes." },
+  { ab: 44, art: "jung", sub: 0, satz: "Jetzt sieht man's. Ich bin eine Katze." },
+  { ab: 48, art: "jung", sub: 1, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
+  { ab: 51, art: "erwachsen", sub: 0, satz: "Ausgewachsen. Ab jetzt sammeln wir zusammen." },
 ];
 /* Die Stufe, bei der aus dem Ei ein Tier wird. Als Konstante, weil drei Stellen
    sie brauchen (Moment ausloesen, Bild waehlen, Test) und eine 3 im Code an der

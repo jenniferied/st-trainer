@@ -269,6 +269,40 @@ export function tagesLos(tsSnapshot) {
   return tagVon(tsSnapshot) < heuteTag();      // letzter Push vor heute -> heute noch nichts
 }
 
+/* ---------- Der ZWEITE Weg zu "heute noch nichts" (gemessen 12.08. abends) ----
+   tagesLos() oben schliesst aus der ABWESENHEIT eines frischen Blocks. Es gibt
+   aber auch den Fall, dass ein frischer Block DA ist und n = 0 sagt — und der
+   war bis hierher nicht abgefangen. Der Nachbar zeigte dann woertlich
+   "0 % · 0/20", also genau die Zahl, die losText() zu vermeiden gebaut wurde:
+   "eine 0 neben einem Ziel liest sich wie ein Rueckstand".
+
+   Wie man da hinkommt, gemessen und nicht ausgedacht: der Block reist huckepack
+   auf einem Push, und ein Push haengt an der SIGNATUR, nicht an einer Antwort
+   von heute. Es genuegt also, dass beim Start irgendetwas Ungesyncte hochgeht —
+   nachgetragene Offline-Antworten von gestern, eine Ei-Wahl, ein gestiegenes
+   mk.stufeMax. Der Tagesplan ist zu diesem Zeitpunkt bereits eingefroren (beide
+   Apps rendern die Startseite vor dem ersten Push), also entsteht ein
+   gueltiger Block mit heutigem Datum, heutigem Ziel und n = 0.
+
+   Deshalb fragen beide Nachbarn ab jetzt DIESE Funktionen statt h direkt:
+
+     tagesZeigen(h)  -> darf die Prozent-Pille ueberhaupt etwas zeigen?
+     nochNichts(h,ts)-> gilt der Anstupser? (aus BEIDEN Wegen, einer Antwort)
+
+   Die Liste offen bleibt davon unberuehrt und wird weiter angezeigt: dass heute
+   noch nichts gelaufen ist, macht die Auskunft "was ist offen" nicht ungueltig.
+   Wie die beiden nebeneinander passen, entscheidet der Nachbar (im GE-Trainer
+   ersetzt der Anstupser das Abzeichen, damit die Kopfzeile auf 360 px nicht
+   zweimal gleichzeitig pulst — der ST-Trainer haelt es seit heute genauso). */
+export function tagesZeigen(h) {
+  return !!(h && h.n > 0);
+}
+
+export function nochNichts(h, tsSnapshot) {
+  if (h) return !tagesZeigen(h);   // frischer Block, aber heute noch keine Antwort
+  return tagesLos(tsSnapshot);     // gar kein frischer Block -> aus dem Zeitstempel
+}
+
 /* Der Text dazu. Bewusst eine Feststellung und keine Mahnung: "noch" traegt,
    dass der Tag offen ist, nicht dass etwas versaeumt waere. Kein "endlich",
    kein "immer noch", keine Zahl — eine 0 neben einem Ziel liest sich wie ein

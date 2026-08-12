@@ -52,7 +52,7 @@
 
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
-import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
+import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesZeigen, nochNichts, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -86,6 +86,17 @@ const leseUrl = (rest) => konfig().supabaseUrl + "/rest/v1/lernstand?code=eq." +
 // Tagesaufgaben kommen jetzt als fertige Liste im heute-Block (Feld offen),
 // gezaehlt vom GE-Trainer selbst. Grund: die Nachbildung uebersah dessen
 // Wiederholen-Zeile und zeigte 2, wo drueben 3 standen.
+// NICHT hochgezaehlt am 12.08. spaetabends, obwohl sich die Anzeige-Regel
+// geaendert hat (tagesZeigen/nochNichts) — und das ist die Praezisierung, die
+// sich niemand neu herleiten soll: seit v3 liegt im Cache nur noch der ROHE
+// fremde Block, gedeutet wird erst beim Zeichnen (werteAus() leitet nichts mehr
+// ab). Eine Aenderung an der ANZEIGE oder an den Lesefunktionen in
+// geteilt-tagesstand.js wirkt deshalb sofort auf alles, was schon gespeichert
+// ist; es gibt keinen abgeleiteten Wert, der veralten koennte, und eine
+// Erhoehung erzwaenge nur den Abruf derselben Serverzeile. Hochzaehlen muss,
+// wer die GESPEICHERTEN FELDER anfasst (werteAus/schreib) — dann ist der alte
+// Eintrag unvollstaendig. Die Regel ist "was im Cache liegt, hat sich
+// geaendert", nicht "irgendwo hat sich Code geaendert".
 const AUSWERTUNG_V = 4;
 function lies() {
   try {
@@ -173,10 +184,13 @@ export function geStand() {
     offen: liesOffen(h),
     // liesHeute() verwirft alles, was nicht von heute ist — auch einen Block,
     // der noch im Cache liegt, weil drueben seit gestern niemand gepusht hat.
-    heute: h,
-    // Genau dieser Fall ist der Anstupser: kein frischer Block, weil der letzte
-    // Push von gestern oder aelter ist. Begruendung in tagesLos().
-    los: tagesLos(c.ts),
+    // tagesZeigen() haelt zusaetzlich einen frischen Block mit n = 0 zurueck:
+    // "0 % · 0/20" waere die Rueckstands-Lesart, die losText() vermeiden soll.
+    // Begruendung ausfuehrlich in geteilt-tagesstand.js bei nochNichts().
+    heute: tagesZeigen(h) ? h : null,
+    // Der Anstupser, aus BEIDEN Wegen: kein frischer Block (letzter Push von
+    // gestern oder aelter) ODER ein frischer Block, der n = 0 sagt.
+    los: nochNichts(h, c.ts),
   };
 }
 
@@ -196,6 +210,18 @@ export function zeigeGeStand(a) {
 
     const teile = [];
     const worte = [];
+    /* Wenn drueben heute noch gar nichts lief, tritt der Anstupser weiter unten
+       AN DIE STELLE des Offen-Abzeichens, statt danebenzustehen. Die Regel und
+       ihre Begruendung stammen aus dem GE-Trainer (Kopfzeile auf 360 px, und
+       zwei Dinge duerfen nicht gleichzeitig pulsen); hier stand sie bisher
+       nicht, weil der Fall unerreichbar schien: offen != null setzte einen
+       Block von heute voraus, und der hiess "es wurde heute gepusht".
+       Seit tagesZeigen() einen Block mit n = 0 zurueckhaelt, ist er erreichbar —
+       Rose kann drueben noch nichts gemacht haben und trotzdem eine
+       vollstaendige Offen-Liste geschickt haben. Beide Apps sagen es jetzt
+       gleich. "Heute noch nichts" sagt ohnehin das Staerkere; was offen ist,
+       steht weiter im Tooltip. */
+    const losStatt = !s.heute && s.los;
     // Dasselbe Bauteil wie auf den Tageskacheln (Muster-Block im CSS,
     // "offen / erledigt"). Gleiches Wort, gleiche Punktgroesse, gleicher Takt —
     // Rose soll es an beiden Stellen ohne Nachdenken wiedererkennen.
@@ -206,9 +232,9 @@ export function zeigeGeStand(a) {
       // zwei Dateien getrennt driftet; Farbe und ihre Grenze im CSS, Block 2b.
       // Zahl UND Namen kommen aus derselben Liste, die der GE-Trainer geschickt
       // hat — deshalb koennen Abzeichen und Tooltip nicht auseinanderlaufen.
-      teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
+      if (!losStatt) teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
       worte.push("heute noch offen: " + s.offen.join(", "));
-    } else if (s.offen) {
+    } else if (s.offen && !losStatt) {
       /* Die LEERE Liste, nicht bloss ein frischer Zeitstempel. Hier stand bis zum
          12.08. abends `s.frisch` — und das war ein Fehler in der verbotenen
          Richtung: ein Snapshot von heute beweist, dass drueben GEUEBT wurde, aber

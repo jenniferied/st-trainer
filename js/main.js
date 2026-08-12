@@ -3,6 +3,7 @@ import * as Beleg from "./beleg.js";
 import * as M from "./methoden.js";
 import * as Spiele from "./spiele.js";
 import * as Llm from "./llm.js";
+import * as Mk from "./maskottchen.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -368,6 +369,7 @@ function tageszielHtml(tz, sich) {
     : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`;
   const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
   return `<div class="card tagesziel glim">
+    ${Mk.html(tz)}
     <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
     <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
       <i class="fill ${zone}" style="width:${pct}%"></i>

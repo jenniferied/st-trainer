@@ -1464,3 +1464,19 @@ button.ans:disabled { cursor: default; }
    riesig — die Charts sind fuer Handy-Breite gezeichnet. */
 @media (min-width: 640px) { .hm-trend { max-width: 480px; margin-inline: auto; } }
 .hm-stern { font-size: .62em; margin-left: 1px; font-weight: 400; }
+/* ---------- Maskottchen: das Ei in der Tagesziel-Karte ----------
+   Farbe pro Zeichen ueber Tokens, damit die Strichzeichnung in hell und
+   dunkel genug Kontrast hat. Entwurf: playground/rose/maskottchen/ */
+:root { --mk-rand: #9a8f7e; --mk-innen: #b9af9c; --mk-riss: var(--accent); }
+[data-theme="dunkel"] { --mk-rand: #b9ae99; --mk-innen: #8d8371; --mk-riss: var(--accent); }
+.mk-zeile { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+.mk-ei { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px; line-height: 1; white-space: pre; margin: 0; flex-shrink: 0; }
+.mk-text { min-width: 0; }
+.mk-satz { margin: 0; font-size: .95rem; }
+.mk-meta { margin: 2px 0 0; font-size: .78rem; color: var(--ink-soft); }
+@keyframes mkAtmen { 0%,100% { transform: translateY(0) } 50% { transform: translateY(1px) } }
+@keyframes mkWackeln { 0%,88%,100% { transform: rotate(0) } 91% { transform: rotate(-4deg) } 94% { transform: rotate(4deg) } 97% { transform: rotate(-2deg) } }
+.mk-atmet { animation: mkAtmen 3.4s ease-in-out infinite; }
+.mk-wackelt { animation: mkWackeln 3.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mk-atmet, .mk-wackelt { animation: none; } }

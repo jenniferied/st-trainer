@@ -40,8 +40,10 @@
    Farbleiter, zwei Definitionen; die 80 % waren dabei nicht einmal eine
    Design-Entscheidung, sondern eine Notloesung, weil die Groesse des GE-Korpus
    im Snapshot gar nicht steht.
-   Jetzt zeigt der Link den TAGESFORTSCHRITT: "12 von 45", die Zahl, die der
-   GE-Trainer auf seiner eigenen Startseite als Zonen-Balken malt. Sie kommt
+   Jetzt zeigt der Link den TAGESFORTSCHRITT in Prozent vom Tagespensum — also
+   die Groesse, die der GE-Trainer auf seiner eigenen Startseite als
+   Zonen-Balken malt, und 100 % heisst "Pensum geschafft", nicht "alles
+   gelernt". Die absoluten Karten stehen im Tooltip. Der Wert kommt
    fertig aus dem fremden Snapshot (Feld heute, geteilter Vertrag in
    geteilt-tagesstand.js) und wird hier NICHT nachgerechnet — genau daran ist
    die alte Zahl gescheitert.
@@ -204,11 +206,12 @@ export function zeigeGeStand(a) {
       teile.push(`<span class="stand-badge sitzt kompakt">✓ heute</span>`);
       worte.push("heute drüben schon geübt");
     }
-    // Der Tagesfortschritt drueben. Kein Prozent, sondern die nackte Bruchzahl:
-    // "12 von 45" sagt von selbst, worauf es sich bezieht — zwei Prozentzahlen
-    // laden dazu ein, verglichen zu werden, und genau daran ist die alte Pille
-    // gescheitert. Die Farbe traegt der geteilte Leiterpunkt, nicht die Flaeche
-    // (Kontrast-Begruendung im Style-Paket, Abschnitt 4).
+    // Der Tagesfortschritt drueben, in Prozent vom Tagespensum (Jennifer,
+    // 12.08.: "ne prozent"). 100 % heisst "Pensum geschafft", nicht "alles
+    // gelernt", und ueber 100 wird nicht gedeckelt — Begruendung und die
+    // verworfene Gegenposition stehen in geteilt-tagesstand.js bei tagesText().
+    // Die absoluten Karten stehen im Tooltip. Die Farbe traegt der geteilte
+    // Leiterpunkt, nicht die Flaeche (Kontrast-Begruendung im Style-Paket).
     if (s.heute) {
       teile.push(`<span class="tag-pille"><i class="hm-pkt ${tagesPunktKlasse(s.heute)}"></i>${tagesText(s.heute)}</span>`);
       worte.push(tagesWorte(s.heute, "GE"));

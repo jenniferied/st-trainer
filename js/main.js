@@ -2215,10 +2215,15 @@ function explore() {
         const gesehen = !!C.frageStats(q.id);
         const sitzt = C.gemeistert(q.id);
         const stand = !gesehen ? " neu" : sitzt ? " sitzt" : "";
+        // "offen" statt "noch offen" (Wortwahl-Angleich 12.08.): dasselbe in
+        // kuerzer, und die kurze Fassung steht schon auf den Tageskacheln und am
+        // Querlink. "sitzt" bleibt dagegen stehen — eine FRAGE sitzt, und das ist
+        // etwas anderes als eine Kachel, die heute dran war. Was eine eigene
+        // Aussage traegt, wird weiter unterschieden; was nur laenger war, nicht.
         return `<div class="q-item${stand}" data-qid="${q.id}">
         <div class="qq">${esc(q.frage)}</div>
         <div class="meta">
-          ${!gesehen ? `<span class="stand-badge neu">✦ noch offen</span>` : sitzt ? `<span class="stand-badge sitzt">✓ sitzt</span>` : ""}
+          ${!gesehen ? `<span class="stand-badge neu">✦ offen</span>` : sitzt ? `<span class="stand-badge sitzt">✓ sitzt</span>` : ""}
           <span class="badge-src">${esc(C.quelleLabel(q.quelle))}${q.quelleDetail ? " · " + esc(q.quelleDetail) : ""}</span>
           ${q.fragetyp === "negation" ? `<span class="badge-src">NICHT-Frage</span>` : ""}
           ${q.fragetyp === "anwendung" ? `<span class="badge-src">Anwendung</span>` : ""}

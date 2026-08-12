@@ -267,6 +267,12 @@ button { font: inherit; cursor: pointer; }
    abgeschnittener Titel als Text, der unter dem Link verschwindet. */
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font-size: clamp(.94rem, 4.3vw, 1.4rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .btn.ghost.small { padding: 8px 9px; }
+/* Werkzeug-Gruppe oben rechts (Jennifer 12.08.): Querlink zum anderen Trainer,
+   Hell/Dunkel und Einstellungen gehoeren zusammen und sollen auch so aussehen —
+   beide Apps bekommen dieselbe Kopfzeile. Enger gesetzt als der Topbar-Abstand,
+   damit die drei als EIN Block gegen den Titel stehen, und flex-shrink:0, damit
+   die Gruppe auf 360 px nicht umbricht (dort gibt der Titel per Ellipse nach). */
+.topbar-tools { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: auto; }
 .back { background: none; border: none; font-size: 1.5rem; padding: 4px 10px 4px 0; color: var(--ink); }
 /* Querlink zum GE-Trainer (Jennifer 12.08.): traegt dessen Identitaetsfarbe,
    damit die beiden Apps sichtbar aufeinander zeigen. flex-shrink:0, sonst frisst
@@ -288,12 +294,6 @@ button { font: inherit; cursor: pointer; }
 .ge-stand:empty { display: none; }
 .ge-stand { display: inline-flex; align-items: center; gap: 4px; margin-left: 5px; }
 .ge-stand .q-pille { margin-left: 0; font-size: .68rem; padding: 0 5px; }
-.ge-offen, .ge-frisch {
-  display: inline-flex; align-items: center; gap: 2px;
-  font-size: .68rem; font-weight: 800; border-radius: 999px; padding: 0 6px; white-space: nowrap;
-}
-.ge-offen { background: var(--accent); color: var(--accent-ink); }
-.ge-frisch { background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
 /* Unter 400 px muessen Titel, Link, Theme und Zahnrad zusammen in EINE Zeile.
    Dort schrumpft die Quote auf ihren Punkt zusammen: die Farbe ist die
    Botschaft, die Ziffern sind der Zusatz — und beides steht vollstaendig im
@@ -640,6 +640,64 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .review-q { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
 .insight { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; font-size: .93rem; margin: 8px 0; }
 
+/* ============ MUSTER "offen / erledigt" ============================
+   EIN Bauteil fuer alle Stellen, an denen die App sagt, ob etwas noch ansteht
+   oder durch ist: Tageskacheln, Querlink zum GE-Trainer, Fragenliste und
+   Unterthema-Zeilen im Stoebern.
+
+   Jennifer, 12.08., nachdem sie den Querlink live gesehen hat: "Ich mag
+   tatsaechlich, dass dort steht 'offen' und es pulsiert. Das kann man
+   natuerlich jetzt uebernehmen in die Karten." — und ausdruecklich DIESELBE
+   Bauweise, nicht eine aehnliche: gleiche Punktgroesse, gleiche
+   Pulsationsdauer, gleiche Farben, gleiches Wort. Darum steht das Muster hier
+   an EINER Stelle und wird ueberall nur benutzt.
+
+   Bewusst hier oben und nicht im Stoebern-Abschnitt vergraben: dieser Block ist
+   der Kandidat fuer das geteilte Style-Paket beider Trainer (Jennifer 12.08.:
+   "wir brauchen eigentlich Style Packages, die geshared sind"). Er haengt an
+   nichts ausser den vier Variablen darueber — herausloesen heisst kopieren.
+
+   Benutzung:
+     <span class="stand-badge neu"><i class="puls">✦</i> offen</span>
+     <span class="stand-badge sitzt">✓ geübt</span>
+   Zusatzklasse .kompakt fuer enge Plaetze (Kachel, Topbar).
+
+   Das ✦ atmet, die Karte darum NICHT — und nur, wenn wirklich etwas offen ist.
+   Ein Zeichen, das immer pulsiert, ist Deko statt Information. */
+:root {
+  --offen-bg: var(--accent);
+  --offen-ink: var(--accent-ink);
+  --fertig-bg: var(--ok-bg);
+  --fertig-ink: var(--ok);
+  --puls-dauer: 2.8s;
+}
+.stand-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .7rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
+  border-radius: 999px; padding: 2px 8px;
+}
+.stand-badge.neu { background: var(--offen-bg); color: var(--offen-ink); }
+.stand-badge.sitzt {
+  background: var(--fertig-bg); color: var(--fertig-ink);
+  border: 1px solid color-mix(in srgb, var(--fertig-ink) 40%, transparent);
+}
+/* Enge Plaetze: Tageskachel (auf 360 px rund 75 px breit) und Topbar. Nur die
+   Groesse aendert sich, nie Farbe, Wort oder Rhythmus. */
+.stand-badge.kompakt { font-size: .68rem; padding: 1px 6px; letter-spacing: 0; }
+/* Die Pulsation: langsam und weich, kein Blinken. Alle Punkte auf einem Schirm
+   atmen im GLEICHEN Takt — versetzte Verzoegerungen sahen aus wie eine Welle,
+   die immer irgendwo blinkt; im Gleichtakt liest es sich als ein ruhiger Atem. */
+.puls { display: inline-block; animation: sanft-puls var(--puls-dauer) ease-in-out infinite; }
+@keyframes sanft-puls {
+  0%, 100% { opacity: .5; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+/* Wer Bewegung reduziert hat, bekommt dieselbe Hervorhebung — nur still. Volle
+   Deckkraft, damit das Zeichen nicht halb verblasst einfriert. */
+@media (prefers-reduced-motion: reduce) {
+  .puls { animation: none; opacity: 1; transform: none; }
+}
+
 /* ---------- Explore ---------- */
 details.topic { border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
 details.topic > summary {
@@ -666,12 +724,8 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
    Fragetext tritt zurueck — die Zeile hat ihre Arbeit getan. */
 .q-item.sitzt { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 5%, transparent); }
 .q-item.sitzt .qq { color: var(--ink-soft); font-weight: 400; }
-.stand-badge {
-  font-size: .7rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
-  border-radius: 999px; padding: 2px 8px;
-}
-.stand-badge.neu { background: var(--accent); color: var(--accent-ink); }
-.stand-badge.sitzt { background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+/* .stand-badge selbst steht weiter oben im Muster-Block "offen / erledigt" —
+   hier nur noch, was zur Fragenliste gehoert. */
 /* Der Belohnungsmoment: einmal kurz aufleuchten, dann ruhig liegenbleiben.
    Bewusst kein Konfetti (das gehoert dem Tagesziel) und nichts, was springt —
    Rose uebt am Handy, die App bleibt ruhig. */
@@ -1207,18 +1261,9 @@ button.tag-hebel:active { transform: scale(.96); }
   background: color-mix(in srgb, var(--ok) 6%, var(--card));
 }
 .spiel-info { position: absolute; top: 3px; right: 6px; font-size: .82rem; opacity: .65; padding: 2px; cursor: pointer; }
-/* Zustands-Pille am Fuss der Karte. Gleiche Klassen wie im Stoebern, nur enger
-   gesetzt — auf 360 px sind vier Karten nebeneinander je rund 75 px breit. */
-.spiel-stand { font-size: .6rem; padding: 1px 5px; letter-spacing: 0; }
-@media (min-width: 400px) { .spiel-stand { font-size: .66rem; padding: 2px 7px; } }
-/* Die langsame, weiche Pulsation. Kein Blinken: eine volle Welle dauert knapp
-   drei Sekunden, und die Karten laufen per --pd versetzt, damit aus vier
-   offenen Kacheln kein Stroboskop wird. */
-.puls { display: inline-block; animation: sanft-puls 2.8s ease-in-out var(--pd, 0s) infinite; }
-@keyframes sanft-puls {
-  0%, 100% { opacity: .5; transform: scale(.9); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
+/* Die Zustands-Pille am Fuss der Karte ist das gemeinsame Muster (.stand-badge
+   .neu/.sitzt .kompakt, siehe Muster-Block oben) — hier wird nichts davon
+   nachgebaut, nur benutzt. */
 /* Der Belohnungsmoment beim Uebergang — Kartenfassung von erledigt-glanz
    (siehe Stoebern). Endet auf der ruhigen gruenen Flaeche der fertigen Karte
    statt auf transparent, sonst blitzt es am Ende noch einmal zurueck. */
@@ -1228,11 +1273,7 @@ button.tag-hebel:active { transform: scale(.96); }
   100% { background: color-mix(in srgb, var(--ok) 6%, var(--card)); }
 }
 .spiel-card.frisch-erledigt .stand-badge.sitzt { animation: sticker-pop .45s cubic-bezier(.34, 1.56, .64, 1) both; }
-/* Wer Bewegung reduziert hat, bekommt dieselbe Hervorhebung — nur still.
-   Das ✦ bleibt auf voller Deckkraft stehen, damit es nicht halb verblasst
-   einfriert. */
 @media (prefers-reduced-motion: reduce) {
-  .puls { animation: none; opacity: 1; transform: none; }
   .spiel-card.frisch-erledigt, .spiel-card.frisch-erledigt .stand-badge.sitzt { animation: none; }
 }
 
@@ -1372,7 +1413,6 @@ button.ans:disabled { cursor: default; }
 .spiel-card .spiel-icon { font-size: 1.65rem; }
 .spiel-card b { font-size: .7rem; hyphens: auto; overflow-wrap: anywhere; }
 .spiel-info { top: 1px; right: 4px; font-size: .78rem; }
-.spiel-done { top: 3px; left: 6px; font-size: .76rem; }
 
 /* Kompakte Zuletzt-Liste auf der Startseite: mehr Eintraege sichtbar */
 .hist-kompakt .hist-item { padding: 7px 0; gap: 8px; }

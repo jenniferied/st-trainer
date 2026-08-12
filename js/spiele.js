@@ -108,11 +108,13 @@ export function hubHtml() {
     : new Set([...fertig].filter((k) => !zuletztFertig.has(k)));
   zuletztFertig = fertig;
 
-  const karten = spiele.map((s, i) => {
+  const karten = spiele.map((s) => {
     const n = s.n;
+    // Exakt dasselbe Bauteil wie im Querlink oben rechts (Muster-Block im CSS):
+    // gleiches Wort, gleiche Punktgroesse, gleicher Takt. Nicht nachbauen.
     const stand = n
-      ? `<span class="stand-badge sitzt spiel-stand" title="heute schon ${n}× geübt">✓ geübt</span>`
-      : `<span class="stand-badge neu spiel-stand"><i class="puls" style="--pd:${(i * 0.35).toFixed(2)}s">✦</i> offen</span>`;
+      ? `<span class="stand-badge sitzt kompakt" title="heute schon ${n}× geübt">✓ geübt</span>`
+      : `<span class="stand-badge neu kompakt"><i class="puls">✦</i> offen</span>`;
     return `<div class="spiel-card ${n ? "done" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
          aria-label="${s.name}${n ? " — heute schon geübt" : " — heute noch offen"}">
         <span class="info-btn spiel-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>

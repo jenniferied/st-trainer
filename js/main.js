@@ -4,6 +4,7 @@ import * as M from "./methoden.js";
 import * as Spiele from "./spiele.js";
 import * as Llm from "./llm.js";
 import * as Mk from "./maskottchen.js";
+import * as Nachbar from "./nachbar.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -45,7 +46,9 @@ const themeBtnHtml = () => `<button class="btn ghost small" id="themeBtn" title=
 // GE-Trainers (dessen --accent, ein Blau) statt der eigenen Terracotta — so
 // zeigen die beiden Apps optisch aufeinander, ohne dass man raten muss, wo man
 // landet. Der Rueckweg wird spiegelbildlich im GE-Trainer gebaut.
-const geLinkHtml = () => `<a class="app-link" href="https://jenniferied.github.io/ge-trainer/" title="Zum GE-Trainer — deine andere Klausur am 10.09." aria-label="Zum GE-Trainer wechseln">GE<span class="nur-breit">-Trainer</span>&nbsp;↗</a>`;
+// Die leere .ge-stand fuellt nachbar.js, sobald es etwas Belastbares weiss —
+// bleibt sie leer, ist der Link genau der, der er vorher war.
+const geLinkHtml = () => `<a class="app-link" id="geLink" href="https://jenniferied.github.io/ge-trainer/" title="Zum GE-Trainer — deine andere Klausur am 10.09." aria-label="Zum GE-Trainer wechseln">GE<span class="nur-breit">-Trainer</span><span class="ge-stand"></span>&nbsp;↗</a>`;
 
 // confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
 // blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.
@@ -553,11 +556,16 @@ function heatmapHtml(tz) {
   const punkte = echteTage.map((t) => {
     const s = stufe(t.n);
     const d = new Date(t.ts);
-    // Ab Streckziel etwas groesser und mit Ring — bei 3 px Durchmesser traegt
-    // Farbe allein die Unterscheidung nicht mehr, Groesse und Rand schon.
-    const r = s >= 4 ? 3.8 : 2.9;
-    const ring = s === 5 ? `stroke="url(#tagRegenbogen)" stroke-width="1.7"`
-      : s === 4 ? `stroke="var(--tag-4-ring)" stroke-width="1.5"`
+    // ALLE Punkte sind gleich gross (Jennifer 12.08.: "der Regenbogenpunkt
+    // sollte kleiner sein, so wie die anderen auch, und gleich bei beiden").
+    // Vorher waren Streckziel-Tage groesser — damit las sich ein starker Tag als
+    // "mehr Karten", obwohl die Hoehe das schon sagt. Unterschieden wird jetzt
+    // ausschliesslich ueber die FARBE, in Fuellung und Rand. Radius und
+    // Strichstaerke sind fuer jeden Punkt identisch; der GE-Trainer haelt es
+    // genauso, damit die beiden Plots nebeneinander gleich aussehen.
+    const r = 2.9;
+    const ring = s === 5 ? `stroke="url(#tagRegenbogen)" stroke-width="1"`
+      : s === 4 ? `stroke="var(--tag-4-ring)" stroke-width="1"`
         : `stroke="var(--card)" stroke-width="1"`;
     const tip = `${fmtDatumKurz(d)}: ${t.n} Karten${s === 5 ? " 🌈 über dem Streckziel" : s === 4 ? " ⭐ Streckziel" : ""}`;
     return `<circle cx="${px(t.ts).toFixed(1)}" cy="${py(t.n).toFixed(1)}" r="${r}" fill="${tagFarbe[s]}" ${ring}><title>${tip}</title></circle>`;
@@ -716,7 +724,7 @@ function home() {
   const letzte = eintraege.slice(0, 7).map((x) => x.html).join("");
 
   h(`<div class="fade-in" id="homeRoot">
-    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${geLinkHtml()}${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1><div class="topbar-tools">${geLinkHtml()}${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div></div>
 
     ${tageszielHtml(tz, sich)}
 
@@ -781,6 +789,8 @@ function home() {
   const tb = document.getElementById("themeBtn");
   tb.onclick = () => toggleTheme(tb);
   document.getElementById("gear").onclick = einstellungen;
+  // Zustand des GE-Trainers in den Querlink (lesend, still, nie blockierend)
+  Nachbar.zeigeGeStand(document.getElementById("geLink"));
   // Ein-Tipp-Ausstieg aus dem Pingo-Filter, ohne den Umweg ueber die Einstellungen
   const pAus = document.getElementById("pingoAus");
   if (pAus) pAus.onclick = () => { C.state().settings.nurPingo = false; C.save(); home(); };
@@ -789,23 +799,25 @@ function home() {
   bindUebe(); // Ein-Tipp-Runde zum naechsten Stern + Statistik-Hebel
   belebeStats(document.getElementById("homeRoot")); // Statistik wohnt jetzt hier
 
-  // Feiern (einmalig, geraetelokal): Tagespensum erreicht -> Konfetti einmal pro Tag,
-  // Streckziel -> zweites, groesseres Konfetti; Sternaufstieg -> Konfetti + Puls.
+  // Feiern (einmalig pro Tag, geraetelokal): NUR beim Streckziel.
+  // Jennifer, 12.08.: "die celebration icons sollten nur kommen, wenn sie voll
+  // ist (grün/Regenbogen bei Streckziel), oder wenn sie heute eine Klausur
+  // bestanden hat." Vorher gab es Konfetti auch schon beim Tagespensum und bei
+  // jedem Sternaufstieg — zusammen mehrmals am Tag, und was mehrmals am Tag
+  // kommt, ist keine Feier mehr, sondern Hintergrundrauschen. Der zweite Anlass
+  // (bestandene Klausur) liegt in zeigeAuswertung(): klausurJubel().
+  // Das Erreichen des Tagespensums und der Sternaufstieg bleiben natuerlich
+  // SICHTBAR — gruene Zone, ⭐ im Kalender, Puls am Stern. Nur der Konfettiregen
+  // ist ab jetzt dem Streckziel vorbehalten.
   // Abstiege werden bewusst NIE kommentiert — ehrlich anzeigen, nicht reinreiben.
   const heuteKey = new Date().toDateString();
-  let gefeiert = false;
-  if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.ziel && s.settings.tzFeier !== heuteKey) {
-    s.settings.tzFeier = heuteKey; C.save();
-    konfetti(); gefeiert = true;
-  }
   if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.stretch && s.settings.tzFeierGold !== heuteKey) {
     s.settings.tzFeierGold = heuteKey; C.save();
-    if (!gefeiert) { konfetti({ n: 90, ms: 3600 }); gefeiert = true; }
+    konfetti({ n: 90, ms: 3600 });
   }
   const alteSterne = s.settings.sterneStand;
   if (alteSterne) for (const t of sich) if (t.stars > (alteSterne[t.slug] || 0)) {
     document.querySelector(`[data-stern="${t.slug}"]`)?.classList.add("neu");
-    if (!gefeiert) { konfetti({ n: 32 }); gefeiert = true; }
   }
   s.settings.sterneStand = Object.fromEntries(sich.map((t) => [t.slug, t.stars]));
   C.save();
@@ -2123,10 +2135,10 @@ function ergebnis(session, runde, opts = {}) {
   // Stufe = aktuelle Bestanden-Serie (die frische Session zählt schon mit).
   if (pass && !abgebrochen && ["klausur", "probeklausur"].includes(session.modus) && !opts.ausVerlauf)
     klausurJubel(opts.testStufe || C.pruefungsStreak());
-  // Bestandene Übungsrunde (nicht Klausur — die hat ihr eigenes großes Finale):
-  // ein kurzer, gut sichtbarer Konfetti-Regen. Im Verlauf-Blättern nicht.
-  else if (pass && !abgebrochen && !opts.ausVerlauf)
-    konfetti({ n: 70 });
+  // Eine bestandene UEBUNGSRUNDE bekommt bewusst kein Konfetti mehr (Jennifer,
+  // 12.08.). Zehn gute Fragen sind ein schoener Zwischenstand, aber kein
+  // Ereignis — die Auswertung sagt es mit Sticker, Ueberschrift und Punktzahl.
+  // Gefeiert wird nur noch das Streckziel (home()) und die bestandene Klausur.
 }
 
 // ================= EXPLORE =================

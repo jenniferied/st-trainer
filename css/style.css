@@ -266,42 +266,23 @@ button { font: inherit; cursor: pointer; }
    die Gruppe auf 360 px nicht umbricht (dort gibt der Titel per Ellipse nach). */
 .topbar-tools { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: auto; }
 .back { background: none; border: none; font-size: 1.5rem; padding: 4px 10px 4px 0; color: var(--ink); }
-/* Querlink zum GE-Trainer (Jennifer 12.08.): traegt dessen Identitaetsfarbe,
-   damit die beiden Apps sichtbar aufeinander zeigen. flex-shrink:0, sonst frisst
-   die h1 mit ihrem clamp() den Platz — auf 360 px muessen Titel, Link, Theme
-   und Zahnrad zusammen in EINE Zeile passen. */
-.app-link {
-  --ge: #4a7d9e;
-  flex: 0 0 auto; white-space: nowrap; text-decoration: none;
-  font-size: .76rem; font-weight: 700; line-height: 1.5;
-  padding: 3px 7px; border-radius: 999px;
-  color: var(--ge); border: 1.5px solid color-mix(in srgb, var(--ge) 45%, transparent);
-  background: color-mix(in srgb, var(--ge) 10%, transparent);
-}
-:root[data-theme="dunkel"] .app-link { --ge: #7fa9cf; }
-/* Zustand des GE-Trainers im Link (Jennifer 12.08.). Wird von nachbar.js
-   gefuellt und bleibt leer, solange nichts Belastbares bekannt ist — dann sieht
-   der Link genau so aus wie vorher. Deshalb kein reservierter Platz, kein
-   Platzhalter-Strich, kein Ladezustand. */
-.ge-stand:empty { display: none; }
-.ge-stand { display: inline-flex; align-items: center; gap: 4px; margin-left: 5px; }
-.ge-stand .q-pille { margin-left: 0; font-size: .68rem; padding: 0 5px; }
-/* Unter 400 px muessen Titel, Link, Theme und Zahnrad zusammen in EINE Zeile.
-   Dort schrumpft die Quote auf ihren Punkt zusammen: die Farbe ist die
-   Botschaft, die Ziffern sind der Zusatz — und beides steht vollstaendig im
-   title und im aria-label. Damit bleibt Platz fuer "✦ offen", das hier den
-   Vorrang hat. */
-.ge-stand .q-pille.q1 { --q-punkt: #e08a2e; }
-.ge-stand .q-pille.q2 { --q-punkt: #d9b93a; }
-.ge-stand .q-pille.q3 { --q-punkt: var(--ok); }
-.ge-stand .q-pille.q4 { --q-punkt: #0b6f3c; }
-:root[data-theme="dunkel"] .ge-stand .q-pille.q4 { --q-punkt: #16b262; }
-@media (max-width: 399px) {
-  .ge-stand .q-pille {
-    width: 9px; height: 9px; padding: 0; font-size: 0; border: none;
-    border-radius: 50%; background: var(--q-punkt);
-  }
-}
+/* Querlink zum GE-Trainer: Bauteil und Zustandsfeld liegen seit dem 12.08.
+   abends im geteilten Style-Paket (geteilt.css, Block 5) — hier steht nur noch
+   die ZIELFARBE, also die Identitaetsfarbe der anderen App, damit die beiden
+   Trainer sichtbar aufeinander zeigen.
+
+   Weggefallen sind dabei: die hiesige Kopie der .app-link-Regel (sie war schon
+   zeichengleich zur drueben, nur zwei Detailwerte liefen auseinander), das
+   Zustandsfeld unter dem app-eigenen Namen .ge-stand (heisst jetzt in beiden
+   Apps .nachbar-stand, JS mitgeaendert) und saemtliche .q-pille-Regeln darin —
+   die Quoten-Pille am Querlink ist am 12.08. mittags durch .tag-pille ersetzt
+   worden, die Regeln waren seither toter Code.
+
+   flex-shrink:0 steckt in der geteilten Regel, sonst frisst die h1 mit ihrem
+   clamp() den Platz: auf 360 px muessen Titel, Link, Theme und Zahnrad
+   zusammen in EINE Zeile passen. */
+.app-link { --ziel-farbe: #4a7d9e; }
+:root[data-theme="dunkel"] .app-link { --ziel-farbe: #7fa9cf; }
 /* Am Handy steht nur "GE ↗" — mehr passt neben Titel, Theme und Zahnrad nicht
    in eine Zeile. Sobald Platz da ist, steht der volle Name da. Die Schwelle lag
    bei 480 px und ist am 12.08. auf 560 gewandert: seit der Link den Zustand des
@@ -668,16 +649,22 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
    verteilen.sh. Was hier unten folgt, ist nur noch, was die Abzeichen an
    EINZELNEN Stellen dieser App zusaetzlich tun. */
 
-/* Die eine bewusste Abweichung vom geteilten Muster - und sie muss eine sein:
-   "offen" traegt die Identitaetsfarbe der App, hier also Terracotta. Nachts
-   ist das ein helles Orangebraun; weisse Schrift kommt darauf nur auf 3,5:1,
-   und das Abzeichen ist ~11 px fett, braucht also 4,5:1. Dunkle Schrift bringt
-   4,6:1. Der GE-Trainer loest dieselbe Stelle seit jeher genauso.
-   (Jennifer, 12.08. - Rose uebt am Handy, oft abends.)
-   Steht hier und nicht im Paket, weil sie an DIESER Identitaetsfarbe haengt;
-   style.css wird nach geteilt.css geladen und gewinnt bei gleicher
-   Spezifitaet. */
-:root[data-theme="dunkel"] { --offen-ink: #10233a; }
+/* HIER STAND EINE ABWEICHUNG, DIE ES SEIT DEM 12.08. ABENDS NICHT MEHR GIBT.
+   Sie lautete `:root[data-theme="dunkel"] { --offen-ink: #10233a; }` und war
+   korrekt begruendet, solange die Regel galt, dass "offen" die Identitaetsfarbe
+   der App traegt: nachts ist Terracotta ein helles Orangebraun, weisse Schrift
+   kaeme darauf nur auf 3,5:1, dunkle auf 4,6:1.
+
+   Jennifer hat die Regel selbst abgeschafft ("Überall gleich"), und damit faellt
+   auch diese Ableitung. Die Flaeche ist jetzt ein neutraler --ink-Tint, also in
+   jedem Theme dunkel bzw. hell zur Schrift passend — eine Sonderfarbe fuer die
+   Nacht braucht es nicht mehr. Sie waere sogar schaedlich: dunkles Navy auf
+   einem hellen Tint kam im Nachtmodus des GE-Trainers auf 1,29:1, also
+   unlesbar. Genau daran ist es aufgefallen.
+
+   MERKE, weil die Falle wiederkommt: ein lokales --offen-* ueberstimmt das
+   geteilte Paket immer (style.css laedt nach geteilt.css). Wer eine Farbe des
+   Musters aendert, muss beide Apps nach solchen Resten absuchen. */
 
 /* ---------- Explore ---------- */
 details.topic { border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }

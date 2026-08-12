@@ -138,20 +138,34 @@ export function hubHtml() {
     // Dailies, die Jennifer gemeint hat ("auf jeden Fall Rot ... fuer offene
     // Dailies"). Die Themenkarten im Stoebern bleiben ausdruecklich blau/still —
     // Begruendung und Grenze stehen im CSS, Block 2b.
-    const stand = n
-      ? `<span class="stand-badge sitzt kompakt" title="heute schon ${n}× geübt">✓ geübt</span>`
-      : `<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> offen</span>`;
-    return `<div class="spiel-card ${n ? "done" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
+    /* Das Statuslicht statt der Pille (Jennifer, 12.08. abends: dieselbe Form wie
+       die Probeklausur-Reihe). Fuenf rote Pillen nebeneinander waeren eine Wand
+       aus Alarm — dieselbe Ueberlegung, aus der die acht Themenkarten nicht
+       pulsieren. Der Punkt traegt dieselbe Farbe und denselben Takt, und das Wort
+       "offen" steht weiterhin vollstaendig im aria-label und im title.
+       Erledigt ist ein Haken und kein gruener Punkt: die zwei Zustaende sollen
+       sich nicht nur in der Farbe unterscheiden. */
+    const licht = n
+      ? `<span class="d-haken" aria-hidden="true">✓</span>`
+      : `<span class="d-licht offen puls dringend" aria-hidden="true"></span>`;
+    return `<div class="daily-kachel ${n ? "fertig" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
+         title="${n ? `heute schon ${n}× geübt` : "heute noch offen"}"
          aria-label="${s.name}${n ? " — heute schon geübt" : " — heute noch offen"}">
-        <span class="info-btn spiel-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>
-        <span class="spiel-icon">${s.icon}</span>
+        <span class="info-btn d-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>
+        <span class="d-icon" aria-hidden="true">${s.icon}</span>
         <b>${s.name}</b>
-        ${stand}
+        ${licht}
       </div>`;
   });
-  return `<h2 class="mt">Tägliches Training</h2>
-    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. <b>✦ offen</b> heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
-    <div class="spiel-grid">${karten.join("")}</div>`;
+  /* EIN Kasten um die Reihe (Jennifer: "koennte man die fuenf Dinge auch in einem
+     eigenen Kasten machen, genauso wie die Klausuruebersichten"). Nebeneffekt,
+     der die alte Form ohnehin gestoert hat: das Raster brach bei fuenf Kacheln
+     auf 4+1 um und liess die letzte allein in einer zweiten Zeile stehen. */
+  return `<div class="card mt">
+      <h2>Tägliches Training</h2>
+      <p class="muted" style="margin:-2px 2px 0;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Der rote Punkt heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
+      <div class="dailies-reihe">${karten.join("")}</div>
+    </div>`;
 }
 // extra.begriffe: Begriffe-Blitz lebt in main.js — der Hub bekommt den Einstieg gereicht
 export function bindHub(zurueck, extra = {}) {

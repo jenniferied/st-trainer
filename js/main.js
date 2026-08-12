@@ -46,9 +46,9 @@ const themeBtnHtml = () => `<button class="btn ghost small" id="themeBtn" title=
 // GE-Trainers (dessen --accent, ein Blau) statt der eigenen Terracotta — so
 // zeigen die beiden Apps optisch aufeinander, ohne dass man raten muss, wo man
 // landet. Der Rueckweg wird spiegelbildlich im GE-Trainer gebaut.
-// Die leere .ge-stand fuellt nachbar.js, sobald es etwas Belastbares weiss —
+// Die leere .nachbar-stand fuellt nachbar.js, sobald es etwas Belastbares weiss —
 // bleibt sie leer, ist der Link genau der, der er vorher war.
-const geLinkHtml = () => `<a class="app-link" id="geLink" href="https://jenniferied.github.io/ge-trainer/" title="Zum GE-Trainer — deine andere Klausur am 10.09." aria-label="Zum GE-Trainer wechseln">GE<span class="nur-breit">-Trainer</span><span class="ge-stand"></span>&nbsp;↗</a>`;
+const geLinkHtml = () => `<a class="app-link" id="geLink" href="https://jenniferied.github.io/ge-trainer/" title="Zum GE-Trainer — deine andere Klausur am 10.09." aria-label="Zum GE-Trainer wechseln">GE<span class="nur-breit">-Trainer</span><span class="nachbar-stand"></span>&nbsp;↗</a>`;
 
 // confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
 // blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.

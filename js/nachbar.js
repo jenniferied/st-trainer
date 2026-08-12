@@ -186,7 +186,7 @@ export function geStand() {
    der Link stehen, so wie er vorher war. */
 export function zeigeGeStand(a) {
   if (!a) return;
-  const feld = a.querySelector(".ge-stand");
+  const feld = a.querySelector(".nachbar-stand");
   if (!feld) return;
 
   const male = () => {

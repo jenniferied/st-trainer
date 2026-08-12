@@ -564,14 +564,26 @@ function heatmapHtml(tz) {
     // Strichstaerke sind fuer jeden Punkt identisch; der GE-Trainer haelt es
     // genauso, damit die beiden Plots nebeneinander gleich aussehen.
     const r = 2.9;
-    const ring = s === 5 ? `stroke="url(#tagRegenbogen)" stroke-width="1"`
-      : s === 4 ? `stroke="var(--tag-4-ring)" stroke-width="1"`
-        : `stroke="var(--card)" stroke-width="1"`;
+    // Stufe 5 (ueber dem Streckziel) traegt den Regenbogen als FLAECHE, nicht
+    // mehr als Rand (Jennifer, ROADMAP 12.08.). Solange die Streckziel-Punkte
+    // groesser waren, reichte ein Ring; seit alle Punkte gleich gross sind, ist
+    // ein 1-px-Ring auf einem 5,8-px-Punkt fast kein Pixel mehr — der beste Tag
+    // sah aus wie ein dunkelgruener Fleck, die Information war faktisch weg.
+    // Als Flaeche ist der sechsstufige Verlauf auf der Groesse grob, aber ein
+    // mehrfarbiger Punkt zwischen lauter einfarbigen ist auf einen Blick als
+    // etwas Besonderes zu erkennen — und genau das soll er sagen.
+    const fuellung = s === 5 ? `url(#tagRegenbogen)` : tagFarbe[s];
+    // Stufe 4 behaelt ihren hellen Ring: gruen mit Leuchtkante (Streckziel
+    // genau getroffen) bleibt so von gruen (Pensum) und vom Regenbogen
+    // (darueber) unterscheidbar. Alle uebrigen Punkte tragen nur die Trennung
+    // vom Untergrund.
+    const ring = s === 4 ? `stroke="var(--tag-4-ring)" stroke-width="1"`
+      : `stroke="var(--card)" stroke-width="1"`;
     const tip = `${fmtDatumKurz(d)}: ${t.n} Karten${s === 5 ? " 🌈 über dem Streckziel" : s === 4 ? " ⭐ Streckziel" : ""}`;
-    return `<circle cx="${px(t.ts).toFixed(1)}" cy="${py(t.n).toFixed(1)}" r="${r}" fill="${tagFarbe[s]}" ${ring}><title>${tip}</title></circle>`;
+    return `<circle cx="${px(t.ts).toFixed(1)}" cy="${py(t.n).toFixed(1)}" r="${r}" fill="${fuellung}" ${ring}><title>${tip}</title></circle>`;
   }).join("");
-  // Der Regenbogen lebt hier als Rand, nicht als Flaeche: auf 8 px Durchmesser
-  // wird ein sechsstufiger Verlauf zu Matsch, ein Ring bleibt lesbar.
+  // Dieselben Stops wie drueben im GE-Trainer und wie --tag-regenbogen in
+  // geteilt.css, damit Plot-Punkt und Legende denselben Regenbogen zeigen.
   const rbDef = echteTage.some((t) => stufe(t.n) === 5)
     ? `<defs><linearGradient id="tagRegenbogen" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="#ff78be"/><stop offset="20%" stop-color="#ffa55a"/>

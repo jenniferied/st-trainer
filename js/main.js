@@ -215,22 +215,19 @@ function llmSelbstFeedback(q, text, gewaehlt, erg) {
 //                tippt, welche es waren und warum (+ KI-Feedback) — nach der
 //                Aufloesung haelt sie nicht erkannte Fallen nochmal kurz fest
 // KI ist ueberall nur Verstaerkung — ohne Function laeuft der feste Ablauf.
-function erklaerFlow(q, r, erg, done0) {
+function erklaerFlow(q, r, erg, done) {
   C.syncEvent({ frage_id: q.id, gewaehlt: r.gewaehlt, punkte: erg.punkte, max_punkte: q.maxPunkte, voll: erg.voll, modus: R?.cfg.modus || "explore", ts: new Date().toISOString() });
   const modus = erg.voll ? "aus" : (R?.cfg?.erklaerModus || "begruenden");
   const fz = document.getElementById("fbzone");
-  if (modus === "aus" || !fz) { zeigeFeedback(q, r); done0(); return; }
+  if (modus === "aus" || !fz) { zeigeFeedback(q, r); done(); return; }
   // Selbst erklaeren ist Extra-Arbeit, keine Antwortzeit (Jennifer 12.08., gleiche
-  // Logik wie bei der Paraphrase): der Countdown haelt an, solange Rose tippt, und
-  // laeuft erst weiter, wenn die Frage abgeschlossen ist. Nur auftauen, wenn hier
-  // auch wirklich eingefroren wurde — sonst wuerde eine wiederaufgenommene Session
-  // ihre Restzeit aus einem alten restSek neu aufziehen.
-  let eingefroren = false;
-  if (R) { friereTimerEin(); eingefroren = true; }
-  const done = () => {
-    if (eingefroren) { eingefroren = false; tauTimerAuf(); if (R?.deadline) startTick(); }
-    done0();
-  };
+  // Logik wie bei der Paraphrase seit dem 09.08.): der Countdown haelt an, solange
+  // Rose tippt. Der Frost haengt an der Session (R.seFrost), NICHT an einer lokalen
+  // Variable — im Modus "Erst raten" ruft der Ablauf done() schon, waehrend Stufe 2
+  // noch offen ist, und "Weiter" kann jederzeit dazwischenkommen. tauSelbstAuf()
+  // ist deshalb idempotent und haengt zusaetzlich in naechste() als Fangnetz: eine
+  // Runde darf auf keinen Fall mit eingefrorener Uhr weiterlaufen.
+  if (R) { friereTimerEin(); R.seFrost = true; C.save(); }
 
   if (modus === "begruenden") {
     faerbeAntworten(q, r, false);
@@ -240,6 +237,7 @@ function erklaerFlow(q, r, erg, done0) {
     selbstErklStart(zone, erg, (selbst) => {
       selbst.modus = "begruenden";
       r.selbst = selbst; C.save();
+      tauSelbstAuf();   // getippt ist getippt — ab hier laeuft die Uhr wieder
       zeigeFeedback(q, r);
       if (selbst.text) llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
       done();
@@ -273,6 +271,7 @@ function erklaerFlow(q, r, erg, done0) {
       const zu = (txt) => {
         r.selbst.text2 = txt || null; C.save();
         nb.innerHTML = txt ? `<div class="llm-fb"><span class="llm-fb-kopf">📝 Notiert — gute Falle erkannt</span><div>${esc(txt)}</div></div>` : "";
+        tauSelbstAuf();   // erst HIER, nicht beim done() unten: Stufe 2 ist noch Tippzeit
         done();
       };
       nb.querySelector("#selbst2Ok").onclick = () => zu(nb.querySelector("#selbst2Txt").value.trim());
@@ -282,6 +281,7 @@ function erklaerFlow(q, r, erg, done0) {
       if (seModus() !== "streng") done();
       return;
     }
+    tauSelbstAuf();   // uebersprungen = keine Stufe 2 mehr, Uhr laeuft weiter
     done();
   }, "Welche deiner Kreuze waren wohl falsch (a, b, c ...) — und warum? Fehlt eine richtige?");
 }
@@ -1426,6 +1426,9 @@ function fbBanner(q, erg) {
   return `<div class="fb-banner ${cls}">${sticker(cls)}<span>${txt}</span></div>`;
 }
 function naechste() {
+  // Fangnetz: wer mitten in der Selbsterklaerung "Weiter" drueckt, darf die
+  // Runde nicht mit stehender Uhr fortsetzen
+  tauSelbstAuf();
   if (R.idx + 1 < R.runde.length) {
     R.idx++; C.save();
     // Ohne Timer & ohne Sofort-Feedback: kurz fragen, ob's weitergehen soll —
@@ -1486,6 +1489,15 @@ function friereTimerEin() {
 }
 function tauTimerAuf() {
   if (R.restSek != null && R.cfg.timerModus !== "aus") { R.deadline = Date.now() + R.restSek * 1000; delete R.restSek; C.save(); }
+}
+// Gegenstueck zum Frost der Selbsterklaerung (erklaerFlow). Idempotent und ohne
+// eigene Annahmen darueber, WER auftaut: der Ablauf selbst, wenn Rose fertig
+// getippt hat, oder naechste() als Fangnetz, wenn sie vorher "Weiter" drueckt.
+function tauSelbstAuf() {
+  if (!R || !R.seFrost) return;
+  delete R.seFrost;
+  tauTimerAuf();
+  if (R.deadline) startTick();
 }
 function zeigParaphrase() {
   const r = R.runde[R.idx];

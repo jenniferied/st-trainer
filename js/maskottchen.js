@@ -32,11 +32,14 @@ const REDUCE_MOTION = window.matchMedia && matchMedia("(prefers-reduced-motion: 
    rechnen sie mit den heutigen Schwellen. Grosszuegig gerundet und bewusst so:
    bei einer Belohnungswaehrung ist ein Herz zu viel harmlos, eines zu wenig
    fuehlt sich wie Betrug an. */
-export function herzenStand(tz) {
+/* aktOverride ist NUR fuer die Testseite (playground/rose/maskottchen/viewer/):
+   damit laesst sich ein statischer Abzug von Roses Historie einspeisen, ohne
+   ihre echten Daten anzufassen. Die App ruft die Funktion immer ohne auf. */
+export function herzenStand(tz, aktOverride) {
   const min = tz && tz.minimum ? tz.minimum : 15;
   const ziel = tz && tz.ziel ? tz.ziel : 35;
   const stretch = tz && tz.stretch ? tz.stretch : 55;
-  const akt = C.aktivitaetProTag();
+  const akt = aktOverride || C.aktivitaetProTag();
   let herzen = 0, sterne = 0, tage = 0;
   for (const key of Object.keys(akt)) {
     const n = akt[key].n || 0;
@@ -206,7 +209,7 @@ const STORCH_FARBE = { "#": "var(--mk-fell)", s: "var(--mk-riss)", l: "var(--mk-
 
 /* Zellen einer Zeile, die gleich sind, werden zu EINEM Rechteck zusammengefasst
    (Lauflaenge) — sonst stehen ~300 rects im DOM statt ~40. */
-function storchHtml() {
+export function storchHtml() {
   const Z = 10;
   const breite = Math.max(...STORCH.map((z) => z.length));
   let teile = "";
@@ -249,27 +252,40 @@ function auswahlHtml() {
   </div>`;
 }
 
+/* Alles, was die Blase SAGT, an einer Stelle — und zwar genau der Fassung, die
+   die App zeigt. Die Testseite (playground/rose/maskottchen/viewer/) ruft
+   dieselbe Funktion mit gedrehten Werten auf; damit kann die Vorschau nicht von
+   der App wegdriften, was bei einer nachgebauten Kopie sicher passiert waere.
+   Reine Funktion: kein Zugriff auf state, Uhr oder Historie. */
+export function blaseText({ herzen, sterne, tage, stunde, hh }) {
+  const stufe = stufeVon(herzen);
+  const naechste = STUFEN[stufe + 1];
+  const nacht = stunde >= 22 || stunde < 6;
+  return {
+    stufe, nacht,
+    gruss: grussVon(stunde),
+    satz: nacht ? "Das Ei ist still. Morgen früh sind wir wieder da." : STUFEN[stufe].satz,
+    meta: `<b>${herzen}</b> ♥${sterne ? ` · <b>${sterne}</b> ★` : ""} aus ${tage} Übungstagen — ` +
+      (naechste ? `noch <b>${naechste.ab - herzen}</b> ♥ bis es weitergeht` : "gleich passiert was") + "." +
+      // Was heute schon dazukam. Nachts bleibt das weg — kein Abend-Mahnmal.
+      (nacht ? ""
+        : hh === 0 ? " Heute noch keins — das erste kommt mit der ersten Karte."
+        : ` Heute schon <b>${hh}</b> ♥ dazu${hh < 3 ? ", da geht noch was." : " — mehr geht an einem Tag nicht."}`),
+  };
+}
+
 function standHtml(tz) {
   const st = herzenStand(tz);
-  const stufe = stufeVon(st.herzen);
-  const naechste = STUFEN[stufe + 1];
-  const stunde = new Date().getHours();
-  const nacht = stunde >= 22 || stunde < 6;
+  const t = blaseText({ herzen: st.herzen, sterne: st.sterne, tage: st.tage,
+    stunde: new Date().getHours(), hh: herzenHeute(tz) });
+  const stufe = t.stufe;
   const v = EIER[eiIndex()];
   const anim = REDUCE_MOTION ? "" : stufe === 0 ? " mk-schwebt" : stufe === 1 ? " mk-atmet" : " mk-wackelt";
-  const satz = nacht ? "Das Ei ist still. Morgen früh sind wir wieder da." : STUFEN[stufe].satz;
-  const rest = naechste ? `noch <b>${naechste.ab - st.herzen}</b> ♥ bis es weitergeht` : "gleich passiert was";
-  const sterne = st.sterne ? ` · <b>${st.sterne}</b> ★` : "";
-  const hh = herzenHeute(tz);
-  // Was heute schon dazukam. Nachts bleibt das weg — kein Abend-Mahnmal.
-  const heute = nacht ? ""
-    : hh === 0 ? " Heute noch keins — das erste kommt mit der ersten Karte."
-    : ` Heute schon <b>${hh}</b> ♥ dazu${hh < 3 ? ", da geht noch was." : " — mehr geht an einem Tag nicht."}`;
   return `<div class="mk-zeile">
     <pre class="mk-ei${anim}" aria-hidden="true">${eiHtml(v, stufe)}</pre>
     <div class="mk-text">
-      <p class="mk-satz"><b>${grussVon(stunde)}.</b> ${satz}</p>
-      <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}.${heute}</p>
+      <p class="mk-satz"><b>${t.gruss}.</b> ${t.satz}</p>
+      <p class="mk-meta">${t.meta}</p>
       <!-- Der Wechsel-Knopf stand frueher am Ende des Fliesstexts hinter einem
            Mittelpunkt und war praktisch unauffindbar. Eigene Zeile — auffindbar,
            aber weiter dezent: das Aussuchen soll ein Moment bleiben, kein Menue. -->

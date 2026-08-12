@@ -649,6 +649,17 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
    verteilen.sh. Was hier unten folgt, ist nur noch, was die Abzeichen an
    EINZELNEN Stellen dieser App zusaetzlich tun. */
 
+/* Die eine bewusste Abweichung vom geteilten Muster - und sie muss eine sein:
+   "offen" traegt die Identitaetsfarbe der App, hier also Terracotta. Nachts
+   ist das ein helles Orangebraun; weisse Schrift kommt darauf nur auf 3,5:1,
+   und das Abzeichen ist ~11 px fett, braucht also 4,5:1. Dunkle Schrift bringt
+   4,6:1. Der GE-Trainer loest dieselbe Stelle seit jeher genauso.
+   (Jennifer, 12.08. - Rose uebt am Handy, oft abends.)
+   Steht hier und nicht im Paket, weil sie an DIESER Identitaetsfarbe haengt;
+   style.css wird nach geteilt.css geladen und gewinnt bei gleicher
+   Spezifitaet. */
+:root[data-theme="dunkel"] { --offen-ink: #10233a; }
+
 /* ---------- Explore ---------- */
 details.topic { border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
 details.topic > summary {

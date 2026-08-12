@@ -391,6 +391,15 @@ export function blaseText({ herzen, sterne, tage, stunde, hh }) {
   };
 }
 
+/* Wechseln geht nur, SOLANGE das Ei noch nichts gesammelt hat (Jennifer 12.08.).
+   Direkt nach der Auswahl darf man sich noch umentscheiden — sobald das erste
+   Herz da ist, gehoert das Ei dazu und bleibt. Sonst waere die Wahl beliebig,
+   und ein Begleiter, den man jederzeit austauschen kann, ist keiner.
+   Der Knopf verschwindet dann einfach; ein ausgegrauter Knopf mit Erklaerung
+   waere ein Hinweis auf etwas, das man ohnehin nicht mehr will. */
+const wechselHtml = (herzen) => herzen > 0 ? "" :
+  `<div class="mk-wechsel"><button class="mk-link" data-mk-ankunft="wechseln">anderes Ei aussuchen</button></div>`;
+
 function standHtml(tz) {
   const st = herzenStand(tz);
   const t = blaseText({ herzen: st.herzen, sterne: st.sterne, tage: st.tage,
@@ -406,7 +415,7 @@ function standHtml(tz) {
       <!-- Der Wechsel-Knopf stand frueher am Ende des Fliesstexts hinter einem
            Mittelpunkt und war praktisch unauffindbar. Eigene Zeile — auffindbar,
            aber weiter dezent: das Aussuchen soll ein Moment bleiben, kein Menue. -->
-      <div class="mk-wechsel"><button class="mk-link" data-mk-ankunft="wechseln">anderes Ei aussuchen</button></div>
+      ${wechselHtml(st.herzen)}
     </div>
   </div>`;
 }

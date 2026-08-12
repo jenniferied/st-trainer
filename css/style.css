@@ -46,17 +46,11 @@
      versehentlich ueberschreibt — siehe .card.pk-card.glim. */
   --gold-pk:  color-mix(in srgb, #c9971c 45%, var(--line));
   --gold-tag: color-mix(in srgb, #d4a017 45%, transparent);
-  /* Tagesleiter als SATTE Tonwerte (Jennifer 12.08.): dieselbe Bedeutung wie die
-     Kalenderzellen .hm-s1…s5, aber ungemischt. Eine 34-px-Zelle darf einen in
-     die Karte gemischten Ton tragen; ein 3-px-Punkt im Diagramm verschwindet
-     damit. Bedeutung: orange (unter Minimum) → gelb → grün → tiefes Grün ⭐
-     (Streckziel) → Regenbogen 🌈 (darüber). */
-  --tag-1: #e08a2e;
-  --tag-2: #cfa62c;
-  --tag-3: var(--ok);
-  --tag-4: #0b6f3c;
-  --tag-4-ring: #16b262;
-  --tag-5: #06341c;
+  /* Die Tagesleiter (--tag-1…--tag-5, --tag-4-ring) steht seit 12.08. im
+     GETEILTEN Paket: css/geteilt.css, Abschnitt 1. Bedeutung: orange (unter
+     Minimum) → gelb → grün → tiefes Grün ⭐ (Streckziel) → Regenbogen 🌈
+     (darüber). Sie ist bewusst nicht mehr hier, damit Grün in beiden Trainern
+     dasselbe heißt — Änderungen gehören in rose/geteilte-styles/. */
   --mix-hell: #fff;         /* Mix-Ziele für Unterthema-Abstufung (core.js subColor) */
   --mix-dunkel: #29241b;
   --radius: 14px;
@@ -106,11 +100,9 @@
     color-mix(in srgb, #e26e96 46%, var(--line)),
     color-mix(in srgb, #a781fa 46%, var(--line)) 55%,
     color-mix(in srgb, #e26e96 46%, var(--line)));
-  /* Nachts muessen die beiden obersten Stufen HELLER werden, nicht dunkler:
-     ein tiefes Gruen auf indigoschwarzem Grund ist kein Punkt mehr. */
-  --tag-4: #14a95c;
-  --tag-4-ring: #3ee08d;
-  --tag-5: #0d7a43;
+  /* Die Nacht-Fassung der Tagesleiter steht ebenfalls im geteilten Paket
+     (css/geteilt.css, Abschnitt 1) — dort auch die Begruendung, warum die
+     obersten Stufen nachts HELLER werden muessen statt dunkler. */
   --mix-hell: #e7e2f3;
   --mix-dunkel: #8d86ab;
   --shadow: 0 1px 2px rgba(5,0,20,.4), 0 6px 20px -8px rgba(5,0,20,.6);
@@ -641,62 +633,21 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .insight { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; font-size: .93rem; margin: 8px 0; }
 
 /* ============ MUSTER "offen / erledigt" ============================
-   EIN Bauteil fuer alle Stellen, an denen die App sagt, ob etwas noch ansteht
-   oder durch ist: Tageskacheln, Querlink zum GE-Trainer, Fragenliste und
-   Unterthema-Zeilen im Stoebern.
+   Ist seit dem 12.08. GETEILT: css/geteilt.css, Abschnitt 2. Dort stehen die
+   fuenf Variablen (--offen-bg, --offen-ink, --fertig-bg, --fertig-ink,
+   --puls-dauer), .stand-badge samt .neu/.sitzt/.kompakt, .puls, die
+   Pulsations-Animation und der reduced-motion-Block — an EINER Stelle fuer
+   beide Trainer, damit "offen" drueben und hier gleich aussieht und im
+   gleichen Takt atmet.
 
-   Jennifer, 12.08., nachdem sie den Querlink live gesehen hat: "Ich mag
-   tatsaechlich, dass dort steht 'offen' und es pulsiert. Das kann man
-   natuerlich jetzt uebernehmen in die Karten." — und ausdruecklich DIESELBE
-   Bauweise, nicht eine aehnliche: gleiche Punktgroesse, gleiche
-   Pulsationsdauer, gleiche Farben, gleiches Wort. Darum steht das Muster hier
-   an EINER Stelle und wird ueberall nur benutzt.
-
-   Bewusst hier oben und nicht im Stoebern-Abschnitt vergraben: dieser Block ist
-   der Kandidat fuer das geteilte Style-Paket beider Trainer (Jennifer 12.08.:
-   "wir brauchen eigentlich Style Packages, die geshared sind"). Er haengt an
-   nichts ausser den vier Variablen darueber — herausloesen heisst kopieren.
-
-   Benutzung:
+   Benutzung unveraendert:
      <span class="stand-badge neu"><i class="puls">✦</i> offen</span>
      <span class="stand-badge sitzt">✓ geübt</span>
    Zusatzklasse .kompakt fuer enge Plaetze (Kachel, Topbar).
 
-   Das ✦ atmet, die Karte darum NICHT — und nur, wenn wirklich etwas offen ist.
-   Ein Zeichen, das immer pulsiert, ist Deko statt Information. */
-:root {
-  --offen-bg: var(--accent);
-  --offen-ink: var(--accent-ink);
-  --fertig-bg: var(--ok-bg);
-  --fertig-ink: var(--ok);
-  --puls-dauer: 2.8s;
-}
-.stand-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: .7rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
-  border-radius: 999px; padding: 2px 8px;
-}
-.stand-badge.neu { background: var(--offen-bg); color: var(--offen-ink); }
-.stand-badge.sitzt {
-  background: var(--fertig-bg); color: var(--fertig-ink);
-  border: 1px solid color-mix(in srgb, var(--fertig-ink) 40%, transparent);
-}
-/* Enge Plaetze: Tageskachel (auf 360 px rund 75 px breit) und Topbar. Nur die
-   Groesse aendert sich, nie Farbe, Wort oder Rhythmus. */
-.stand-badge.kompakt { font-size: .68rem; padding: 1px 6px; letter-spacing: 0; }
-/* Die Pulsation: langsam und weich, kein Blinken. Alle Punkte auf einem Schirm
-   atmen im GLEICHEN Takt — versetzte Verzoegerungen sahen aus wie eine Welle,
-   die immer irgendwo blinkt; im Gleichtakt liest es sich als ein ruhiger Atem. */
-.puls { display: inline-block; animation: sanft-puls var(--puls-dauer) ease-in-out infinite; }
-@keyframes sanft-puls {
-  0%, 100% { opacity: .5; transform: scale(.9); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-/* Wer Bewegung reduziert hat, bekommt dieselbe Hervorhebung — nur still. Volle
-   Deckkraft, damit das Zeichen nicht halb verblasst einfriert. */
-@media (prefers-reduced-motion: reduce) {
-  .puls { animation: none; opacity: 1; transform: none; }
-}
+   Aenderungen gehoeren nach rose/geteilte-styles/trainer-muster.css, danach
+   verteilen.sh. Was hier unten folgt, ist nur noch, was die Abzeichen an
+   EINZELNEN Stellen dieser App zusaetzlich tun. */
 
 /* ---------- Explore ---------- */
 details.topic { border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
@@ -1559,13 +1510,9 @@ button.ans:disabled { cursor: default; }
 .kt-wert { font-size: 11px; font-weight: 700; fill: var(--accent); font-family: Karla, sans-serif; }
 .hm-key { display: inline-block; width: 14px; height: 0; vertical-align: middle; border-top: 2px solid var(--accent); }
 .hm-key.fein { border-top-width: 1px; opacity: .45; }
-/* Legende zu den Tagespunkten — dieselben Toene wie die Punkte im Diagramm */
-.hm-pkt { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: -1px; }
-.hm-pkt.s1 { background: var(--tag-1); }
-.hm-pkt.s2 { background: var(--tag-2); }
-.hm-pkt.s3 { background: var(--tag-3); }
-.hm-pkt.s4 { background: var(--tag-4); box-shadow: 0 0 0 1.5px var(--tag-4-ring); }
-.hm-pkt.s5 { background: var(--tag-5); box-shadow: 0 0 0 1.5px #96ffbe; }
+/* Legende zu den Tagespunkten (.hm-pkt.s1…s5) — steht seit 12.08. im geteilten
+   Paket: css/geteilt.css, Abschnitt 3. Dieselben Toene wie die Punkte im
+   Diagramm, die das JS aus denselben --tag-* Variablen zieht. */
 .hm-ruhe { opacity: .45; font-size: .82em; }
 /* Am Desktop skaliert das SVG sonst auf ~2x und die Achsen-Beschriftung wird
    riesig — die Charts sind fuer Handy-Breite gezeichnet. */
@@ -1589,9 +1536,10 @@ button.ans:disabled { cursor: default; }
 
 .mk-ankunft { border: 1.5px dashed var(--accent); border-radius: var(--radius);
   padding: 13px 14px 14px; margin: 0 0 11px; text-align: center; }
-.mk-storch { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px; line-height: 1; white-space: pre; margin: 0 auto 8px; color: var(--mk-fell);
-  display: block; width: max-content; }
+/* Der Storch ist SVG, keine Textgrafik — darum keine font/white-space-Regeln.
+   Breite in ch statt px, damit er bei groesserer Schrift mitwaechst. */
+.mk-storch { display: block; margin: 0 auto 8px; width: 11ch; max-width: 45%; }
+.mk-storch svg { display: block; width: 100%; height: auto; }
 .mk-ank-kopf { font-weight: 700; font-size: 1.02rem; }
 .mk-ank-text { margin: 4px auto 10px; font-size: .9rem; color: var(--ink-soft); max-width: 42ch; }
 .mk-karussell { display: flex; align-items: center; justify-content: center; gap: 10px;

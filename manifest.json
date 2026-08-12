@@ -1,7 +1,7 @@
 {
-  "name": "Schultheorie-Trainer",
-  "short_name": "Schultheorie",
-  "description": "Übungstrainer",
+  "name": "ST-Trainer — Schultheorie und Bildungsforschung",
+  "short_name": "ST-Trainer",
+  "description": "Übungstrainer Schultheorie und Bildungsforschung",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

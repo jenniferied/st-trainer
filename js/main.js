@@ -5,6 +5,14 @@ import * as Spiele from "./spiele.js";
 import * as Llm from "./llm.js";
 import * as Mk from "./maskottchen.js";
 import * as Nachbar from "./nachbar.js";
+/* Kreaturen-Chat: die ST-Seite des geteilten Sheets (Adapter). Das Sheet selbst
+   liegt in geteilt-maskottchen-chat.js, Quelle rose/geteilte-styles/. */
+import * as MkChat from "./mk-chat.js";
+/* Paar-Zuordnung: eine Mechanik fuer drei Spiele in zwei Apps (Begriffe-Blitz
+   hier, Zuordnen in spiele.js, Begriffe-Blitz im GE-Trainer). Quelle:
+   rose/geteilte-styles/spiel-zuordnen.js — nie die Kopie bearbeiten, danach
+   ./verteilen.sh. Die Engine loggt nicht und feiert nicht, beides bleibt hier. */
+import * as Z from "./geteilt-zuordnen.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -40,7 +48,11 @@ function toggleTheme(btn) {
   C.save(); applyTheme();
   btn.textContent = themeIstDunkel() ? "☀️" : "🌙";
 }
-const themeBtnHtml = () => `<button class="btn ghost small" id="themeBtn" title="Hell / Dunkel umschalten">${themeIstDunkel() ? "☀️" : "🌙"}</button>`;
+// .kopf-knopf statt .btn.ghost.small: der Querlink direkt daneben ist eine
+// umrandete Pille, und drei Werkzeuge in einer Zeile sollen als EINE Gruppe
+// lesen statt als zwei Pillen plus ein randloses Icon. Die Regel steht im
+// geteilten Paket (Block 9), der GE-Trainer benutzt dieselbe.
+const themeBtnHtml = () => `<button class="kopf-knopf" id="themeBtn" title="Hell / Dunkel umschalten">${themeIstDunkel() ? "☀️" : "🌙"}</button>`;
 // Querlink zum zweiten Trainer (Jennifer 12.08.). Rose schreibt zwei Klausuren:
 // GE am 10.09., Schultheorie am 18.09. Der Link traegt die Identitaetsfarbe des
 // GE-Trainers (dessen --accent, ein Blau) statt der eigenen Terracotta — so
@@ -291,43 +303,128 @@ function erklaerFlow(q, r, erg, done) {
     return;
   }
 
-  // raten: KEINE Faerbung — nur wie viel danebenlag. Erst tippen, dann sehen.
+  /* ---------- "raten" = Zweiter Versuch (Jennifer, 12.08. abends) ----------
+     Der Modus hiess vorher "Erst raten" und bestand aus EINEM Textfeld, das
+     zwei voellig verschiedene Dinge auf einmal wollte: "welche deiner Kreuze
+     waren falsch (a, b, c ...) UND warum?".
+
+     Das war der eigentliche Konstruktionsfehler, und er erklaert alles, was an
+     dem Modus nicht stimmte:
+       - WELCHE ist eine Diagnose. Strukturiert, exakt pruefbar, mit einem
+         Fingertipp auszudruecken.
+       - WARUM ist eine Erklaerung. Freitext, nicht pruefbar, teuer zu tippen.
+     Beides in einen Kasten zu werfen hiess, dass die App gar nichts bewerten
+     konnte — sie musste hinterher FRAGEN ("Entspricht das deiner Erklaerung?"),
+     statt es zu wissen.
+
+     Jetzt getrennt, jedes nach seiner Natur:
+       Schritt 1  Die Kaestchen bleiben offen. Rose sieht nur, WIE VIELE Kreuze
+                  danebenlagen, und kreuzt neu an. Das ist die Diagnose, und die
+                  App kann sie exakt auswerten.
+       Schritt 2  Faerbung nach dem zweiten Versuch, dazu ein Urteil statt einer
+                  Rueckfrage ("Beim zweiten Blick hattest du's").
+       Schritt 3  Ein kleines Feld DIREKT AN DER OPTION, und nur an denen, die
+                  sie auch im zweiten Anlauf faelschlich angekreuzt hat.
+       Schritt 4  Erst danach die kuratierten Erklaerungen — dieselbe Reihenfolge
+                  wie bei "begruenden": erst selbst denken, dann lesen.
+
+     Drei Sachen fallen dadurch weg statt dazuzukommen: der allgemeine
+     Textkasten, die frueher hier haengende Stufe 2 und der Abgleich (den
+     braucht es nicht mehr, die App hat die Antwort selbst).
+
+     Gefragt wird NUR nach falsch GESETZTEN Kreuzen, nie nach uebersehenen
+     richtigen. "Warum hast du das angekreuzt?" kann man beantworten, "warum ist
+     dir das nicht eingefallen?" meistens nicht. Hoechstens zwei Felder — am
+     Handy ist Tippen die teure Bewegung, und die zwei hartnaeckigsten Irrtuemer
+     sind der Ertrag.
+
+     WICHTIG fuers Scoring: Punkte und Leitner haengen weiter allein an
+     r.gewaehlt, also am ERSTEN Versuch. Der zweite ist ein Lernschritt, keine
+     zweite Pruefung — sonst wandern die Quoten nach oben und die
+     Klausur-Prognose luegt. r.versuch2 wird nur mitgeschrieben. */
   const fehlend = q.optionen.filter((o) => o.richtig).length - erg.richtigGesetzt;
   const info = [
     erg.falschGesetzt ? `${erg.falschGesetzt} ${erg.falschGesetzt === 1 ? "Kreuz war" : "Kreuze waren"} falsch` : "",
     fehlend > 0 ? `${fehlend} ${fehlend === 1 ? "richtige Antwort fehlt" : "richtige Antworten fehlen"}` : "",
   ].filter(Boolean).join(" · ");
-  fz.innerHTML = `<div class="fb-banner part"><span>🤔 ${info} — aber welche?</span></div>`;
-  const zone = document.createElement("div");
-  fz.appendChild(zone);
-  // Ab hier laeuft "raten" GENAU wie "begruenden" — das ist seit dem 12.08.
-  // abends Absicht (Jennifer). Vorher hing hier eine Stufe 2 dran: nach der
-  // Aufloesung nochmal ein Textfeld, "was hattest du nicht auf dem Schirm?".
-  // Die ist raus, aus zwei Gruenden.
-  //
-  // (1) Sie fragte dasselbe wie der Abgleich direkt darunter ("Entspricht das
-  //     deiner Erklaerung? — Nein, war was anderes"), einmal als Tipparbeit,
-  //     einmal als ein Klick. Beide standen im fertigen Bildschirm untereinander.
-  // (2) Das Generieren, auf dem der Effekt beruht, ist im Modus "raten" schon
-  //     passiert — naemlich VOR der Aufloesung, unter Unsicherheit. Ein zweites
-  //     Tippen danach kostet am Handy dasselbe und bringt weniger.
-  //
-  // Der Nebeneffekt ist der eigentliche Gewinn: der Unterschied zwischen den
-  // beiden Modi liegt jetzt vollstaendig VOR der Aufloesung und laesst sich in
-  // einem Satz sagen — bei "raten" siehst du vorher nicht, welche Kreuze falsch
-  // waren. Damit bedeutet auch der Ueberspringen-Link in beiden Modi wieder
-  // dasselbe (frueher liess er in "raten" zusaetzlich Stufe 2 wegfallen).
-  //
-  // r.selbst.text2 aus alten Runden bleibt gespeichert und wird von core.js
-  // weiter durch Snapshot und Merge getragen — geschrieben wird es nur nicht mehr.
-  selbstErklStart(zone, erg, (selbst) => {
-    selbst.modus = "raten";
-    r.selbst = selbst; C.save();
-    tauSelbstAuf();   // getippt ist getippt — ab hier laeuft die Uhr wieder
-    zeigeFeedback(q, r);
-    if (selbst.text) llmSelbstFeedback(q, selbst.text, r.gewaehlt, erg);
-    done();
-  }, "Welche deiner Kreuze waren wohl falsch (a, b, c ...) — und warum? Fehlt eine richtige?");
+  const streng = seModus() === "streng";
+  fz.innerHTML = `<div class="fb-banner part"><span>🤔 ${info} — aber welche?</span></div>
+    <div class="selbst-box"><div class="selbst-kopf"><b>Zweiter Versuch: setz die Kreuze neu.</b> ${M.infoBtn("selbsterklaerung")}</div>
+      <p class="muted" style="margin:6px 0 0">Die Kästchen oben sind wieder offen. Für die Punkte zählt dein erster Versuch — hier geht es nur ums Finden.</p>
+      <div class="btn-row" style="margin-top:8px"><button class="btn small" id="v2Ok">Zweiten Versuch abschicken</button></div>
+      ${streng ? "" : `<button class="linkish" id="v2Skip">Nur die Antwort zeigen</button>`}</div>`;
+
+  // Aufloesung + optionale Erklaerfelder. auswahl = der Stand, der gefaerbt wird.
+  const zurAufloesung = (auswahl, urteilHtml) => {
+    faerbeAntworten(q, r, false, auswahl);          // Faerbung, noch OHNE Erklaerungen
+    fz.innerHTML = fbBanner(q, erg) + (urteilHtml || "");
+    // Nur falsch GESETZTE Kreuze aus dem letzten Stand, hoechstens zwei
+    const zuErklaeren = auswahl.filter((oi) => !q.optionen[oi].richtig).slice(0, 2);
+    const fertig = (texte) => {
+      r.selbst = { modus: "raten", proOption: texte || null,
+        text: texte ? Object.values(texte).filter(Boolean).join(" · ") || null : null, skip: !texte };
+      C.save();
+      tauSelbstAuf();
+      zeigeFeedback(q, r, auswahl);                 // jetzt die kuratierten Erklaerungen
+      // zeigeFeedback baut die Feedback-Zone komplett neu — das Urteil zum
+      // zweiten Versuch muss danach wieder rein, sonst ist es weg. Genau das
+      // traf den Belohnungsfall am haertesten: wer im zweiten Anlauf richtig
+      // lag, bekam gar keine Felder, lief also sofort hierher und hat sein
+      // "hattest du's" nie zu sehen bekommen.
+      if (urteilHtml) fz.querySelector(".fb-banner")?.insertAdjacentHTML("afterend", urteilHtml);
+      if (r.selbst.text) llmSelbstFeedback(q, r.selbst.text, r.gewaehlt, erg);
+      done();
+    };
+    if (!zuErklaeren.length) { fertig(null); return; }   // nichts falsch gesetzt = nichts zu erklaeren
+    // Die Felder haengen an der jeweiligen Option, nicht am Seitenende
+    const felder = [];
+    for (const oi of zuErklaeren) {
+      const label = [...app.querySelectorAll("#answers label.ans")]
+        .find((el) => +el.querySelector("input").dataset.oi === oi);
+      if (!label) continue;
+      const box = document.createElement("div");
+      box.className = "opt-warum";
+      box.innerHTML = `<label for="warum-${oi}">Warum hast du das angekreuzt?</label>
+        <textarea id="warum-${oi}" rows="2" placeholder="Stichworte reichen" autocapitalize="sentences"></textarea>`;
+      label.insertAdjacentElement("afterend", box);
+      felder.push([oi, box]);
+    }
+    if (!felder.length) { fertig(null); return; }
+    const knopf = document.createElement("div");
+    knopf.innerHTML = `<div class="btn-row mt"><button class="btn small" id="warumOk">Erklärungen ansehen</button></div>
+      ${streng ? "" : `<button class="linkish" id="warumSkip">Überspringen</button>`}`;
+    fz.appendChild(knopf);
+    const absenden = (mitText) => {
+      const texte = {};
+      for (const [oi, box] of felder) {
+        const t = mitText ? box.querySelector("textarea").value.trim() : "";
+        if (t) texte[oi] = t;
+        // Das eigene Wort bleibt an der Option stehen, neben der Erklaerung
+        box.outerHTML = t ? `<div class="eigene-notiz"><b>Deine Erklärung:</b> ${esc(t)}</div>` : "";
+      }
+      knopf.remove();
+      fertig(Object.keys(texte).length ? texte : null);
+    };
+    knopf.querySelector("#warumOk").onclick = () => absenden(true);
+    const sk = knopf.querySelector("#warumSkip");
+    if (sk) sk.onclick = () => absenden(false);
+  };
+
+  fz.querySelector("#v2Ok").onclick = () => {
+    const g2 = [...app.querySelectorAll("#answers input:checked")].map((x) => +x.dataset.oi);
+    r.versuch2 = g2; C.save();
+    const erg2 = C.scoreFrage(q, g2);
+    // Ein Urteil, keine Rueckfrage — die App weiss es jetzt selbst.
+    const urteil = erg2.voll
+      ? `<div class="fb-banner good"><span>✨ Beim zweiten Blick hattest du's. Genau dafür ist der zweite Versuch da.</span></div>`
+      : erg2.punkte > erg.punkte
+        ? `<div class="fb-banner part"><span>Näher dran als beim ersten Mal — der Rest steht gleich in den Erklärungen.</span></div>`
+        : `<div class="fb-banner part"><span>Auch im zweiten Anlauf noch daneben — dann schauen wir genau hin.</span></div>`;
+    zurAufloesung(g2, urteil);
+  };
+  const v2sk = fz.querySelector("#v2Skip");
+  // Uebersprungen heisst: kein zweiter Versuch, gefaerbt wird der erste Stand
+  if (v2sk) v2sk.onclick = () => zurAufloesung(r.gewaehlt, "");
 }
 
 let R = null;      // aktive offene Session (Referenz in state().offen)
@@ -744,7 +841,10 @@ function home() {
   const letzte = eintraege.slice(0, 7).map((x) => x.html).join("");
 
   h(`<div class="fade-in" id="homeRoot">
-    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1><div class="topbar-tools">${geLinkHtml()}${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div></div>
+    <div class="kopf">
+      <div class="kopf-zeile"><h1>✏️ ST-Trainer</h1><div class="topbar-tools">${geLinkHtml()}${themeBtnHtml()}<button class="kopf-knopf" id="gear" title="Einstellungen">⚙️</button></div></div>
+      <div class="untertitel">Schultheorie und Bildungsforschung</div>
+    </div>
 
     ${tageszielHtml(tz, sich)}
 
@@ -752,9 +852,9 @@ function home() {
 
     ${Spiele.hubHtml()}
 
-    ${offene.length ? `<h2 class="mt">Angefangen — du kannst weitermachen</h2>${offenCards}` : ""}
+    ${offene.length ? `<h2 class="abschnitt-titel">Angefangen — du kannst weitermachen</h2>${offenCards}` : ""}
 
-    <h2 class="mt">Neue Session</h2>
+    <h2 class="abschnitt-titel">Neue Session</h2>
     ${C.nurPingoGemerkt() ? `<p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">🎯 Zuletzt hast du nur mit den ${C.pingoGesamt()} Pingo-Fragen geübt — Schnellstarts von hier übernehmen das. Im Baukasten steht der Schalter je Runde, die Klausur-Simulationen laufen immer über alles. <button class="btn ghost small" id="pingoAus">Alle Fragen</button></p>` : ""}
     <div class="mode-grid">
       <button class="mode-card wide" data-go="klausur"><b>🎓 Klausur-Simulation</b><span>42 Fragen · Exam.UP-Look · echtes Scoring · 90/120 min</span></button>
@@ -766,10 +866,10 @@ function home() {
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
     </div>
 
-    <h2 class="mt">Stöbern</h2>
+    <h2 class="abschnitt-titel">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
 
-    <h2 class="mt">Wo du stehst</h2>
+    <h2 class="abschnitt-titel">Wo du stehst</h2>
     <div class="card mt glim" style="margin-top:8px">
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
@@ -793,7 +893,7 @@ function home() {
 
     ${statInhaltHtml()}
 
-    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt glim">${letzte}
+    ${letzte ? `<h2 class="abschnitt-titel">Zuletzt</h2><div class="card hist-kompakt glim">${letzte}
       <p class="muted tz-note" style="margin:10px 0 0">Die Pillen an einer Runde sagen, womit du sie geübt hast — eingestellt wird das jedes Mal neu im Baukasten. Immer mit dabei, in jeder Runde: Abrufübung ${M.infoBtn("retrieval")} und verteiltes Üben ${M.infoBtn("relearning")}.</p>
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
@@ -866,7 +966,7 @@ function methodenBadges(s) {
     // fehlenden cfg, nur eine Ebene tiefer.
     const wieStreng = c.erklaerStreng == null ? ""
       : c.erklaerStreng === "streng" ? ", ohne Überspringen-Link" : ", mit Überspringen-Link";
-    p.push([c.erklaerModus === "raten" ? "💬 Erst raten" : "💬 Begründen",
+    p.push([c.erklaerModus === "raten" ? "🔁 Zweiter Versuch" : "💬 Begründen",
       "Erklär-Abfrage bei Fehlern" + wieStreng]);
   }
   if (c.paraphrase) p.push(["🗣 Paraphrasieren", "Erst in eigenen Worten sagen, was die Frage will"]);
@@ -1134,11 +1234,11 @@ const AUSWAHL_OPT = [
 const ERKLAER_TEXT = {
   aus: "<b>Ablauf:</b> falsch gekreuzt → Auflösung → Erklärungen. Ohne Zwischenschritt, am schnellsten.",
   begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung.",
-  raten: "<b>Ablauf:</b> derselbe wie bei Begründen, mit <b>einem</b> Unterschied: du siehst vorher nur, <b>wie viele</b> Kreuze daneben lagen — nicht welche. Du musst also erst selbst herausfinden, wo es klemmte. <i>Der anspruchsvollere Weg.</i>",
+  raten: "<b>Ablauf:</b> falsch gekreuzt → du siehst nur, <b>wie viele</b> daneben lagen → die Kästchen gehen wieder auf und du <b>kreuzt neu an</b> → die App sagt dir, ob du es gefunden hast → nur zu den Kreuzen, die auch dann noch falsch sind, schreibst du kurz warum → Erklärungen. <i>Für die Punkte zählt immer der erste Versuch. Triffst du es im zweiten, bist du sofort durch.</i>",
 };
 const STRENG_TEXT = {
-  standard: "Unter dem Textfeld steht zusätzlich ein Link ‚Nur die Antwort zeigen', der direkt zur Erklärung springt.",
-  streng: "Kein Überspringen-Link — die Erklärung kommt erst, wenn du etwas geschrieben und auf ‚Erklärung ansehen' gedrückt hast. <i>So voreingestellt, weil der Denkmoment der ganze Zweck der Abfrage ist.</i>",
+  standard: "An jedem Schritt steht zusätzlich ein Link, der direkt zur Auflösung springt — beim zweiten Versuch wie beim Schreiben.",
+  streng: "Kein Überspringen-Link: die Auflösung kommt erst, wenn du den Schritt wirklich gemacht hast. <i>So voreingestellt, weil der Denkmoment der ganze Zweck der Abfrage ist.</i>",
 };
 // Seit 21.07. (Jennifers Wunsch): ALLE Optionen sind in JEDEM Modus da — die
 // Presets sind nur Voreinstellungen. Einzige Ausnahme: die volle Klausur-
@@ -1213,7 +1313,7 @@ function builder({ preset }) {
     ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span>
       <p class="muted" style="margin:0 0 8px">Kommt nur bei Fragen, bei denen etwas falsch war: Du hältst erst selbst fest, woran es lag — <b>bevor</b> du die Erklärung liest. <b>Der Timer hält an, solange du tippst.</b></p>
       <div class="seg" id="erklaer">
-      ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Erst raten"]].map(([v, l]) =>
+      ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Zweiter Versuch"]].map(([v, l]) =>
         `<button data-v="${v}" class="${v === "begruenden" ? "on" : ""}">${l}</button>`).join("")}</div>
       <p class="muted" id="erklaerModusHint" style="margin-top:7px"></p>
       <p class="feld-warnung hidden" id="erklaerHint"></p>
@@ -1622,35 +1722,51 @@ function zeigFrage() {
 }
 // Antwort-Faerbung getrennt von den Erklaerungstexten — die Erklaer-Modi
 // zeigen unterschiedlich viel, bevor Rose selbst denkt.
-function faerbeAntworten(q, r, mitErklaerungen) {
+// auswahl (optional) faerbt einen ANDEREN Stand als r.gewaehlt. Gebraucht vom
+// Modus "Zweiter Versuch": auf dem Schirm stehen dann Roses neu gesetzte Kreuze,
+// und Farbe und Kaestchen muessen dasselbe behaupten. Die Punkte haengen
+// trotzdem weiter an r.gewaehlt — Faerbung ist Anzeige, nicht Bewertung.
+function faerbeAntworten(q, r, mitErklaerungen, auswahl) {
+  const gesetzt = auswahl || r.gewaehlt;
   app.querySelectorAll("#answers label.ans").forEach((el) => {
     const oi = +el.querySelector("input").dataset.oi;
-    const o = q.optionen[oi]; const gw = r.gewaehlt.includes(oi);
+    const o = q.optionen[oi]; const gw = gesetzt.includes(oi);
     el.querySelector("input").disabled = true;
     if (gw && o.richtig) el.classList.add("correct");
     else if (gw && !o.richtig) el.classList.add("wrong");
     else if (!gw && o.richtig) el.classList.add("missed");
-    if (mitErklaerungen && o.erklaerung && (gw || o.richtig) && !el.nextElementSibling?.classList?.contains("explain")) {
-      el.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
+    // Wenn an dieser Option schon Roses eigene Erklaerung haengt, kommt die
+    // kuratierte DAHINTER — nie davor. Die Lesereihenfolge ist die Aussage:
+    // erst was ich dachte, dann was stimmt. Andersherum liest man die fertige
+    // Erklaerung zuerst und die eigene wirkt wie ein Nachklapp.
+    const anker = el.nextElementSibling?.classList?.contains("eigene-notiz") ? el.nextElementSibling : el;
+    if (mitErklaerungen && o.erklaerung && (gw || o.richtig) && !anker.nextElementSibling?.classList?.contains("explain")) {
+      anker.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
 }
-function zeigeFeedback(q, r) {
+function zeigeFeedback(q, r, auswahl) {
+  // Bewertet wird IMMER der erste Versuch; auswahl steuert nur die Faerbung.
   const erg = C.scoreFrage(q, r.gewaehlt);
   // Thema erst JETZT verraten — während der Beantwortung wäre es ein Hinweis (Klausurnähe)
   const t = C.THEMEN[q.oberthema] || {};
   const qmeta = document.getElementById("qmeta");
   if (qmeta) qmeta.innerHTML = `<span class="chip" style="--tc:${t.color}">${t.kurz}</span>
     <span class="chip outline" style="--tc:${t.color}">${esc(labelU(q.unterthema))}</span>${qBadges(q)}`;
-  faerbeAntworten(q, r, true);
+  faerbeAntworten(q, r, true, auswahl);
   const fz = document.getElementById("fbzone");
-  fz.innerHTML = fbBanner(q, erg) + (r.selbst?.text ? abgleichHtml(r.selbst.abgleich, q.id) : "") + Llm.chatBtnHtml(q);
+  // Der Abgleich ("Entspricht das deiner Erklaerung?") faellt im Modus
+  // "Zweiter Versuch" weg: dort weiss die App durch den zweiten Anlauf selbst,
+  // ob Rose es getroffen hat, und sagt es ihr auch. Fragen, was man weiss, ist
+  // die Doppelung, die Jennifer am 12.08. gemeldet hat.
+  const zeigAbgleich = !!r.selbst?.text && r.selbst.modus !== "raten";
+  fz.innerHTML = fbBanner(q, erg) + (zeigAbgleich ? abgleichHtml(r.selbst.abgleich, q.id) : "") + Llm.chatBtnHtml(q);
   const setzAb = (v) => {
     r.selbst.abgleich = v; C.save();
     fz.querySelector("#abgleich").outerHTML = abgleichHtml(v, q.id);
     bindAbgleich(fz, setzAb); // Umentscheiden bleibt erlaubt
   };
-  if (r.selbst?.text) bindAbgleich(fz, setzAb);
+  if (zeigAbgleich) bindAbgleich(fz, setzAb);
 }
 function fbBanner(q, erg) {
   const cls = erg.voll ? "good" : erg.punkte > 0 ? "part" : "bad";
@@ -2726,7 +2842,7 @@ function statInhaltHtml() {
   const aktivitaet = st.tage14.map((d) => `<div class="akt-col" title="${new Date(d.ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}: ${d.n} Karten${d.quote != null ? `, ${d.quote} % Punktequote` : ""}">
     ${d.n ? `<span class="akt-q">${d.n}</span>` : ""}<i style="height:${Math.round((100 * d.n) / maxTag)}%"></i><span>${new Date(d.ts).getDate()}</span></div>`).join("");
   return st.beantwortet ? `
-    <h2 class="stat-sek">Überblick</h2>
+    <h2 class="abschnitt-titel">Überblick</h2>
     <div class="card"><div class="stat-grid">
       ${kachel(st.beantwortet, "Antworten gesamt")}
       ${kachel(st.punkteQuote != null ? st.punkteQuote + " %" : "–", "Ø Punktequote")}
@@ -2736,13 +2852,13 @@ function statInhaltHtml() {
       ${kachel(st.sessions, "Sessions")}
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren. Hier zählt jede Antwort einzeln, Begriffe-Blitz und Stöbern also mit. Der Schnitt in der Auswertung einer Runde meint etwas anderes: der nimmt nur ganze Fragenrunden und liegt deshalb meist ein paar Punkte tiefer.</p></div>
     <div class="card an-card glim"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
-    <h2 class="stat-sek">Beherrschung nach Thema</h2>
+    <h2 class="abschnitt-titel">Beherrschung nach Thema</h2>
     <div class="card">${ewSatz}
       ${rote.size ? `<div class="wackel-zeile"><span><b>🔴 ${rote.size} wacklige ${rote.size === 1 ? "Stelle" : "Stellen"}</b> — sie sind unten mit ● markiert.</span>
         <button class="btn small" data-rot='${JSON.stringify([...rote.keys()])}'>⚡ 10 Karten daraus üben</button></div>` : ""}
       <p class="muted" style="margin-top:${ewSatz || rote.size ? "10px" : "0"}">Antippen zum Aufklappen, ⚡ startet 10 Karten dazu. Balken = Ø Punktequote, der Pfeil rechts vergleicht deine letzten ${ew.fenster} Übungstage mit den ${ew.fenster} davor.</p>
       <p class="muted tz-note" style="margin:0 0 10px">Trenner im Balken: <b>50 %</b> Bestehensgrenze · <b>75 %</b> sicherer Bereich · <b>90 %</b> besteht auf jeden Fall. Füllung rot unter 50, gelb ab 50, grün ab 85. Siegel <span class="siegel rot">!</span> unter 50 · <span class="siegel gut">✓</span> ab 75 · <span class="siegel gold">🏅</span> ab 90.</p>${themenRows}</div>
-    <h2 class="stat-sek">Aktivität</h2>
+    <h2 class="abschnitt-titel">Aktivität</h2>
     <div class="card"><h3>Letzte 14 Tage</h3><div class="akt-chart">${aktivitaet}</div>
       <p class="muted tz-note" style="margin:8px 0 0">Zahl über der Säule = beantwortete Karten an dem Tag${karten14 ? ` · zusammen <b>${karten14}</b> in 14 Tagen` : ""}. Zählt alle Antworten, auch Stöbern & die Trainings-Spiele.</p></div>`
     : `<div class="card"><p class="muted">Noch keine Antworten geloggt — nach der ersten Runde gibt's hier Zahlen. 💪</p></div>`;
@@ -2750,7 +2866,7 @@ function statInhaltHtml() {
 // Eigene Statistik-Seite bleibt als Route erreichbar (zeigt denselben Inhalt)
 function statistik() {
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Statistik 📊</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>📊 Statistik</h1></div>
     ${statInhaltHtml()}
   </div>`);
   belebeStats(app.querySelector(".fade-in"));
@@ -2769,7 +2885,7 @@ function begriffeHome() {
   const alle = C.begriffe();
   if (!alle.length) return home();
   const stats = C.begriffStats();
-  const sicher = (p) => (stats[p.id]?.ok || 0) >= 2;
+  const sicher = (p) => (stats[p.id]?.ok || 0) >= Z.SICHER_AB;
   const kats = [...new Map(alle.map((p) => [p.kategorie, p])).values()].map((p) => {
     const paare = alle.filter((x) => x.kategorie === p.kategorie);
     const s = paare.filter(sicher).length;
@@ -2781,7 +2897,7 @@ function begriffeHome() {
     <span style="display:flex;align-items:center;gap:8px;width:100%"><span class="bar thin" style="flex:1"><i style="width:${Math.round((100 * k.s) / k.n)}%"></i></span><span class="muted">${k.s}/${k.n} sicher</span></span>
   </button>`).join("");
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Begriffe-Blitz 🃏</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>🃏 Begriffe-Blitz</h1></div>
     <div class="card"><p style="margin:0">Tippe links einen Begriff an, dann rechts die passende Antwort. 5 Paare pro Runde — sicher ist ein Paar, wenn du es 2× beim ersten Anlauf triffst. Die wackligsten Kategorien stehen oben.</p></div>
     <button class="btn" id="schwach" style="width:100%;margin-bottom:10px">⚡ Schwächste Runde starten</button>
     ${rows}
@@ -2791,72 +2907,53 @@ function begriffeHome() {
   app.querySelectorAll("[data-kat]").forEach((b) => b.onclick = () => begriffeRunde(b.dataset.kat));
 }
 
+// Die Mechanik (Spalten, Auswahl, Fehlgriff-Wackler, Zaehlung des ersten
+// Anlaufs) liegt seit dem 12.08.2026 im geteilten Baustein geteilt-zuordnen.js
+// — dieselbe Datei treibt das Zuordnen-Spiel in spiele.js und den
+// Begriffe-Blitz im GE-Trainer. Quelle: rose/geteilte-styles/spiel-zuordnen.js,
+// nie die Kopie bearbeiten, danach ./verteilen.sh.
+// Hier bleibt, was der Baustein bewusst nicht kennt: der Log-Eintrag mit
+// modus "begriffe" (daran haengen spieleHeute(), begriffStats() und ueber
+// offeneDailies() die Zahl im GE-Querlink) und das Fazit mit Konfetti.
 function begriffeRunde(kat) {
   const alle = C.begriffe().filter((p) => p.kategorie === kat);
   if (!alle.length) return begriffeHome();
   const stats = C.begriffStats();
   // Gewichtete Auswahl: nie geübt und zuletzt gepatzt zuerst, Sicheres seltener
-  const gew = (p) => { const s = stats[p.id]; if (!s) return 3; return s.ok >= 2 ? 1 : 4; };
+  // (die Zahlen kommen aus dem Baustein, drüben gelten dieselben)
+  const gew = (p) => Z.paarGewicht(stats[p.id]);
   const paare = alle.map((p) => ({ p, s: gew(p) * (0.4 + Math.random()) }))
     .sort((a, b) => b.s - a.s).slice(0, Math.min(5, alle.length)).map((x) => x.p);
   // Abrufrichtung pro Runde wechseln (Begriff→Antwort / Antwort→Begriff)
   const st = C.state();
   st.bgRichtung = !st.bgRichtung; C.save();
   const drehen = !!st.bgRichtung && paare.every((p) => (p.antwort || "").length < 60);
-  const links = C.shuffle([...paare]);
-  const rechts = C.shuffle([...paare]);
   const t0 = Date.now();
-  const offen = new Set(paare.map((p) => p.id));
-  const fehler = new Set();     // Paare mit mindestens einem Fehlgriff
-  const gewertet = new Set();   // Paare, deren erster Anlauf schon geloggt ist
-  let aktiv = null;
   const lbl = C.begriffe()[0] ? (C.begriffe().find((p) => p.kategorie === kat)?.kategorieLabel || kat) : kat;
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1 style="font-size:1.15rem">${esc(lbl)}</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>${esc(lbl)}</h1></div>
     <p class="muted" style="margin:0 0 10px">${drehen ? "Umgekehrte Richtung: links die Beschreibung, rechts der Begriff." : "Links Begriff antippen, rechts die passende Antwort."}</p>
-    <div class="bg-spiel">
-      <div class="bg-col" id="bgLinks">${links.map((p) => `<button class="bg-card links" data-id="${p.id}">${esc(drehen ? p.antwort : p.begriff)}</button>`).join("")}</div>
-      <div class="bg-col" id="bgRechts">${rechts.map((p) => `<button class="bg-card rechts" data-id="${p.id}">${esc(drehen ? p.begriff : p.antwort)}</button>`).join("")}</div>
-    </div>
+    <div id="bgSpiel"></div>
     <div id="bgFazit"></div>
   </div>`);
   document.getElementById("back").onclick = begriffeHome;
-  const alleLinks = [...app.querySelectorAll(".bg-card.links")];
-  app.querySelectorAll(".bg-card.links").forEach((b) => b.onclick = () => {
-    if (b.classList.contains("done")) return;
-    alleLinks.forEach((x) => x.classList.remove("sel"));
-    b.classList.add("sel"); aktiv = b.dataset.id;
-  });
-  app.querySelectorAll(".bg-card.rechts").forEach((b) => b.onclick = () => {
-    if (b.classList.contains("done") || !aktiv) return;
-    const p = paare.find((x) => x.id === aktiv);
-    const erster = !gewertet.has(aktiv);
-    if (b.dataset.id === aktiv) {
-      // Treffer: Paar abhaken; nur der ERSTE Anlauf zählt für den Lernstand
-      if (erster) {
-        gewertet.add(aktiv);
-        const voll = !fehler.has(aktiv);
-        C.logAntwort({ qid: aktiv, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: Math.round((Date.now() - t0) / 1000) });
-        C.syncEvent({ frage_id: aktiv, gewaehlt: null, punkte: voll ? 1 : 0, max_punkte: 1, voll, modus: "begriffe", ts: new Date().toISOString() });
-      }
-      offen.delete(aktiv);
-      b.classList.add("done");
-      app.querySelector(`.bg-card.links[data-id="${CSS.escape(aktiv)}"]`)?.classList.add("done");
-      aktiv = null;
-      if (!offen.size) begriffeFazit(kat, paare, fehler, drehen);
-    } else {
-      // Fehlgriff: merken (macht das Paar "nicht voll"), kurz schütteln
-      if (erster && !fehler.has(aktiv)) fehler.add(aktiv);
-      b.classList.add("shake");
-      setTimeout(() => b.classList.remove("shake"), 450);
-    }
-  });
+  document.getElementById("bgSpiel").appendChild(Z.baueZuordnen({
+    paare,
+    linksText: (p) => (drehen ? p.antwort : p.begriff),
+    rechtsText: (p) => (drehen ? p.begriff : p.antwort),
+    // Nur der ERSTE Anlauf je Paar zählt für den Lernstand.
+    onTreffer: (id, voll) => {
+      C.logAntwort({ qid: id, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: Math.round((Date.now() - t0) / 1000) });
+      C.syncEvent({ frage_id: id, gewaehlt: null, punkte: voll ? 1 : 0, max_punkte: 1, voll, modus: "begriffe", ts: new Date().toISOString() });
+    },
+    onFertig: (erg) => begriffeFazit(kat, paare, erg),
+  }));
 }
 
-function begriffeFazit(kat, paare, fehler, drehen) {
-  const n = paare.length, ok = n - fehler.size;
+function begriffeFazit(kat, paare, erg) {
+  const n = erg.n, ok = erg.ok;
   const cls = ok === n ? "good" : ok >= n - 1 ? "part" : "bad";
-  const erkl = paare.filter((p) => fehler.has(p.id)).map((p) => `<div class="review-q" style="padding:10px 0">
+  const erkl = paare.filter((p) => erg.fehler.includes(p.id)).map((p) => `<div class="review-q" style="padding:10px 0">
     <b>${esc(p.begriff)}</b> → ${esc(p.antwort)}
     ${p.erklaerung ? `<div class="explain good">${Beleg.render(p.erklaerung, p.oberthema)}</div>` : ""}</div>`).join("");
   document.getElementById("bgFazit").innerHTML = `
@@ -2895,6 +2992,10 @@ function verlauf() {
     // die verbotene Richtung irren. Steht deshalb vor flushSync(), das pusht.
     C.setzeOffenZaehler(Spiele.offeneDailies);
     Llm.initChat(C.frage);     // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback
+    // Kreaturen-Chat: das Maskottchen wird antippbar. Erst hier anmelden, aus
+    // demselben Grund wie oben — die Schnellantwort "was ist heute noch offen"
+    // liest offeneDailies(), und das haengt an den geladenen Spieldaten.
+    Mk.initChat(MkChat.oeffnen);
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

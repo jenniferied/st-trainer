@@ -121,10 +121,11 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 button, label { touch-action: manipulation; } /* kein Doppeltipp-Zoom auf dem Handy */
+/* font-size steht NICHT mehr hier: die Treppe (16.5px ab Tablet, 16px am Handy)
+   liegt seit dem 12.08. abends im geteilten Paket, Block 7a. */
 body {
   margin: 0;
   font-family: "Karla", "Avenir Next", sans-serif;
-  font-size: 16.5px;
   line-height: 1.55;
   color: var(--ink);
   background:
@@ -132,15 +133,14 @@ body {
     var(--paper);
   min-height: 100dvh;
 }
-#app {
-  max-width: 760px; margin: 0 auto;
-  padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(var(--sp-4), env(safe-area-inset-left));
-}
+/* Lesebreite, Seitenrand und die safe-area stehen im geteilten Paket (Block 8).
+   Hier bleibt NUR die Langform padding-bottom: die 90 px sind der Platz fuer die
+   feste Leiste, den der GE-Trainer nicht braucht. Bewusst KEINE Kurzschreibweise
+   mehr — die wuerde padding-inline mit zuruecksetzen und die safe-area loeschen. */
+#app { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
 
-h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.15; margin: 0 0 .4em; }
-h1 { font-size: 2rem; font-weight: 900; letter-spacing: -.01em; }
-h2 { font-size: 1.35rem; font-weight: 700; }
-h3 { font-size: 1.1rem; font-weight: 700; }
+/* Die drei Ueberschriften-Ebenen stehen im geteilten Paket (Block 7b), damit
+   beide Trainer dieselbe Tabelle lesen. Hier steht nichts mehr dazu. */
 p { margin: .3em 0 .8em; }
 a { color: var(--accent); }
 /* iOS-Datendetektor (Daten, Zahlen, Paragraphen im Fragetext) nicht blau unterstreichen */
@@ -150,14 +150,9 @@ a[x-apple-data-detectors], a[href^="tel:"], a[href^="mailto:"] {
 button { font: inherit; cursor: pointer; }
 
 /* ---------- Bausteine ---------- */
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--sp-5) var(--sp-4);
-  margin-bottom: var(--sp-4);
-}
+/* Der Kasten selbst (.card, .karte samt Polsterungs-Treppe) steht im geteilten
+   Paket, Block 10 — ein Bauteil unter zwei Namen, in beiden Trainern gleich.
+   Hier bleiben nur die App-eigenen Varianten (.glim, .pk-card, .tagesziel …). */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   border: none; border-radius: 12px;
@@ -249,23 +244,11 @@ button { font: inherit; cursor: pointer; }
 .card.pk-card.glim { border: 1.5px solid var(--gold-pk); }
 .card.tagesziel.klausurtag.glim { border: 1.5px solid var(--gold-tag); }
 
-/* Seit dem GE-Querlink (12.08.) sitzen vier Dinge in dieser Zeile: Titel, Link,
-   Hell/Dunkel, Zahnrad. Deshalb engerer Abstand und schmalere Icon-Knoepfe —
-   auf 360 px war die Zeile sonst 1 px zu breit und der Titel lief unter den
-   Link. Die Knoepfe bleiben ueber 40 px hoch, die Trefferflaeche also intakt. */
-.topbar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-/* Titel skaliert mit, damit „Schultheorie-Trainer ✏️" auch auf 360px in eine
-   Zeile passt; Ellipse als Fangnetz fuer noch schmalere Geraete — lieber ein
-   abgeschnittener Titel als Text, der unter dem Link verschwindet. */
-.topbar h1 { flex: 1; min-width: 0; margin: 0; font-size: clamp(.94rem, 4.3vw, 1.4rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar .btn.ghost.small { padding: 8px 9px; }
-/* Werkzeug-Gruppe oben rechts (Jennifer 12.08.): Querlink zum anderen Trainer,
-   Hell/Dunkel und Einstellungen gehoeren zusammen und sollen auch so aussehen —
-   beide Apps bekommen dieselbe Kopfzeile. Enger gesetzt als der Topbar-Abstand,
-   damit die drei als EIN Block gegen den Titel stehen, und flex-shrink:0, damit
-   die Gruppe auf 360 px nicht umbricht (dort gibt der Titel per Ellipse nach). */
-.topbar-tools { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: auto; }
-.back { background: none; border: none; font-size: 1.5rem; padding: 4px 10px 4px 0; color: var(--ink); }
+/* Die komplette Kopfzeile liegt seit dem 12.08. abends im geteilten Paket,
+   Block 9: .kopf, .kopf-zeile (Zweitname .topbar fuer die Unterschirme mit
+   Zurueck-Knopf), .untertitel, .topbar-tools, .kopf-knopf und .zurueck/.back.
+   Beide Trainer lesen damit dieselbe Zeile — hier steht nur noch die
+   Zielfarbe des Querlinks weiter unten. */
 /* Querlink zum GE-Trainer: Bauteil und Zustandsfeld liegen seit dem 12.08.
    abends im geteilten Style-Paket (geteilt.css, Block 5) — hier steht nur noch
    die ZIELFARBE, also die Identitaetsfarbe der anderen App, damit die beiden
@@ -283,14 +266,10 @@ button { font: inherit; cursor: pointer; }
    zusammen in EINE Zeile passen. */
 .app-link { --ziel-farbe: #4a7d9e; }
 :root[data-theme="dunkel"] .app-link { --ziel-farbe: #7fa9cf; }
-/* Am Handy steht nur "GE ↗" — mehr passt neben Titel, Theme und Zahnrad nicht
-   in eine Zeile. Sobald Platz da ist, steht der volle Name da. Die Schwelle lag
-   bei 480 px und ist am 12.08. auf 560 gewandert: seit der Link den Zustand des
-   GE-Trainers mittraegt, ist er breiter, und "-Trainer" ist daran das am
-   wenigsten Informative — es darf als Erstes weichen, damit der Seitentitel
-   nicht schon auf dem Tablet abgeschnitten wird. */
-.app-link .nur-breit { display: none; }
-@media (min-width: 560px) { .app-link .nur-breit { display: inline; } }
+/* Die Regel "am Handy nur GE ↗, ab 560 px der volle Name" steht im geteilten
+   Paket. Sie stand hier zeichengleich ein zweites Mal — und weil style.css nach
+   geteilt.css laedt, haette eine Aenderung der Schwelle im Paket faktisch nur
+   im GE-Trainer gewirkt. Genau die Falle, vor der das Paket warnt. */
 
 /* Fortschrittsbalken */
 .bar { height: 12px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
@@ -372,9 +351,13 @@ button { font: inherit; cursor: pointer; }
 
 /* Modus-Grid */
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* .mode-card ist KEINE .card und folgt der Kasten-Treppe aus Block 10 deshalb
+   nicht von selbst — sie wird hier von Hand auf dieselben drei Stufen gezogen
+   (16/12 am Handy, 20/16 dazwischen, 24 ab Tablet), sonst hat die App zwei
+   Kartenpolsterungen nebeneinander. */
 .mode-card {
   border: 1.5px solid var(--line); border-radius: var(--radius);
-  background: var(--card); padding: 16px 14px; text-align: left;
+  background: var(--card); padding: var(--sp-5) var(--sp-4); text-align: left;
   box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
 }
 .mode-card b { font-family: "Fraunces", serif; font-size: 1.05rem; }
@@ -574,7 +557,10 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .pk-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 10px; }
 .pk-head b { font-family: "Fraunces", serif; font-size: 1.1rem; }
 .pk-head .muted { font-size: .8rem; }
-.pk-track { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+/* minmax(0, 1fr) statt 1fr: sonst weigern sich die Spalten, unter ihre
+   Inhaltsbreite zu schrumpfen, und auf 320 px kommen 42/51/51/42/42 px heraus
+   statt fuenf gleicher Spalten. Dieselbe Schreibweise wie in .dailies-reihe. */
+.pk-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pk-box {
   border: 1.5px solid var(--line); border-radius: 14px;
   background: var(--card); color: inherit; cursor: pointer;
@@ -865,22 +851,18 @@ details.sub.alles-durch > summary { color: var(--ink-soft); }
 @keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---------- Größere Screens: eine Stufe mehr Luft auf der Skala ---------- */
+/* #app padding-top, h1, .card und .topbar stehen im geteilten Paket (Bloecke
+   7 bis 10) und fehlen hier deshalb absichtlich. */
 @media (min-width: 640px) {
-  #app { padding-top: var(--sp-8); }
-  h1 { font-size: 2.3rem; }
-  .card { padding: var(--sp-6); margin-bottom: var(--sp-5); }
   .mode-grid { gap: var(--sp-4); }
-  .mode-card { padding: var(--sp-5) var(--sp-4); }
+  .mode-card { padding: var(--sp-6); }
   .answers, .opt-list { gap: var(--sp-3); }
-  .topbar { margin-bottom: var(--sp-5); }
   .q-text { font-size: 1.2rem; }
 }
 
 /* ---------- Kleine Handys (Rose übt am Handy!) ---------- */
+/* body-Groesse, .card-Polsterung und h1 stehen im geteilten Paket. */
 @media (max-width: 460px) {
-  body { font-size: 16px; }
-  .card { padding: var(--sp-4) var(--sp-3); }
-  h1 { font-size: 1.6rem; }
   .seg button { padding: 11px 3px; font-size: .8rem; }
   .q-progress { gap: 7px; font-size: .9rem; }
   /* Fortschritts-Zeilen: schmalere Häkchen, aber Abstand Text ↔ Balken bleibt */
@@ -893,7 +875,7 @@ details.sub.alles-durch > summary { color: var(--ink-soft); }
   label.ans { padding: 12px; font-size: .95rem; }
   .explain { margin-left: var(--sp-2); font-size: .87rem; }
   label.ans.correct::after, label.ans.wrong::after, label.ans.missed::after { font-size: .62rem; padding: 2px 7px; }
-  .mode-card { padding: 14px 12px; }
+  .mode-card { padding: var(--sp-4) var(--sp-3); }
   .mode-card span { font-size: .82rem; }
   /* Exam.UP: Info-Block nicht floaten, volle Breite; größere Tap-Ziele */
   .moodle .qinfo { float: none; margin: 0 0 10px; }
@@ -1175,6 +1157,33 @@ button.tag-hebel:active { transform: scale(.96); }
   font: inherit; font-size: .95rem; background: var(--card); color: var(--ink);
 }
 .selbst-box textarea:focus { outline: none; border-color: var(--accent); }
+/* Erklaerfeld DIREKT an einer einzelnen Antwortoption (Modus "Zweiter
+   Versuch", 12.08.). Es sitzt an derselben Stelle, an der spaeter die
+   kuratierte .explain-Zeile erscheint, und ist absichtlich in der Warnfarbe
+   gehalten statt im Akzent: es haengt an einem falsch gesetzten Kreuz, und die
+   Zuordnung "dieses Feld gehoert zu DIESER Option" muss auf einen Blick
+   stimmen. Eingerueckt wie .explain, damit die Antwortliste ihre Kante behaelt. */
+.opt-warum {
+  margin: 6px 0 10px 14px; padding: 10px 12px; border-radius: 10px;
+  border: 1.5px dashed var(--warn-border);
+  background: color-mix(in srgb, var(--warn-bg) 55%, var(--card));
+}
+.opt-warum label { display: block; font-size: .88rem; font-weight: 700; margin-bottom: 6px; }
+.opt-warum textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; min-height: 52px;
+  border: 1.5px solid var(--line); border-radius: 9px; padding: 8px 10px;
+  font: inherit; font-size: .93rem; background: var(--card); color: var(--ink);
+}
+.opt-warum textarea:focus { outline: none; border-color: var(--accent); }
+/* Was Rose selbst geschrieben hat, bleibt neben der Option stehen — sonst
+   verschwindet die eigene Deutung in dem Moment, in dem die fertige daneben
+   auftaucht, und der Vergleich waere weg. */
+.eigene-notiz {
+  margin: 6px 0 10px 14px; padding: 9px 12px; border-radius: 10px;
+  border-left: 3px solid var(--accent); background: var(--paper-2);
+  font-size: .9rem; line-height: 1.45;
+}
+.eigene-notiz b { color: var(--ink-soft); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
 .linkish {
   border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
   color: var(--ink-soft); text-decoration: underline; padding: 4px 0 0; display: inline-block;
@@ -1204,46 +1213,10 @@ button.tag-hebel:active { transform: scale(.96); }
 .pill.mini { padding: 1px 7px; font-size: .68rem; background: transparent; }
 
 /* ============ NextGen V2: Taeglicher Trainings-Hub (Block B) ============ */
-/* Vier gleiche Karten nebeneinander: grosses Icon, Name darunter, i fest oben
-   rechts. Offen = farbig hervorgehoben, neutralisiert sich nach dem Ueben. */
-.spiel-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.spiel-card {
-  position: relative; border: 1.5px solid var(--line); border-radius: var(--radius);
-  background: var(--card); padding: 16px 4px 12px; cursor: pointer; color: var(--ink);
-  box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 7px;
-  transition: border-color .25s, background .25s, box-shadow .25s;
-}
-.spiel-card:active { transform: scale(.97); }
-.spiel-card .spiel-icon { font-size: 2rem; line-height: 1; }
-.spiel-card b { font-family: "Fraunces", serif; font-size: .82rem; text-align: center; line-height: 1.15; }
-.spiel-card.offen {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 9%, var(--card));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent), var(--shadow);
-}
-/* Erledigt traegt dieselbe gruene Handschrift wie eine abgearbeitete Zeile im
-   Stoebern (.q-item.sitzt): kraeftige Kante, ruhige Flaeche, NICHT ausgegraut.
-   Die Karte hat ihre Arbeit getan, sie ist nicht "nicht verfuegbar". */
-.spiel-card.done {
-  border-color: color-mix(in srgb, var(--ok) 55%, transparent);
-  background: color-mix(in srgb, var(--ok) 6%, var(--card));
-}
-.spiel-info { position: absolute; top: 3px; right: 6px; font-size: .82rem; opacity: .65; padding: 2px; cursor: pointer; }
-/* Die Zustands-Pille am Fuss der Karte ist das gemeinsame Muster (.stand-badge
-   .neu/.sitzt .kompakt, siehe Muster-Block oben) — hier wird nichts davon
-   nachgebaut, nur benutzt. */
-/* Der Belohnungsmoment beim Uebergang — Kartenfassung von erledigt-glanz
-   (siehe Stoebern). Endet auf der ruhigen gruenen Flaeche der fertigen Karte
-   statt auf transparent, sonst blitzt es am Ende noch einmal zurueck. */
-.spiel-card.frisch-erledigt { animation: erledigt-glanz-karte 1.1s cubic-bezier(.16, 1, .3, 1) 1; }
-@keyframes erledigt-glanz-karte {
-  0% { background: color-mix(in srgb, var(--ok) 30%, var(--card)); border-color: var(--ok); }
-  100% { background: color-mix(in srgb, var(--ok) 6%, var(--card)); }
-}
-.spiel-card.frisch-erledigt .stand-badge.sitzt { animation: sticker-pop .45s cubic-bezier(.34, 1.56, .64, 1) both; }
-@media (prefers-reduced-motion: reduce) {
-  .spiel-card.frisch-erledigt, .spiel-card.frisch-erledigt .stand-badge.sitzt { animation: none; }
-}
+/* Der Hub baut seine Kacheln seit dem Umbau aus .dailies-reihe/.daily-kachel im
+   geteilten Paket (Block 6) — samt Statuslicht, Haken und Belohnungs-Glanz. Die
+   alten .spiel-grid/.spiel-card/.spiel-info-Regeln standen hier nur noch als
+   toter Code und sind am 12.08. abends weggeraeumt. */
 
 /* Game 1: Verwechslungspaare (Swipe-Buehne + Chips) */
 .vp-titel { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; flex-wrap: wrap; }
@@ -1331,18 +1304,13 @@ button.ans:disabled { cursor: default; }
   border-radius: 999px; padding: 6px 12px; margin: 8px 0 0; font: inherit; font-size: .82rem; cursor: pointer;
 }
 .llm-chat-btn:active { transform: scale(.97); }
-.chat-sheet { display: flex; flex-direction: column; max-height: 82vh; }
-.chat-verlauf { flex: 1; overflow-y: auto; min-height: 140px; max-height: 48vh; padding: 4px 0; }
-.chat-msg { border-radius: 12px; padding: 9px 12px; margin: 6px 0; font-size: .92rem; line-height: 1.5; max-width: 92%; }
-.chat-msg.du { background: color-mix(in srgb, var(--accent) 12%, var(--card)); margin-left: auto; }
-.chat-msg.ki { background: var(--paper); border: 1px solid var(--line); margin-right: auto; white-space: pre-wrap; }
-.chat-tipp { opacity: .6; animation: sticker-idle 1.2s ease-in-out infinite; display: inline-block; }
-.chat-eingabe { display: flex; gap: 8px; align-items: flex-end; margin: 8px 0 6px; }
-.chat-eingabe textarea {
-  flex: 1; resize: none; border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 11px;
-  font: inherit; font-size: .95rem; background: var(--card); color: var(--ink); min-height: 40px;
-}
-.chat-eingabe textarea:focus { outline: none; border-color: var(--accent); }
+/* Das Chat-Sheet (.chat-sheet, .chat-verlauf, .chat-msg, .chat-tipp,
+   .chat-schnell, .chat-hinweis, .chat-eingabe) steht seit dem 12.08. abends im
+   geteilten Paket, Block 11 — damit der Fragen-Chat hier und der Kreaturen-Chat
+   in beiden Apps EIN Bauteil sind. Zwei Verbesserungen sind dabei mitgekommen:
+   .chat-tipp haengt an einem eigenen Keyframe statt am hiesigen sticker-idle,
+   und die Eingabe steht auf 1rem, weil iOS Safari unter 16 px beim Fokussieren
+   die ganze Seite hochzoomt. Die Huelle (.sheet/.sheet-ov) bleibt lokal. */
 
 /* ============ NextGen V2 Feinschliff (Jennifer 21.07.) ============ */
 /* Swipe in 4 Richtungen: oben/unten-Zonen + Pfeile in den Chips */
@@ -1368,19 +1336,18 @@ button.ans:disabled { cursor: default; }
 .siegel.gut { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
 .siegel.gold { background: transparent; font-size: .95rem; }
 
-/* Statistik-Sektionen: klar gruppierte Ueberschriften */
-.stat-sek {
-  font-size: .82rem; text-transform: uppercase; letter-spacing: .08em;
-  color: var(--ink-soft); margin: 22px 2px 8px; font-family: "Karla", sans-serif; font-weight: 700;
-}
-.stat-sek:first-of-type { margin-top: 8px; }
+/* Die Sektions-Ueberschrift hiess hier .stat-sek und drueben .abschnitt-titel —
+   ein Bauteil, zwei Namen, 0,06 rem Unterschied. Sie steht jetzt unter GEs Namen
+   im geteilten Paket (Block 7b, h2.abschnitt-titel); das JS schreibt die neue
+   Klasse. Der Sonderfall .stat-sek:first-of-type faellt mit weg: das Label
+   startet jetzt ueberall mit demselben Abstand.
 
-/* Hub mit 5 Karten (Operatoren-Minigames direkt + Begriffe): kompakter */
-.spiel-grid { grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 7px; }
-.spiel-card { padding: 14px 3px 10px; gap: 6px; }
-.spiel-card .spiel-icon { font-size: 1.65rem; }
-.spiel-card b { font-size: .7rem; hyphens: auto; overflow-wrap: anywhere; }
-.spiel-info { top: 1px; right: 4px; font-size: .78rem; }
+   Ebenfalls weg: .spiel-grid / .spiel-card* / .spiel-info und der Keyframe
+   erledigt-glanz-karte. Das Taegliche Training baut seit dem Kachel-Umbau
+   .daily-kachel aus dem geteilten Paket, kein JS erzeugte die alten Klassen
+   noch (ueber app/js/ und app/*.html gegengeprueft, null Treffer). ACHTUNG beim
+   Uebertragen in den GE-Trainer: dort sind .spiel-grid und .spiel-karte
+   weiterhin in Gebrauch, nur die Tagesliste hat gewechselt. */
 
 /* Kompakte Zuletzt-Liste auf der Startseite: mehr Eintraege sichtbar */
 .hist-kompakt .hist-item { padding: 7px 0; gap: 8px; }
@@ -1569,6 +1536,45 @@ button.ans:disabled { cursor: default; }
 .tz-marken .tz-marke.letzte { transform: translateX(-100%); }
 .tz-marken .tz-marke.an { color: var(--mk-riss); }
 .tz-marken .tz-marke.stern.an { color: #d4a017; }
+
+/* ---------- Einstieg in den Kreaturen-Chat ----------
+   Der Ausloeser bleibt LOKAL, obwohl das Sheet selbst geteilt ist: .mk-* ist
+   aus dem geteilten Paket ausdruecklich ausgenommen, weil die Kreaturen der
+   beiden Trainer verschieden aussehen duerfen (hier Katze, drueben Hund).
+
+   Der Knopf ersetzt das <pre> als Flex-Kind der .mk-zeile und muss dessen
+   Verhalten uebernehmen (flex-shrink: 0), sonst quetscht der Text die
+   Blockgrafik zusammen. Alles andere wird auf null gesetzt: ein Knopf bringt
+   Rahmen, Polsterung, Schriftart und Zeilenhoehe mit, und jedes davon
+   verschoebe die Zeichen gegeneinander. */
+.mk-chat-knopf {
+  position: relative; flex-shrink: 0;
+  border: 0; background: none; padding: 0; margin: 0;
+  font: inherit; line-height: inherit; color: inherit;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+/* Die Sprechblase. Ohne eine sichtbare Marke findet niemand heraus, dass ein
+   Ei antippbar ist — deshalb ist sie immer da und verschwindet auch nicht,
+   wenn Rose den Chat schon kennt. */
+.mk-chat-knopf::after {
+  content: "💬"; position: absolute; right: -6px; bottom: -4px;
+  font-size: 11px; line-height: 1;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 999px;
+  padding: 2px 3px;
+}
+.mk-chat-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+.mk-chat-knopf:active { transform: scale(.98); }
+/* Beim allerersten Mal pulsiert die Blase kurz mit. Bewusst der langsame Takt
+   und die Akzentfarbe: Rot und schnelles Pulsen sind seit dem 12.08. fuer
+   "heute dran und noch offen" reserviert, und eine Einladung zum Reden ist
+   nichts, was heute dran ist. */
+.mk-chat-knopf.neu::after { border-color: var(--accent); animation: mkChatWink 2.8s ease-in-out infinite; }
+@keyframes mkChatWink { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
+.mk-chat-einladung { margin: 3px 0 0; font-size: .78rem; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .mk-chat-knopf.neu::after { animation: none; }
+  .mk-chat-knopf:active { transform: none; }
+}
 
 .mk-wechsel { margin-top: 5px; }
 .mk-storch { display: block; margin: 0 auto 8px; width: 14ch; max-width: 52%; }

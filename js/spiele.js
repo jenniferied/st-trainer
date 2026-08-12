@@ -12,6 +12,11 @@
 import * as C from "./core.js";
 import * as Beleg from "./beleg.js";
 import * as M from "./methoden.js";
+/* Paar-Zuordnung (hier: Zuordnen, in main.js: Begriffe-Blitz, drueben im
+   GE-Trainer: Begriffe-Blitz) — eine Mechanik, ein Baustein. Quelle:
+   rose/geteilte-styles/spiel-zuordnen.js, verteilt per verteilen.sh.
+   Die Engine loggt und feiert bewusst nicht, das bleibt hier. */
+import { baueZuordnen } from "./geteilt-zuordnen.js";
 
 const app = () => document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -100,14 +105,20 @@ let zuletztFertig = null;
    aktiv-Bedingung aendert, aendert damit automatisch auch die Zahl drueben —
    und genau so soll es sein. Begruendung ausfuehrlich in
    geteilt-tagesstand.js bei offenText(). */
+/* Namen und Icons der Spiele, die es in BEIDEN Trainern gibt, sind seit dem
+   12.08. abends abgestimmt: Signalwoerter traegt 🎯, Begriffe heisst ueberall
+   Begriffe-Blitz (so hiess der eigene Screen hier schon immer, nur die Kachel
+   sagte kurz "Begriffe"). Die Namen wandern ueber offeneDailies() in den
+   Snapshot und stehen drueben im Tooltip des Querlinks — wer sie aendert,
+   aendert die Beschriftung in der anderen App mit. */
 export function dailies() {
   const heute = spieleHeute();
   return [
     { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },
-    { key: "opu", icon: "🔎", name: "Signalwörter", m: "operatoren", n: heute.opu, aktiv: !!OPS?.uebungen?.length },
+    { key: "opu", icon: "🎯", name: "Signalwörter", m: "operatoren", n: heute.opu, aktiv: !!OPS?.uebungen?.length },
     { key: "opz", icon: "↔️", name: "Zuordnen", m: "operatoren", n: heute.opz, aktiv: !!OPS },
     { key: "dt", icon: "🕵️", name: "Detektiv", m: "paraphrasieren", n: heute.detektiv, aktiv: true },
-    { key: "bg", icon: "🃏", name: "Begriffe", m: "retrieval", n: heute.begriffe, aktiv: C.begriffe().length > 0 },
+    { key: "bg", icon: "🃏", name: "Begriffe-Blitz", m: "retrieval", n: heute.begriffe, aktiv: C.begriffe().length > 0 },
   ].filter((s) => s.aktiv);
 }
 
@@ -161,9 +172,15 @@ export function hubHtml() {
      eigenen Kasten machen, genauso wie die Klausuruebersichten"). Nebeneffekt,
      der die alte Form ohnehin gestoert hat: das Raster brach bei fuenf Kacheln
      auf 4+1 um und liess die letzte allein in einer zweiten Zeile stehen. */
-  return `<div class="card mt">
-      <h2>Tägliches Training</h2>
-      <p class="muted" style="margin:-2px 2px 0;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Der rote Punkt heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
+  /* Titel und Erklaerzeile sind seit dem 12.08. abends in beiden Trainern
+     gleich. "Heute dran" statt "Tägliches Training": die Ueberschrift benennt
+     damit dieselbe Regel, die der rote Punkt darunter meint (heute dran und
+     noch offen), und sie ist kuerzer. Die Erklaerzeile stand nur hier und
+     wandert mit hinueber — der rote Punkt braucht seine Legende. Das
+     Inline-style daran ist jetzt .karten-hinweis im geteilten Paket. */
+  return `<div class="card mt glim">
+      <h2>Heute dran</h2>
+      <p class="karten-hinweis">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Der rote Punkt heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
       <div class="dailies-reihe">${karten.join("")}</div>
     </div>`;
 }
@@ -184,7 +201,7 @@ export function bindHub(zurueck, extra = {}) {
 }
 
 // ---------- Gemeinsames ----------
-const kopf = (titel, zurueckFn, extra = "") => `<div class="topbar"><button class="back" id="spielBack">‹</button><h1 style="font-size:1.15rem">${titel}</h1>${extra}</div>`;
+const kopf = (titel, zurueckFn, extra = "") => `<div class="topbar"><button class="back" id="spielBack">‹</button><h1>${titel}</h1>${extra}</div>`;
 const logSpiel = (modus, qid, punkte, max, voll, zeit) => {
   C.logAntwort({ qid, sid: "spiel", modus, punkte, max, voll, zeit });
   C.syncEvent({ frage_id: qid, gewaehlt: null, punkte, max_punkte: max, voll, modus, ts: new Date().toISOString() });
@@ -381,7 +398,7 @@ export function opUeben(zurueckFn) {
   let idx = 0, richtig = 0, t0 = Date.now();
   const mal = () => {
     const u = aufgaben[idx];
-    app().innerHTML = `<div class="fade-in">${kopf("🔎 Signalwörter", zurueckFn, wendungenBtn)}
+    app().innerHTML = `<div class="fade-in">${kopf("🎯 Signalwörter", zurueckFn, wendungenBtn)}
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / aufgaben.length}%"></i></span><span>${idx + 1}/${aufgaben.length}</span></div>
       <div class="card">
         <div class="q-fall" style="font-style:italic">„${esc(u.stamm)}"</div>
@@ -413,54 +430,34 @@ export function opUeben(zurueckFn) {
   mal();
 }
 
+/* Zwei Spalten, links antippen, rechts zuordnen — dieselbe Mechanik wie der
+   Begriffe-Blitz hier und drueben. Sie liegt seit dem 12.08.2026 im geteilten
+   Baustein geteilt-zuordnen.js (Quelle: rose/geteilte-styles/spiel-zuordnen.js,
+   nie die Kopie bearbeiten). Hier bleibt nur, was dieses Spiel eigen hat: der
+   qid-Praefix opz- (daran und NUR daran unterscheidet spieleHeute() Zuordnen
+   von Signalwoerter) und das Fazit mit den Wendungen zum Nachlesen.
+   Gedreht wird hier nicht — eine Wendung rueckwaerts aus ihrer Anforderung zu
+   erraten waere ein anderes Spiel. */
 export function opZuordnen(zurueckFn) {
   const paare = zieh(OPS.operatoren.filter((o) => o.verlangt), 5);
-  const links = zieh([...paare], paare.length);
-  const rechts = zieh([...paare], paare.length);
   const t0 = Date.now();
-  const offen = new Set(paare.map((p) => p.id));
-  const fehler = new Set(), gewertet = new Set();
-  let aktiv = null;
   app().innerHTML = `<div class="fade-in">${kopf("↔️ Zuordnen", zurueckFn, wendungenBtn)}
     <p class="muted" style="margin:0 0 10px">Links die Wendung antippen, rechts, was sie verlangt.</p>
-    <div class="bg-spiel">
-      <div class="bg-col">${links.map((p) => `<button class="bg-card links" data-id="${esc(p.id)}">${esc(p.wendung)}</button>`).join("")}</div>
-      <div class="bg-col">${rechts.map((p) => `<button class="bg-card rechts" data-id="${esc(p.id)}">${esc(p.verlangt)}</button>`).join("")}</div>
-    </div>
+    <div id="opzSpiel"></div>
     <div id="opzFazit"></div></div>`;
   document.getElementById("spielBack").onclick = zurueckFn;
   bindWendungen();
-  const alleL = [...app().querySelectorAll(".bg-card.links")];
-  alleL.forEach((b) => b.onclick = () => {
-    if (b.classList.contains("done")) return;
-    alleL.forEach((x) => x.classList.remove("sel"));
-    b.classList.add("sel"); aktiv = b.dataset.id;
-  });
-  app().querySelectorAll(".bg-card.rechts").forEach((b) => b.onclick = () => {
-    if (b.classList.contains("done") || !aktiv) return;
-    const erster = !gewertet.has(aktiv);
-    if (b.dataset.id === aktiv) {
-      if (erster) {
-        gewertet.add(aktiv);
-        const voll = !fehler.has(aktiv);
-        logSpiel("op", "opz-" + aktiv, voll ? 1 : 0, 1, voll, Math.round((Date.now() - t0) / 1000));
-      }
-      offen.delete(aktiv);
-      b.classList.add("done");
-      app().querySelector(`.bg-card.links[data-id="${CSS.escape(aktiv)}"]`)?.classList.add("done");
-      aktiv = null;
-      if (!offen.size) {
-        const ok = paare.length - fehler.size;
-        const erkl = paare.filter((p) => fehler.has(p.id)).map((p) => `<div class="review-q" style="padding:8px 0"><b>${esc(p.wendung)}</b> → ${esc(p.verlangt)}${p.tipp ? `<div class="explain good"><span class="bt">${esc(p.tipp)}</span></div>` : ""}</div>`).join("");
-        fazit(document.getElementById("opzFazit"), ok, paare.length, () => opZuordnen(zurueckFn), zurueckFn,
-          erkl ? `<div class="card mt"><h3>Kurz nachlesen</h3>${erkl}</div>` : "");
-      }
-    } else {
-      if (erster) fehler.add(aktiv);
-      b.classList.add("shake");
-      setTimeout(() => b.classList.remove("shake"), 450);
-    }
-  });
+  document.getElementById("opzSpiel").appendChild(baueZuordnen({
+    paare,
+    linksText: (p) => p.wendung,
+    rechtsText: (p) => p.verlangt,
+    onTreffer: (id, voll) => logSpiel("op", "opz-" + id, voll ? 1 : 0, 1, voll, Math.round((Date.now() - t0) / 1000)),
+    onFertig: ({ ok, n, fehler }) => {
+      const erkl = paare.filter((p) => fehler.includes(p.id)).map((p) => `<div class="review-q" style="padding:8px 0"><b>${esc(p.wendung)}</b> → ${esc(p.verlangt)}${p.tipp ? `<div class="explain good"><span class="bt">${esc(p.tipp)}</span></div>` : ""}</div>`).join("");
+      fazit(document.getElementById("opzFazit"), ok, n, () => opZuordnen(zurueckFn), zurueckFn,
+        erkl ? `<div class="card mt"><h3>Kurz nachlesen</h3>${erkl}</div>` : "");
+    },
+  }));
 }
 
 // ============ GAME 3: Fragen-Detektiv ============

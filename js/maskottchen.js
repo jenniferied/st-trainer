@@ -57,7 +57,11 @@ const grussVon = (h) => h < 5 ? "Nanu, so spät noch" : h < 11 ? "Guten Morgen" 
 
 /* Was das Ei heute schon bekommen hat: eins fuers Anfangen, eins fuers
    Minimum, eins fuers Tagespensum — dieselbe Rechnung wie fuer die Historie. */
-function herzenHeute(tz) {
+/* Seit dem 12.08. abends exportiert: der Kreaturen-Chat (mk-chat.js) muss
+   "Herzen heute" nennen koennen, und die Rechnung darf es NICHT ein zweites
+   Mal geben. Zwei Stellen, die dieselbe Frage beantworten, beantworten sie
+   irgendwann verschieden — dieselbe Falle wie bei Bild und Text am 12.08. */
+export function herzenHeute(tz) {
   if (!tz) return 0;
   const n = tz.n || 0;
   return (n > 0 ? 1 : 0) + (n >= tz.minimum ? 1 : 0) + (n >= tz.ziel ? 1 : 0);
@@ -162,6 +166,21 @@ function satzVon(stufe, hh, nacht) {
   return tag % 2 === 0 ? STUFEN[stufe].satz : spruchVon(SPRUCH.ruhig, tag);
 }
 export const stufeVon = (herzen) => { let i = 0; STUFEN.forEach((s, k) => { if (herzen >= s.ab) i = k; }); return i; };
+
+/* Ab dieser Stufe sieht man, WAS es ist (STUFEN[6] ist die erste "jung"-Stufe).
+   Als Konstante wie SCHLUEPF_STUFE, weil der Chat sie braucht und eine 6 im
+   Code an einer vierten Stelle niemand mehr zuordnet. Vorher verraet die
+   Kreatur ihre Tierart nicht — das ist der ganze Reiz des Wachsens. */
+export const TIER_STUFE = 6;
+
+/* Wie viele Herzen noch bis zur naechsten Stufe; null heisst ausgewachsen.
+   blaseText() benutzt genau diese Funktion, damit die Blase und der Chat
+   dieselbe Zahl sagen. Rein, kein Zugriff auf state oder Uhr. */
+export function herzenBisNaechste(herzen, stufeMax) {
+  const stufe = Math.min(Math.max(stufeVon(herzen), stufeMax || 0), STUFEN.length - 1);
+  const naechste = STUFEN[stufe + 1];
+  return naechste ? Math.max(0, naechste.ab - herzen) : null;
+}
 
 /* ---------- Die Sperrklinke: einmal erreicht, bleibt erreicht ----------
    herzenStand() rechnet die GANZE Historie mit dem HEUTIGEN Tagesziel, und das
@@ -590,7 +609,7 @@ export function blaseText({ herzen, sterne, tage, stunde, hh, stufeMax }) {
   // das schon Erreichte zurueck, auch wenn die Herzenzahl sinkt. Geklemmt, damit
   // ein gespeicherter Wert aus einer laengeren Leiter hier nicht ins Leere greift.
   const stufe = Math.min(Math.max(stufeVon(herzen), stufeMax || 0), STUFEN.length - 1);
-  const naechste = STUFEN[stufe + 1];
+  const bis = herzenBisNaechste(herzen, stufeMax);
   const nacht = stunde >= 22 || stunde < 6;
   return {
     stufe, nacht,
@@ -600,7 +619,7 @@ export function blaseText({ herzen, sterne, tage, stunde, hh, stufeMax }) {
       // Auf der letzten Stufe gibt es kein "bis es weitergeht" mehr. Frueher stand
       // hier "gleich passiert was" — das war als Platzhalter gedacht und wurde nie
       // erreicht, weil die Leiter nur drei Stufen hatte. Jetzt wird sie erreicht.
-      (naechste ? `noch <b>${Math.max(0, naechste.ab - herzen)}</b> ♥ bis es weitergeht` : "ausgewachsen") + "." +
+      (bis == null ? "ausgewachsen" : `noch <b>${bis}</b> ♥ bis es weitergeht`) + "." +
       // Was heute schon dazukam. Nachts bleibt das weg — kein Abend-Mahnmal.
       (nacht ? ""
         : hh === 0 ? " Heute noch keins — das erste kommt mit der ersten Karte."
@@ -668,6 +687,43 @@ function bruchHtml(v) {
   </div>`;
 }
 
+/* ---------- Einstieg in den Kreaturen-Chat ----------
+   Rose tippt das Maskottchen an, das Sheet geht auf. Damit man das ueberhaupt
+   findet, sitzt eine kleine Sprechblase am Bild (CSS .mk-chat-knopf::after)
+   und beim ersten Mal steht ein Satz daneben.
+
+   Der Merker "schon mal geoeffnet" liegt GERAETELOKAL in localStorage und
+   ausdruecklich nicht in state().mk. Er ist kein Lernstand, und alles, was in
+   den Snapshot wandert, muesste auch durch den Merge — dafuer ist ein Hinweis
+   zu klein.
+
+   Warum initChat() statt eines vierten Parameters an binde(): gezeichnet wird
+   VOR dem Binden. Haengte der Knopf an binde(), fehlte er beim ersten Aufbau
+   der Startseite und erschiene erst beim naechsten Neuzeichnen. Dasselbe
+   Muster benutzt llm.js fuer seinen Fragenchat. */
+const CHAT_GESEHEN = "st-mk-chat-gesehen";
+let chatAufFn = null;
+let chatNeu = false;
+try { chatNeu = !localStorage.getItem(CHAT_GESEHEN); } catch (e) { chatNeu = false; }
+
+export function initChat(fn) { chatAufFn = typeof fn === "function" ? fn : null; }
+
+/* Wird beim ersten Oeffnen gerufen — danach verschwindet die Einladung, die
+   Sprechblase am Bild bleibt. */
+export function chatGesehen() {
+  chatNeu = false;
+  try { localStorage.setItem(CHAT_GESEHEN, "1"); } catch (e) { /* egal */ }
+}
+
+/* Ein Wortlaut fuer Knopf-Label und Sheet-Ueberschrift. Was es IST, verraet er
+   erst ab TIER_STUFE — vorher waere die Ueberschrift ein Spoiler auf das,
+   worauf das ganze Wachsen hinauslaeuft. */
+export function chatTitel(stufe) {
+  if (stufe < SCHLUEPF_STUFE) return "Mit deinem Ei reden";
+  if (stufe < TIER_STUFE) return "Mit deinem Begleiter reden";
+  return "Mit deiner Katze reden";
+}
+
 /* Die Stufe, die JETZT gilt — inklusive Sperrklinke. Eigene Funktion, weil
    html() und standHtml() sie beide brauchen und zwei Rechnungen zwei Wahrheiten
    waeren (dieselbe Falle wie bei Bild und Text am 12.08.). */
@@ -688,11 +744,21 @@ function standHtml(tz) {
   // es noch nicht fertig.
   const anim = REDUCE_MOTION ? ""
     : stufe === 0 ? " mk-schwebt" : stufe === 2 ? " mk-wackelt" : " mk-atmet";
+  // Das Bild bleibt aria-hidden — Blockgrafik ist fuer einen Screenreader
+  // Zeichensalat. Das Label traegt der Knopf drumherum.
+  const pre = `<pre class="mk-ei${anim}" aria-hidden="true">${bildHtml(v, stufe, t.nacht)}</pre>`;
+  const titel = chatTitel(stufe);
+  // NUR hier, in der ruhigen Ansicht. Ankunft und Schluepfen sind Momente, die
+  // genau einmal stattfinden; dort darf nichts damit konkurrieren.
+  const bild = chatAufFn
+    ? `<button type="button" class="mk-chat-knopf${chatNeu ? " neu" : ""}" data-mk-chat aria-label="${titel}" title="${titel}">${pre}</button>`
+    : pre;
   return `<div class="mk-zeile">
-    <pre class="mk-ei${anim}" aria-hidden="true">${bildHtml(v, stufe, t.nacht)}</pre>
+    ${bild}
     <div class="mk-text">
       <p class="mk-satz"><b>${t.gruss}.</b> ${t.satz}</p>
       <p class="mk-meta">${t.meta}</p>
+      ${chatAufFn && chatNeu ? `<p class="mk-chat-einladung">Tipp mich an, wenn du reden magst.</p>` : ""}
       <!-- Der Wechsel-Knopf stand frueher am Ende des Fliesstexts hinter einem
            Mittelpunkt und war praktisch unauffindbar. Eigene Zeile — auffindbar,
            aber weiter dezent: das Aussuchen soll ein Moment bleiben, kein Menue. -->
@@ -733,6 +799,18 @@ function schluepfFertig(neuZeichnen, feiern) {
 /* feiern() reicht main.js herein (Konfetti). Als Parameter statt Import, weil
    main.js dieses Modul schon importiert und ein Rueckimport ein Kreis waere. */
 export function binde(wurzel, neuZeichnen, feiern) {
+  // Kreaturen-Chat. Das Sheet haengt an document.body (siehe
+  // geteilt-maskottchen-chat.js) und ueberlebt damit ein Neuzeichnen der Karte.
+  // Neu gezeichnet wird trotzdem, aber ERST danach: die Einladung soll beim
+  // naechsten Aufbau weg sein, ohne dass sie unter dem offenen Sheet
+  // wegzuckt.
+  wurzel.querySelectorAll("[data-mk-chat]").forEach((b) => b.onclick = () => {
+    if (!chatAufFn) return;
+    const warNeu = chatNeu;
+    chatGesehen();
+    chatAufFn();
+    if (warNeu) neuZeichnen();
+  });
   wurzel.querySelectorAll("[data-mk-schluepf]").forEach((b) => b.onclick = () => {
     // Wer Bewegung abgestellt hat, bekommt den Moment trotzdem — nur ohne die
     // Animation. Der Knopf fuehrt dann direkt zum fertigen Tier.

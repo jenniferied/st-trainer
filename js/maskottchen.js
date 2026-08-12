@@ -145,7 +145,14 @@ export function eiHtml(variante, stufe) {
    kommt die Ankunft bei jedem Oeffnen wieder — wer nicht aussucht, verliert den
    Moment nicht. Der Schritt "schon nachgesehen" haelt nur bis zum Neuladen,
    damit es nicht bei der Karte haengen bleibt. */
-const gewaehlt = () => !!C.state().settings.mkEi;
+/* Nicht nur "steht da was", sondern "steht da ein Ei, das es noch gibt".
+   Sonst zaehlt ein Key aus einer frueheren Fassung als getroffene Wahl: die
+   Ankunft wird uebersprungen und eiIndex() faellt still auf Ei 0 zurueck —
+   die Ankunft ist dann weg, ohne dass je jemand ausgesucht hat. */
+const gewaehlt = () => {
+  const k = C.state().settings.mkEi;
+  return !!k && EIER.some((e) => e.key === k);
+};
 let angesehen = false;
 export function zuruecksetzen() { C.state().settings.mkEi = null; C.save(); angesehen = false; }
 
@@ -153,12 +160,72 @@ export function zuruecksetzen() { C.state().settings.mkEi = null; C.save(); ange
 let blaetterIdx = 0;
 
 /* ---------- Ansichten ---------- */
-const STORCH = ["        ▁▄▖        ", "       ▟◉ ▝▄▄▄▄▄   ", "      ▟███▙        ", "     ▟█████▙       ", "     ▜█████▛       ", "       ╱ ╲         ", "      ╱   ╲        "];
-const storchHtml = () => STORCH.join("\n");
+/* ---------- Der Storch ----------
+   Bewusst KEINE Textgrafik, anders als das Ei. Blockzeichen wie ▟ ▙ sind
+   zellgenau und darum unkritisch, aber der Storch braucht duenne Teile
+   (Hals, Beine, Schnur) und die gab es nur mit ◉ ╱ ╲ — genau die Zeichen,
+   die auf Android gern in einen Ersatzfont fallen und dann die Zeile
+   verschieben. Deshalb dasselbe Zellraster, aber als SVG-Rechtecke gemalt:
+   sieht aus wie Blockgrafik, passt zum Ei, rendert aber ueberall gleich
+   und skaliert mit.
+
+   Legende:  # Koerper   s Schnabel   a Auge
+             l Bein      t Buendel    | Schnur      . nichts
+
+   Das Auge war zuerst nur eine Luecke im Kopf, damit der Kartengrund
+   durchscheint. Das traegt aber nur im Nachtmodus: im hellen Modus ist der
+   Grund heller als das Gefieder, und das Auge verschwand fast. Es bekommt
+   darum die Musterfarbe, die in beiden Modi dunkler ist als das Fell. */
+const STORCH = [
+  "............#####..........",
+  "...........#######.........",
+  "..sssssssss##a#####........",
+  "...........#######.........",
+  "............#####..........",
+  "....|........###...........",
+  "....|........###...........",
+  "...ttttt.....###...........",
+  "..ttttttt....###...........",
+  "..ttttttt....###...........",
+  "..ttttttt....###...........",
+  "...ttttt..#########........",
+  "........#############......",
+  ".......###############.....",
+  "......#################....",
+  ".......###############.....",
+  "........#############......",
+  "..........#########........",
+  "...........ll...ll.........",
+  "...........ll...ll.........",
+  "...........ll...ll.........",
+  "..........llll.llll........",
+];
+const STORCH_FARBE = { "#": "var(--mk-fell)", s: "var(--mk-riss)", l: "var(--mk-riss)",
+  t: "var(--mk-muster)", "|": "var(--mk-muster)", a: "var(--mk-muster)" };
+
+/* Zellen einer Zeile, die gleich sind, werden zu EINEM Rechteck zusammengefasst
+   (Lauflaenge) — sonst stehen ~300 rects im DOM statt ~40. */
+function storchHtml() {
+  const Z = 10;
+  const breite = Math.max(...STORCH.map((z) => z.length));
+  let teile = "";
+  STORCH.forEach((zeile, y) => {
+    let x = 0;
+    while (x < zeile.length) {
+      const c = zeile[x];
+      if (!STORCH_FARBE[c]) { x++; continue; } // "." und "a" bleiben Luecke
+      let n = 1;
+      while (x + n < zeile.length && zeile[x + n] === c) n++;
+      teile += `<rect x="${x * Z}" y="${y * Z}" width="${n * Z}" height="${Z}" fill="${STORCH_FARBE[c]}"/>`;
+      x += n;
+    }
+  });
+  return `<svg viewBox="0 0 ${breite * Z} ${STORCH.length * Z}" width="${breite * Z}" height="${STORCH.length * Z}" aria-hidden="true" focusable="false">${teile}</svg>`;
+}
 
 function ankunftHtml() {
   return `<div class="mk-ankunft">
-    <pre class="mk-storch${REDUCE_MOTION ? "" : " mk-schwebt"}" aria-hidden="true">${storchHtml()}</pre>
+    <div class="mk-storch${REDUCE_MOTION ? "" : " mk-schwebt"}" aria-hidden="true">${storchHtml()}</div>
     <div class="mk-ank-kopf">Etwas ist angekommen.</div>
     <p class="mk-ank-text">Da war jemand am Nest, während du geübt hast. Es liegen drei da — eins davon darf bei dir bleiben.</p>
     <button class="btn small" data-mk-ankunft="gesehen">Nachsehen</button>

@@ -1313,6 +1313,10 @@ function chatNormieren(liste, weg) {
   const m = new Map();
   for (const roh of liste || []) {
     const s = chatSauber(roh);
+    // Absicht, kein Nebeneffekt: eine Nachricht ohne Zeitstempel (ts = 0) faellt
+    // hier durch, weil weg mindestens 0 ist. Ohne ts laesst sie sich weder
+    // einsortieren noch gegen die Wasserlinie pruefen — sie kann nur aus einem
+    // kaputten Stand stammen.
     if (!s || s.ts <= (weg || 0)) continue;
     m.set(s.id, s);
   }

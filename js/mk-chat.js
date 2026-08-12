@@ -60,11 +60,29 @@ const budgetFrei = () => budget().n < MK_TAG_LIMIT;
    tageBisKlausur (Kalendertage bis zum 18.09.) und uebungstage (an wie vielen
    Tagen Rose ueberhaupt geuebt hat). tz.tage und herzenStand().tage heissen
    beide tage und meinen Verschiedenes. */
+/* Seit wie vielen Tagen uebt Rose ueberhaupt? Spanne vom ERSTEN Uebungstag bis
+   heute, einschliesslich beider. Basis ist aktivitaetProTag() — dieselben Tage,
+   die im Kalender gefaerbt sind. Ruhetage dazwischen zaehlen mit: gefragt ist,
+   wie lange die Kreatur schon dabei ist, nicht wie fleissig.
+   null, solange es keinen einzigen Uebungstag gibt. */
+function dabeiSeitTagen() {
+  const tage = Object.keys(C.aktivitaetProTag()).map(Number);
+  if (!tage.length) return null;
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  return Math.max(1, Math.round((heute.getTime() - Math.min(...tage)) / 86400000) + 1);
+}
+
 function stand() {
   const tz = C.tagesStand();
   const hs = Mk.herzenStand(tz);
   const stufe = Mk.stufeJetzt(hs.herzen);
   const mk = C.state().mk || {};
+  // Einmal holen, zweimal benutzt (beantwortet und Themen). statistik() ist die
+  // Funktion, aus der auch die Statistik-Seite lebt — ihre Zahlen sind damit
+  // genau die, die Rose dort sieht.
+  const stat = C.statistik();
+  const fort = C.gesamtFortschritt();
+  const pk = C.pkStatus();
   return {
     appName: "ST-Trainer",
     fach: "Schultheorie und Bildungsforschung",
@@ -85,6 +103,39 @@ function stand() {
     // seine Kacheln baut.
     offen: Spiele.offeneDailies(),
     stunde: new Date().getHours(),
+
+    /* ---------- Roses Lernstand ----------
+       Jennifer, 12.08.: "du solltest knowlegde haben wie ihren lernstand/ihre
+       beantworteten fragen, etc. nicht nur der tag." Auch hier gilt die Regel
+       von oben: jede Zahl kommt aus der Funktion, die sie in der App ohnehin
+       berechnet, und keine davon bewertet.
+
+       Was hier bewusst NICHT mitgeht, obwohl core.js es fertig liefert:
+       statistik().punkteQuote, sicherheit() (die Sterne), entwicklung() und
+       trend(). Das sind Leistungsmasse. Sie waeren im Prompt genau das, was die
+       Persona verbietet — und ein Modell, dem man eine Quote hinlegt, nennt sie
+       irgendwann. Der einzige sichere Ort fuer eine Quote ist gar nicht erst
+       der Prompt. */
+    beantwortet: stat.beantwortet,
+    dabeiSeitTagen: dabeiSeitTagen(),
+    // "Sitzt" heisst im ST-Trainer: Leitner-Stufe 3 erreicht. gesamtFortschritt()
+    // zaehlt dabei genau den Korpus, der auch fuer Rose zaehlt (ohne
+    // nicht-relevante, ohne einfache Sprachvarianten, ohne gesperrte PK-Fragen).
+    sitzt: { n: fort.m, gesamt: fort.n },
+    // Karten je Oberthema, absteigend. n ist die qual-gefilterte Anzahl aus
+    // statistik() — dieselbe Zahl, die auf der Statistik-Seite hinter dem Thema
+    // steht. Der geteilte Baustein deckelt auf drei Themen.
+    themen: (stat.proThema || []).map((t) => ({
+      name: (C.THEMEN[t.slug] || {}).name || t.slug,
+      karten: t.n,
+    })),
+    // Einen Stapel "nochmal ansehen" gibt es im ST-Trainer nicht als eigene
+    // Groesse — die Faelligkeit steckt in baueRunde() und wird nirgends als Zahl
+    // angezeigt. null heisst hier "diese App fuehrt das nicht", die Function
+    // laesst die Zeile weg. Eine hier erfundene Zahl waere die einzige im Block,
+    // die Rose nirgends nachschlagen kann.
+    wiederholen: null,
+    probeklausuren: { geschafft: pk.filter((p) => p.bestanden).length, gesamt: pk.length },
   };
 }
 

@@ -55,11 +55,23 @@ const leseUrl = (rest) => konfig().supabaseUrl + "/rest/v1/lernstand?code=eq." +
 // Bewusst localStorage und ein eigener Schluessel: der Cache soll einen Reload
 // ueberleben, gehoert aber dem Geraet und darf in keinen Snapshot geraten.
 // state() wird hier nirgends angefasst — was hier liegt, kann nie mitsyncen.
+// Version der AUSWERTUNG, nicht der Daten. Der Cache wurde bisher nur ungueltig,
+// wenn sich der Snapshot drueben bewegt hat (`c.ts === ts`) — aendert sich dagegen
+// die RECHNUNG, blieb die alte Zahl unbegrenzt stehen, weil jeder Abruf nur
+// `geholt` auffrischte. Genau das ist am 12.08. passiert: die Prozentzahl kam noch
+// aus der alten Formel und war durch nichts zu bewegen, solange Rose drueben nicht
+// uebte (ihr Snapshot ruehrt sich ja nur beim Ueben). Ein Cache muss ungueltig
+// werden, wenn sich die Frage aendert — nicht nur, wenn sich die Antwort aendert.
+// WER DIE RECHNUNG ODER DIE GESPEICHERTEN FELDER AENDERT, ZAEHLT HIER HOCH.
+const AUSWERTUNG_V = 2;
 function lies() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch { return null; }
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    return c && c.v === AUSWERTUNG_V ? c : null;
+  } catch { return null; }
 }
 function schreib(o) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(o)); } catch { /* voll oder gesperrt — dann eben ohne */ }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(Object.assign({ v: AUSWERTUNG_V }, o))); } catch { /* voll oder gesperrt — dann eben ohne */ }
 }
 
 // ---------- Auswertung eines Snapshots ----------

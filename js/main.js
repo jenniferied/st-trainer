@@ -2095,7 +2095,16 @@ function ergebnis(session, runde, opts = {}) {
     return erg ? reviewQ(r, erg) : "";
   }).join("");
 
-  // "Werde ich besser?": diese Runde gegen den Schnitt der frueheren Runden
+  // "Werde ich besser?": diese Runde gegen den Schnitt der frueheren Runden.
+  //
+  // Bewusst ueber sessions und ueber ALLE Rundenarten (Jennifer 12.08.): der
+  // Gesamtschnitt aggregiert sich von selbst, eine Trennung nach Modus wuerde
+  // die Zeile bei duennen Modi (spaced, probeklausur) ganz verschwinden lassen,
+  // weil unten fr.length >= 2 gefordert ist. Was NICHT reinzaehlen soll, sind
+  // die Dailies (Begriffe-Blitz, Stoebern, Verwechslungspaare, Operatoren,
+  // Detektiv) — die sind hier ohne eigenen Filter schon draussen, weil sie nur
+  // im antwortLog leben und nie zu einer Session werden. Siehe die INVARIANTE
+  // ueber einzelGruppen() in core.js; wer die kippt, verfaelscht diesen Schnitt.
   let trendZeile = "";
   if (!abgebrochen && session.max) {
     const fr = C.state().sessions.filter((s) => s.id !== session.id && s.status !== "abgebrochen" && s.max && (s.ts || 0) < (session.ts || Infinity));
@@ -2109,6 +2118,10 @@ function ergebnis(session, runde, opts = {}) {
       trendZeile = dq >= 5 ? `<p class="trend-zeile up">📈 ${quote} % in dieser Runde, dein Schnitt liegt bei ${mittel} % — du wirst besser!</p>`
         : dq <= -5 ? `<p class="trend-zeile">${quote} % in dieser Runde, dein Schnitt liegt bei ${mittel} % — eine Runde sagt wenig, der Trend zählt.</p>`
         : `<p class="trend-zeile">${quote} % in dieser Runde — stabil auf deinem Schnitt von ${mittel} %.</p>`;
+      // Sagt, woraus der Schnitt kommt — sonst wundert man sich, warum er nicht
+      // zur Kachel "Ø Punktequote" im Fortschritt passt (die zaehlt jede Antwort
+      // einzeln, Karten inklusive, und liegt deshalb meist etwas hoeher).
+      trendZeile += `<p class="muted tz-note">Der Schnitt kommt aus deinen ${fr.length} Fragenrunden, von der Schnellen 10er bis zur Probeklausur. Karten-Training und Stöbern zählen hier nicht mit.</p>`;
     }
   }
   h(`<div class="fade-in">
@@ -2649,7 +2662,7 @@ function statInhaltHtml() {
       ${kachel(st.avgZeit != null ? fmtSek(st.avgZeit) : "–", "Ø Zeit pro Frage")}
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
-    </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
+    </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren. Hier zählt jede Antwort einzeln, Begriffe-Blitz und Stöbern also mit. Der Schnitt in der Auswertung einer Runde meint etwas anderes: der nimmt nur ganze Fragenrunden und liegt deshalb meist ein paar Punkte tiefer.</p></div>
     <div class="card an-card glim"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="stat-sek">Beherrschung nach Thema</h2>
     <div class="card">${ewSatz}

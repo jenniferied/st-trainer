@@ -1145,6 +1145,15 @@ export function werteAus(runde, meta) {
 // Einzeln beantwortete Fragen (Stöbern) UND Spiel-/Begriffe-Runden als
 // Tages-Gruppen für den Verlauf — vollwertige Übung, sichtbar und (mit
 // aid-Grabsteinen) einzeln löschbar, z. B. nach Test-Antworten.
+//
+// INVARIANTE (Jennifer 12.08.): Diese Tagesgruppen entstehen NUR hier zur
+// Anzeige und landen nie in state().sessions — sie leben ausschliesslich im
+// antwortLog. Daran haengt die Trendzeile in der Auswertung (main.js): die
+// liest sessions und hat die Dailies damit ohne eigenen Filter schon draussen.
+// Wer Begriffe-Blitz, Stoebern, Verwechslungspaare, Operatoren oder Detektiv
+// jemals als echte Session speichert, kippt diesen Schnitt still — Karten sind
+// deutlich leichter als Klausurfragen (bei Rose 75 % vs. 64 %) und wuerden ihn
+// nach oben verfaelschen. Der Rundenschnitt soll Klausurnaehe messen.
 const EINZEL_ARTEN = {
   explore: { icon: "🗂", label: "Einzelfragen", badge: "Stöbern" },
   vp: { icon: "🔀", label: "Verwechslungspaare", badge: "Training" },

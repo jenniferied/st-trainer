@@ -152,7 +152,12 @@ export const stufeVon = (herzen) => { let i = 0; STUFEN.forEach((s, k) => { if (
 export function stufeJetzt(herzen) {
   const mk = C.state().mk || (C.state().mk = {});
   const stufe = Math.min(Math.max(stufeVon(herzen), mk.stufeMax || 0), STUFEN.length - 1);
-  if (stufe > (mk.stufeMax || 0)) { mk.stufeMax = stufe; C.save(); }
+  // save() schreibt NUR nach localStorage — der Push haengt an syncLernstand(),
+  // und das laeuft sonst erst beim naechsten Anlass (Sitzung, Tabwechsel, Neustart).
+  // Eine neu erreichte Stufe soll aber sofort auf dem anderen Geraet stehen, so wie
+  // die zuletzt geuebten Sachen auch. syncBald buendelt das mit einer halben
+  // Sekunde Verzoegerung, damit nicht jede Neuzeichnung einen Request ausloest.
+  if (stufe > (mk.stufeMax || 0)) { mk.stufeMax = stufe; C.save(); C.syncBald(500); }
   return stufe;
 }
 
@@ -474,6 +479,9 @@ export function binde(wurzel, neuZeichnen) {
     // ts stempelt die Wahl: beim Merge gewinnt die zuletzt getroffene.
     C.state().mk = { ...(C.state().mk || {}), ei: b.dataset.mkNimm, ts: Date.now() };
     C.save();
+    // Sofort hochschieben statt auf den naechsten Sync-Anlass zu warten: die Wahl
+    // ist ein Moment, und auf dem zweiten Geraet soll dann nicht das alte Ei liegen.
+    C.syncBald(500);
     angesehen = false;
     neuZeichnen();
   });

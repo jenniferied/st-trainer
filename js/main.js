@@ -2101,10 +2101,14 @@ function ergebnis(session, runde, opts = {}) {
     const fr = C.state().sessions.filter((s) => s.id !== session.id && s.status !== "abgebrochen" && s.max && (s.ts || 0) < (session.ts || Infinity));
     if (fr.length >= 2) {
       const mittel = Math.round(fr.reduce((a, s) => a + (100 * s.punkte) / s.max, 0) / fr.length);
-      const dq = Math.round((100 * session.punkte) / session.max) - mittel;
-      trendZeile = dq >= 5 ? `<p class="trend-zeile up">📈 ${dq} Punkte über deinem bisherigen Schnitt (${mittel} %) — du wirst besser!</p>`
-        : dq <= -5 ? `<p class="trend-zeile">Dein Schnitt liegt bei ${mittel} % — eine Runde sagt wenig, der Trend zählt.</p>`
-        : `<p class="trend-zeile">Stabil auf deinem Niveau (Schnitt ${mittel} %).</p>`;
+      // Beide Seiten als Prozent nennen, nie die Differenz als "Punkte" — in dieser
+      // App sind Punkte echte Klausurpunkte (19,5/21), eine Prozentpunkt-Differenz
+      // daneben liest sich wie ein zweiter Punktestand.
+      const quote = Math.round((100 * session.punkte) / session.max);
+      const dq = quote - mittel;
+      trendZeile = dq >= 5 ? `<p class="trend-zeile up">📈 ${quote} % in dieser Runde, dein Schnitt liegt bei ${mittel} % — du wirst besser!</p>`
+        : dq <= -5 ? `<p class="trend-zeile">${quote} % in dieser Runde, dein Schnitt liegt bei ${mittel} % — eine Runde sagt wenig, der Trend zählt.</p>`
+        : `<p class="trend-zeile">${quote} % in dieser Runde — stabil auf deinem Schnitt von ${mittel} %.</p>`;
     }
   }
   h(`<div class="fade-in">

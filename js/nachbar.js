@@ -31,8 +31,26 @@
      neues Spiel faellt damit still raus, statt faelschlich "offen" zu melden.
    - Reicht es nicht: NEUTRAL. Nur der Link. Nie "alles erledigt" raten.
 
-   Die Quote dagegen braucht keine Frische — sie ist eine Aussage ueber den
-   Stand, nicht ueber den Tag, und wird darum immer gezeigt, wenn sie da ist. */
+   WAS DIE ZAHL SEIT DEM 12.08. IST (Jennifer: "es soll nicht total progress
+   sein sondern sowohl bei ge als auch st den daily progress. also wv vom ziel
+   die karten. und halt wv games noch offen/dailies."):
+   Hier stand bis dahin eine Quote ueber den Gesamtstand — und zwar "sitzt von
+   den ANGEFASSTEN Aufgaben" (37 von 46 = 80 %), waehrend der Querlink drueben
+   den Lernscore ueber den GANZEN Pool zeigte (11 %). Gleiche Pille, gleiche
+   Farbleiter, zwei Definitionen; die 80 % waren dabei nicht einmal eine
+   Design-Entscheidung, sondern eine Notloesung, weil die Groesse des GE-Korpus
+   im Snapshot gar nicht steht.
+   Jetzt zeigt der Link den TAGESFORTSCHRITT: "12 von 45", die Zahl, die der
+   GE-Trainer auf seiner eigenen Startseite als Zonen-Balken malt. Sie kommt
+   fertig aus dem fremden Snapshot (Feld heute, geteilter Vertrag in
+   geteilt-tagesstand.js) und wird hier NICHT nachgerechnet — genau daran ist
+   die alte Zahl gescheitert.
+   Damit gilt die Frische-Regel jetzt fuer alles, was der Link sagt: ein Block
+   von gestern wird verworfen, nicht angezeigt. */
+
+// Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
+// diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
+import { liesHeute, tagesPunktKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -63,7 +81,8 @@ const leseUrl = (rest) => konfig().supabaseUrl + "/rest/v1/lernstand?code=eq." +
 // uebte (ihr Snapshot ruehrt sich ja nur beim Ueben). Ein Cache muss ungueltig
 // werden, wenn sich die Frage aendert — nicht nur, wenn sich die Antwort aendert.
 // WER DIE RECHNUNG ODER DIE GESPEICHERTEN FELDER AENDERT, ZAEHLT HIER HOCH.
-const AUSWERTUNG_V = 2;
+// v3 (12.08.): quote/sitzt/bekannt sind raus, dafuer der rohe heute-Block.
+const AUSWERTUNG_V = 3;
 function lies() {
   try {
     const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -75,19 +94,14 @@ function schreib(o) {
 }
 
 // ---------- Auswertung eines Snapshots ----------
-// Gerechnet wird nur mit dem, was im Snapshot wirklich steht: mc/frei sagen,
-// welche Aufgaben drueben sitzen, das Log sagt, welche Mini-Games es gibt und
-// wann sie zuletzt liefen. Die Gesamtgroesse des GE-Korpus steht NICHT drin —
-// darum ist die Quote hier "von den Aufgaben, die Rose angefasst hat", und
-// genau so steht es auch im Tooltip.
+// Abgeleitet wird hier nur noch, was sich ehrlich ableiten laesst: welche
+// Mini-Games es drueben gibt und wann sie zuletzt liefen. Der Tagesfortschritt
+// wird NICHT gerechnet, sondern uebernommen — der GE-Trainer legt ihn fertig in
+// sein Feld heute (geteilt-tagesstand.js). Der Block wird roh gespeichert und
+// erst beim Anzeigen mit liesHeute() geprueft; so faellt er um Mitternacht von
+// selbst weg, auch wenn drueben seither niemand gepusht hat.
 function werteAus(ts, daten) {
-  const mc = (daten && daten.mc) || {};
-  const frei = (daten && daten.frei) || {};
   const log = (daten && daten.antwortLog) || [];
-
-  let sitzt = 0, bekannt = 0;
-  for (const k of Object.keys(mc)) { bekannt++; if (mc[k] && mc[k].zuletztRichtig) sitzt++; }
-  for (const k of Object.keys(frei)) { bekannt++; if (frei[k] === "gut") sitzt++; }
 
   // Je Mini-Game der letzte Tag, an dem es lief. Der Schluesselsatz ist zugleich
   // die Liste der Spiele, von deren Existenz wir sicher wissen.
@@ -98,7 +112,7 @@ function werteAus(ts, daten) {
     if (!(a.spiel in spiele) || t > spiele[a.spiel]) spiele[a.spiel] = t;
   }
 
-  return { ts, quote: bekannt ? Math.round((100 * sitzt) / bekannt) : null, sitzt, bekannt, spiele };
+  return { ts, heute: (daten && daten.heute) || null, spiele };
 }
 
 // ---------- Abruf ----------
@@ -119,7 +133,7 @@ export function hole() {
       if (!ts) return null;
       // Schritt 2: den Snapshot nur holen, wenn es ein neuer ist. An Tagen ohne
       // GE-Uebung faellt damit gar kein grosser Abruf an.
-      if (c && c.ts === ts && typeof c.quote !== "undefined") {
+      if (c && c.ts === ts && c.spiele) {
         const frisch = Object.assign({}, c, { geholt: Date.now() });
         schreib(frisch);
         return frisch;
@@ -153,23 +167,16 @@ export function geStand() {
     ts: c.ts,
     frisch,
     offen,
-    quote: typeof c.quote === "number" ? c.quote : null,
-    sitzt: c.sitzt || 0,
-    bekannt: c.bekannt || 0,
+    // liesHeute() verwirft alles, was nicht von heute ist — auch einen Block,
+    // der noch im Cache liegt, weil drueben seit gestern niemand gepusht hat.
+    heute: liesHeute(c),
+    // Genau dieser Fall ist der Anstupser: kein frischer Block, weil der letzte
+    // Push von gestern oder aelter ist. Begruendung in tagesLos().
+    los: tagesLos(c.ts),
   };
 }
 
-// Dieselbe Leiter wie im Rest der App (qStufe in main.js): unter 50 warm, nie rot.
-const stufe = (q) => (q == null ? "q0" : q < 50 ? "q1" : q < 75 ? "q2" : q < 90 ? "q3" : "q4");
-
 const spielName = (k) => SPIEL_NAMEN[k] || k;
-
-function wannText(ts) {
-  const d = Math.round((heuteTag() - tagVon(ts)) / 86400000);
-  if (d <= 0) return "von heute";
-  if (d === 1) return "von gestern";
-  return "vom " + new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-}
 
 /* Traegt den Zustand in den Querlink ein: erst synchron aus dem Cache (damit
    beim Blaettern nichts flackert), dann noch einmal nach dem Abruf. Der Abruf
@@ -197,9 +204,19 @@ export function zeigeGeStand(a) {
       teile.push(`<span class="stand-badge sitzt kompakt">✓ heute</span>`);
       worte.push("heute drüben schon geübt");
     }
-    if (s.quote != null) {
-      teile.push(`<span class="q-pille ${stufe(s.quote)}">${s.quote} %</span>`);
-      worte.push(`${s.sitzt} von ${s.bekannt} geübten Aufgaben sitzen (Stand ${wannText(s.ts)})`);
+    // Der Tagesfortschritt drueben. Kein Prozent, sondern die nackte Bruchzahl:
+    // "12 von 45" sagt von selbst, worauf es sich bezieht — zwei Prozentzahlen
+    // laden dazu ein, verglichen zu werden, und genau daran ist die alte Pille
+    // gescheitert. Die Farbe traegt der geteilte Leiterpunkt, nicht die Flaeche
+    // (Kontrast-Begruendung im Style-Paket, Abschnitt 4).
+    if (s.heute) {
+      teile.push(`<span class="tag-pille"><i class="hm-pkt ${tagesPunktKlasse(s.heute)}"></i>${tagesText(s.heute)}</span>`);
+      worte.push(tagesWorte(s.heute, "GE"));
+    } else if (s.los) {
+      // Kein Zahlenpaar, weil wir das heutige Tagesziel drueben gar nicht
+      // kennen — und weil "0 von 40" sich wie ein Rueckstand liest.
+      teile.push(`<span class="tag-pille los"><i class="puls los-zeichen">!</i>${losText()}</span>`);
+      worte.push(losWorte("GE"));
     }
     feld.innerHTML = teile.join("");
     a.title = "Zum GE-Trainer — deine andere Klausur am 10.09." + (worte.length ? " · " + worte.join(" · ") : "");

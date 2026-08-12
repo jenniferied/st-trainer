@@ -1,5 +1,9 @@
 // ============ Daten, Zustand, Engine, Sync ============
 
+// Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
+// diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
+import { heuteBlock } from "./geteilt-tagesstand.js";
+
 export const THEMEN = {
   "schultheorie-1":        { name: "Schultheorie I",   kurz: "ST I",  color: "var(--c-st1)", hex: "#2f5d9e" },
   "schultheorie-2":        { name: "Schultheorie II",  kurz: "ST II", color: "var(--c-st2)", hex: "#7a4f9e" },
@@ -718,16 +722,31 @@ export function karteDaten() {
 // Tages-Aktivitaet: alle heutigen Antworten (inkl. Begriffe-Blitz) ausser
 // Spam-Wiederholungen. Bewusst OHNE 3s-Filter: die Bar misst Einsatz, nicht
 // Qualitaet — schnelle Wiederholrunden sind trotzdem Ueben.
-export function tagesStand() {
-  const cfg = window.ST_CONFIG;
+//
+// Seit dem 12.08. eine eigene Funktion, aus zwei Gruenden:
+//   1. snapshot() schreibt dieselbe Zahl in den Querlink-Block. Ueber
+//      tagesStand() ginge das nicht ohne Seiteneffekt — das friert per
+//      tagesPlan() den Tagesplan ein und ruft save(); beides hat im Sync
+//      nichts zu suchen.
+//   2. Pille und Zonen-Bar muessen dieselbe Zahl zeigen. Ein zweites,
+//      danebengerechnetes n waere genau der Fehler, aus dem die alte
+//      Quoten-Pille entstanden ist (siehe geteilt-tagesstand.js).
+// Heisst absichtlich genauso wie im GE-Trainer (stats.js heuteAntworten()).
+export function heuteAntworten() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
   const spam = spamAids();
   let n = 0;
   for (const a of state().antwortLog)
     if (a.ts >= heute.getTime() && !spam.has(a.aid || antwortId(a))) n++;
+  return n;
+}
+
+export function tagesStand() {
+  const cfg = window.ST_CONFIG;
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
   let tage = null;
   if (cfg.klausurTag) tage = Math.round((new Date(cfg.klausurTag + "T00:00:00") - heute) / 86400000);
-  return { n, tage, ...tagesPlan(heute, tage) };
+  return { n: heuteAntworten(), tage, ...tagesPlan(heute, tage) };
 }
 
 // Dynamischer Tagesplan (Jennifer 18.07.): drei Stufen statt fester Zahl.
@@ -1235,8 +1254,24 @@ function snapshot() {
   // Entscheidung ueber den Begleiter, kein Geraete-Kram. Lag frueher faelschlich in
   // settings.mkEi und ist darum nie gesynct — auf einem zweiten Geraet kam die
   // Ankunft dann ein zweites Mal. Container, damit spaeter Stufe/Kleidung reinpassen.
+  //
+  // heute: der Tagesfortschritt fuer den Querlink im GE-Trainer. Geteilter
+  // Vertrag, Begruendung und Format in geteilt-tagesstand.js. Drei Dinge daran
+  // sind Absicht:
+  //   - ABGELEITET, nicht gespeichert: entsteht hier aus dem antwortLog, das an
+  //     dieser Stelle schon vereinigt ist. Darum braucht er keine Merge-Regel.
+  //   - NICHT in signatur(): heute.n bewegt sich nur, wenn eine Antwort
+  //     dazukommt — und die aendert die Signatur ohnehin. Der Block reist
+  //     huckepack. Stuende tag drin, gaebe es pro Geraet und Tag einen Push ins
+  //     Leere um Mitternacht.
+  //   - Der Plan wird nur genommen, wenn er von HEUTE ist. Sonst traegt der
+  //     Block ein heutiges Datum mit gestrigem Ziel, und drueben stuende eine
+  //     Zahl, die es nie gab.
+  const plan = st.settings.tzPlan;
+  const heuteKey = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toDateString(); })();
+  const heute = plan && plan.tag === heuteKey ? heuteBlock(heuteAntworten(), plan) : null;
   return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen,
-    geloescht: st.geloescht, mk: st.mk || {} };
+    geloescht: st.geloescht, mk: st.mk || {}, ...(heute ? { heute } : {}) };
 }
 
 // Kompakte Signatur eines Stands — jsonb aus Postgres kommt mit anderer Schluessel-
@@ -1257,7 +1292,14 @@ function signatur(d) {
     // stufeMax gehoert ebenfalls hier rein und NICHT nur in den Snapshot: erreicht
     // Rose auf dem Handy eine neue Stufe, aendert sich sonst die Signatur nicht,
     // es wird nie gepusht, und auf dem Tablet faellt das Tier zurueck.
-    ((d.mk && d.mk.ei) || "") + ":" + ((d.mk && d.mk.ts) || 0) + ":" + ((d.mk && d.mk.stufeMax) || 0),
+    // geschluepft gehoert aus demselben Grund hierher wie stufeMax, nur noch
+    // dringender: es aendert sich durch einen KNOPFDRUCK, ohne dass eine neue
+    // Antwort dazukommt. Es kann also nicht huckepack auf antwortLog reisen wie
+    // der heute-Block. Stuende es nur im Snapshot, wuerde es nie gepusht — und
+    // Rose saehe das Schluepfen auf dem Tablet ein zweites Mal, obwohl es
+    // ausdruecklich genau einmal vorkommen soll (Jennifer, 12.08.).
+    ((d.mk && d.mk.ei) || "") + ":" + ((d.mk && d.mk.ts) || 0) + ":" + ((d.mk && d.mk.stufeMax) || 0) +
+      ":" + ((d.mk && d.mk.geschluepft) || 0),
   ].join("|");
 }
 
@@ -1325,6 +1367,13 @@ export function mergeLernstand(remote) {
   // niedrigerer, aber neuerer Stufe die hoehere ueberschreiben — also genau der
   // Rueckfall, den stufeMax verhindern soll. Darum bedingungslos das Maximum.
   st.mk.stufeMax = Math.max(st.mk.stufeMax || 0, rMk.stufeMax || 0);
+  // geschluepft ist ein Ereignis-Protokoll, kein Messwert: "hat Rose die
+  // Animation gesehen" laesst sich aus der Historie nicht ausrechnen (anders als
+  // "ist Stufe 3 erreicht"). Die Regel ist ein ODER — hat es IRGENDEIN Geraet
+  // gesehen, gilt es als gesehen. Gespeichert wird der frueheste Zeitpunkt,
+  // damit der Wert stabil bleibt und nicht bei jedem Merge hin und her springt.
+  const gs = [st.mk.geschluepft, rMk.geschluepft].filter(Boolean);
+  if (gs.length) st.mk.geschluepft = Math.min(...gs);
 
   rebuildLeitner(); // save() steckt drin
   return signatur(snapshot()) !== vorher;

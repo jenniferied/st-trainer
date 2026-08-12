@@ -808,7 +808,12 @@ function home() {
   const pAus = document.getElementById("pingoAus");
   if (pAus) pAus.onclick = () => { C.state().settings.nurPingo = false; C.save(); home(); };
 
-  Mk.binde(app, home); // Ei: Ankunft quittieren, Variante waehlen
+  // Ei: Ankunft quittieren, Variante waehlen, Schluepfen ausloesen.
+  // Das Konfetti wird hereingereicht statt importiert — maskottchen.js kennt
+  // main.js nicht, und ein Rueckimport waere ein Kreis. Es ist der DRITTE
+  // Feier-Anlass der App (neben Streckziel und bestandener Probeklausur) und
+  // der seltenste von allen: genau einmal, nie wieder (Jennifer, 12.08.).
+  Mk.binde(app, home, () => konfetti({ n: 70, ms: 3200 }));
   bindUebe(); // Ein-Tipp-Runde zum naechsten Stern + Statistik-Hebel
   belebeStats(document.getElementById("homeRoot")); // Statistik wohnt jetzt hier
 

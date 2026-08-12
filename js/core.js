@@ -243,12 +243,17 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
     try { S = { ...defState(), ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { S = defState(); }
     if (S.active) { S.offen = [...(S.offen || []), S.active]; delete S.active; } // Migration
+    // Migration: die Ei-Wahl lag frueher in settings.mkEi und wurde darum nie
+    // gesynct. Muss VOR dem ersten Sync passieren, sonst laedt das Geraet ein
+    // leeres Maskottchen hoch und die Ankunft kommt ein zweites Mal.
+    S.mk = S.mk || {};
+    if (!S.mk.ei && S.settings && S.settings.mkEi) S.mk.ei = S.settings.mkEi;
     // Migration: zentrales Antwort-Log aus Alt-Daten (Sessions + Explore-Einzelantworten) aufbauen
     if (!S.antwortLog.length && (S.sessions.length || S.einzeln?.length)) {
       for (const s of S.sessions) (s.proFrage || []).forEach((x, i) =>
@@ -1216,8 +1221,13 @@ export const syncAktiv = () => supaAktiv() && !!syncCode();
 
 function snapshot() {
   const st = state();
-  // pending/deviceId/settings bleiben lokal — die gehoeren dem Geraet, nicht dem Lernstand
-  return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen, geloescht: st.geloescht };
+  // pending/deviceId/settings bleiben lokal — die gehoeren dem Geraet, nicht dem Lernstand.
+  // mk (Maskottchen) gehoert dagegen SEHR WOHL dazu: das gewaehlte Ei ist eine
+  // Entscheidung ueber den Begleiter, kein Geraete-Kram. Lag frueher faelschlich in
+  // settings.mkEi und ist darum nie gesynct — auf einem zweiten Geraet kam die
+  // Ankunft dann ein zweites Mal. Container, damit spaeter Stufe/Kleidung reinpassen.
+  return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen,
+    geloescht: st.geloescht, mk: st.mk || {} };
 }
 
 // Kompakte Signatur eines Stands — jsonb aus Postgres kommt mit anderer Schluessel-
@@ -1229,8 +1239,19 @@ function signatur(d) {
     ids(d.antwortLog, (a) => a.aid || antwortId(a)),
     ids(d.offen, (s) => s.id + ":" + (s.runde || []).filter((r) => r.gewaehlt?.length).length),
     (d.geloescht || []).slice().sort().join(","),
+    // Das Maskottchen MUSS hier mit rein: die Signatur ist der Waechter vor dem
+    // Push (`signatur(remote) !== signatur(neu)`). Ohne diese Zeile aendert eine
+    // reine Ei-Wahl die Signatur nicht und wird nie hochgeladen. Auf "" normiert,
+    // damit eine alte Server-Zeile ohne mk nicht dauerhaft als verschieden gilt.
+    (d.mk && d.mk.ei) || "",
   ].join("|");
 }
+
+// Nur fuer scripts/test-merge.mjs: der Push-Waechter in einSync haengt an
+// signatur(), und ein Fehler dort ist von aussen unsichtbar (es wird einfach nie
+// gepusht). Damit laesst sich genau das pruefen.
+export const __snapshotFuerTest = () => snapshot();
+export const __signaturFuerTest = (d) => signatur(d);
 
 // Vereinigt den Remote-Stand in den lokalen. Gibt true zurueck, wenn sich lokal etwas geaendert hat.
 export function mergeLernstand(remote) {
@@ -1266,6 +1287,13 @@ export function mergeLernstand(remote) {
     if (!alt || beantwortet(s) >= beantwortet(alt)) off.set(s.id, s);
   }
   st.offen = [...off.values()];
+
+  // Maskottchen: wer einen Wert hat, behaelt ihn — remote fuellt nur auf, wenn
+  // lokal nichts steht. Es gibt keinen Pfad, der die Wahl auf null zurueckdreht
+  // (das Wechseln laesst den gespeicherten Wert stehen und zeigt nur die
+  // Auswahl), darum kann diese Regel keine getroffene Wahl ueberschreiben.
+  st.mk = st.mk || {};
+  if (!st.mk.ei && remote.mk && remote.mk.ei) st.mk.ei = remote.mk.ei;
 
   rebuildLeitner(); // save() steckt drin
   return signatur(snapshot()) !== vorher;

@@ -17,7 +17,8 @@
      3. danach die kompakte Ansicht mit Herzen
 
    WICHTIG: Ob die Ankunft laeuft, haengt allein daran, ob schon ein Ei gewaehlt
-   wurde (state.settings.mkEi). Solange keins gewaehlt ist, kommt sie bei jedem
+   wurde (state.mk.ei — synct mit, siehe core.js snapshot). Solange keins
+   gewaehlt ist, kommt sie bei jedem
    Oeffnen wieder. Beim Testen mit Roses Sync-Code also NICHT auswaehlen — sonst
    ist der Moment fuer sie weg, bevor sie ihn hatte.
 
@@ -98,7 +99,7 @@ export const EIER = [
     teaser: "Warm. Und es hat sich schon zweimal gedreht, als du weggeschaut hast." },
 ];
 export const eiIndex = () => {
-  const k = C.state().settings.mkEi;
+  const k = C.state().mk?.ei;
   const i = EIER.findIndex((e) => e.key === k);
   return i < 0 ? 0 : i;
 };
@@ -150,11 +151,11 @@ export function eiHtml(variante, stufe) {
    Ankunft wird uebersprungen und eiIndex() faellt still auf Ei 0 zurueck —
    die Ankunft ist dann weg, ohne dass je jemand ausgesucht hat. */
 const gewaehlt = () => {
-  const k = C.state().settings.mkEi;
+  const k = C.state().mk?.ei;
   return !!k && EIER.some((e) => e.key === k);
 };
 let angesehen = false;
-export function zuruecksetzen() { C.state().settings.mkEi = null; C.save(); angesehen = false; }
+export function zuruecksetzen() { C.state().mk = {}; C.save(); angesehen = false; }
 
 /* Welches Ei die Auswahl gerade zeigt (nur waehrend der Auswahl). */
 let blaetterIdx = 0;
@@ -277,17 +278,23 @@ function standHtml(tz) {
   </div>`;
 }
 
+/* Reihenfolge wichtig: "schaut gerade die Auswahl an" schlaegt "hat schon eins".
+   Frueher wurde beim Wechseln die gespeicherte Wahl auf null gesetzt, damit die
+   Auswahl erscheint. Seit die Wahl synct, ist das gefaehrlich: laeuft dazwischen
+   ein Sync, holt der Merge das alte Ei zurueck und wirft einen aus der Auswahl.
+   Jetzt bleibt der gespeicherte Wert stehen; nur "Das nehme ich" ueberschreibt
+   ihn. Nebeneffekt, der ohnehin besser ist: bricht man ab, behaelt man sein Ei. */
 export function html(tz) {
+  if (angesehen) return auswahlHtml();
   if (gewaehlt()) return standHtml(tz);
-  return angesehen ? auswahlHtml() : ankunftHtml();
+  return ankunftHtml();
 }
 
 /* ---------- Klicks und Wischen ---------- */
 export function binde(wurzel, neuZeichnen) {
   wurzel.querySelectorAll("[data-mk-ankunft]").forEach((b) => b.onclick = () => {
     blaetterIdx = eiIndex();
-    angesehen = true;
-    if (b.dataset.mkAnkunft === "wechseln") C.state().settings.mkEi = null, C.save();
+    angesehen = true; // reiner Ansichts-Zustand, liegt im Modul und synct nie
     neuZeichnen();
   });
   wurzel.querySelectorAll("[data-mk-nav]").forEach((b) => b.onclick = () => {
@@ -295,7 +302,7 @@ export function binde(wurzel, neuZeichnen) {
     neuZeichnen();
   });
   wurzel.querySelectorAll("[data-mk-nimm]").forEach((b) => b.onclick = () => {
-    C.state().settings.mkEi = b.dataset.mkNimm;
+    C.state().mk = { ...(C.state().mk || {}), ei: b.dataset.mkNimm };
     C.save();
     angesehen = false;
     neuZeichnen();

@@ -39,6 +39,12 @@ function toggleTheme(btn) {
   btn.textContent = themeIstDunkel() ? "☀️" : "🌙";
 }
 const themeBtnHtml = () => `<button class="btn ghost small" id="themeBtn" title="Hell / Dunkel umschalten">${themeIstDunkel() ? "☀️" : "🌙"}</button>`;
+// Querlink zum zweiten Trainer (Jennifer 12.08.). Rose schreibt zwei Klausuren:
+// GE am 10.09., Schultheorie am 18.09. Der Link traegt die Identitaetsfarbe des
+// GE-Trainers (dessen --accent, ein Blau) statt der eigenen Terracotta — so
+// zeigen die beiden Apps optisch aufeinander, ohne dass man raten muss, wo man
+// landet. Der Rueckweg wird spiegelbildlich im GE-Trainer gebaut.
+const geLinkHtml = () => `<a class="app-link" href="https://jenniferied.github.io/ge-trainer/" title="Zum GE-Trainer — deine andere Klausur am 10.09." aria-label="Zum GE-Trainer wechseln">GE<span class="nur-breit">-Trainer</span>&nbsp;↗</a>`;
 
 // confirm()/alert() werden in manchen Kontexten (iframe, In-App-Browser) stumm
 // blockiert und "es passiert nichts" — darum eigener Mini-Dialog als Overlay.
@@ -507,7 +513,10 @@ function heatmapHtml(tz) {
 
   // ---- Chart 1: Menge (Karten/Tag) ----
   const H1 = 116;
-  const maxY = Math.max(tz.stretch + 20, ...g3, ...g7);
+  // Die Achse muss die ECHTEN Tageswerte fassen, nicht nur die geglaetteten:
+  // seit die Punkte drin sind, wuerde ein starker Tag sonst oben aus dem Bild
+  // ragen (Roses bester Tag liegt bei 160, Streckziel + 20 waeren 120).
+  const maxY = Math.max(tz.stretch + 20, ...g3, ...g7, ...tage.map((t) => t.n));
   const py = (v) => H1 - 20 - (v / maxY) * (H1 - 30);
   const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
   // Prognose (Jennifer 22.07.): flach mit dem aktuellen 7-Tage-Schnitt weiter —
@@ -528,11 +537,43 @@ function heatmapHtml(tz) {
     <line x1="26" y1="${py(tz.minimum).toFixed(1)}" x2="${W - 8}" y2="${py(tz.minimum).toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
     <text x="22" y="${(py(tz.ziel) + 3).toFixed(1)}" text-anchor="end" class="kt-tick" font-weight="700">${tz.ziel}</text>
     <text x="22" y="${(py(tz.minimum) + 3).toFixed(1)}" text-anchor="end" class="kt-tick">${tz.minimum}</text>`;
-  const mengeSvg = `<svg viewBox="0 0 ${W} ${H1}" class="hm-trend" role="img" aria-label="Geuebte Karten pro Tag im 3- und 7-Tage-Schnitt, mit dem Zielband">
-      ${raster}
+  // ---- Die echten Tageswerte als Punkte (Jennifer 12.08.: "bei dem, wie viel du
+  // uebst, da sollte auch das tatsaechlich Geuebte drauf sein, als Punkte
+  // geplottet mit den entsprechenden Farben ... wirkliche Punkte geplottet").
+  // Bewusst Punkte und keine Balken oder geglaettete Flaeche: die Linien sagen
+  // schon, wie der Schnitt laeuft — die Punkte sollen die echten Zahlen zeigen.
+  // Farbe = dieselbe Stufe wie die Kalenderzelle desselben Tages, damit Kalender
+  // ("Ziel erreicht?") und Plot ("wie viel war es wirklich?") nie auseinander-
+  // laufen koennen. Ruhetage bekommen KEINEN Punkt: die Luecke ist die Aussage,
+  // und eine Null auf der Grundlinie saehe aus wie ein Einbruch statt wie Pause.
+  const tagFarbe = ["", "var(--tag-1)", "var(--tag-2)", "var(--tag-3)", "var(--tag-4)", "var(--tag-5)"];
+  const echteTage = tage.filter((t) => t.n > 0);
+  const punkte = echteTage.map((t) => {
+    const s = stufe(t.n);
+    const d = new Date(t.ts);
+    // Ab Streckziel etwas groesser und mit Ring — bei 3 px Durchmesser traegt
+    // Farbe allein die Unterscheidung nicht mehr, Groesse und Rand schon.
+    const r = s >= 4 ? 3.8 : 2.9;
+    const ring = s === 5 ? `stroke="url(#tagRegenbogen)" stroke-width="1.7"`
+      : s === 4 ? `stroke="var(--tag-4-ring)" stroke-width="1.5"`
+        : `stroke="var(--card)" stroke-width="1"`;
+    const tip = `${fmtDatumKurz(d)}: ${t.n} Karten${s === 5 ? " 🌈 über dem Streckziel" : s === 4 ? " ⭐ Streckziel" : ""}`;
+    return `<circle cx="${px(t.ts).toFixed(1)}" cy="${py(t.n).toFixed(1)}" r="${r}" fill="${tagFarbe[s]}" ${ring}><title>${tip}</title></circle>`;
+  }).join("");
+  // Der Regenbogen lebt hier als Rand, nicht als Flaeche: auf 8 px Durchmesser
+  // wird ein sechsstufiger Verlauf zu Matsch, ein Ring bleibt lesbar.
+  const rbDef = echteTage.some((t) => stufe(t.n) === 5)
+    ? `<defs><linearGradient id="tagRegenbogen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ff78be"/><stop offset="20%" stop-color="#ffa55a"/>
+        <stop offset="38%" stop-color="#faeb78"/><stop offset="56%" stop-color="#96ffbe"/>
+        <stop offset="74%" stop-color="#78dcff"/><stop offset="100%" stop-color="#b987ff"/>
+      </linearGradient></defs>` : "";
+  const mengeSvg = `<svg viewBox="0 0 ${W} ${H1}" class="hm-trend" role="img" aria-label="Geuebte Karten pro Tag als Punkte, dazu der 3- und 7-Tage-Schnitt und das Zielband">
+      ${rbDef}${raster}
       <line x1="${hx}" y1="6" x2="${hx}" y2="${H1 - 18}" stroke="var(--line)" stroke-width="1"/>
       <polyline points="${pfad(g3)}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".4" stroke-linejoin="round" stroke-linecap="round"/>
       <polyline points="${pfad(g7)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${punkte}
       <line x1="${hx}" y1="${py(nJetzt).toFixed(1)}" x2="${ex}" y2="${py(nJetzt).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.4" opacity=".55"/>
       <circle cx="${hx}" cy="${py(nJetzt).toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"/>
       <text x="${W - 8}" y="${(py(nJetzt) - 7).toFixed(1)}" text-anchor="end" class="kt-wert">${Math.round(nJetzt)} Karten/Tag</text>
@@ -576,7 +617,7 @@ function heatmapHtml(tz) {
     <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, <b>tiefes Grün ⭐ = Streckziel</b>, <b>Regenbogen 🌈 = darüber hinaus</b>), kommende Tage das Datum. 😴 heißt Ruhetag — die sind eingeplant, jeder Tag startet neu.</p>
     <p class="hm-sub">Wie viel du übst</p>
     ${mengeSvg}
-    <p class="muted tz-note">Karten pro Tag: <span class="hm-key stark"></span> Schnitt der letzten 7 Tage, <span class="hm-key fein"></span> der letzten 3 Tage. Das grüne Band ist dein Tagespensum (${tz.ziel}–${tz.stretch}), die gestrichelte Linie unten der Boden für zähe Tage (${tz.minimum}). Ab heute gestrichelt: so läuft es weiter, <b>wenn du dein aktuelles Tempo hältst</b> — es geht nicht um immer mehr, sondern um dranbleiben.</p>
+    <p class="muted tz-note"><b>Jeder Punkt ist ein Übungstag</b> — die Höhe sind die Karten, die du an dem Tag wirklich geschafft hast, die Farbe dieselbe Stufe wie im Kalender oben (<span class="hm-pkt s1"></span> <span class="hm-pkt s2"></span> <span class="hm-pkt s3"></span> <span class="hm-pkt s4"></span> ⭐ <span class="hm-pkt s5"></span> 🌈). Ruhetage haben keinen Punkt. Dazu die Linien: <span class="hm-key stark"></span> Schnitt der letzten 7 Tage, <span class="hm-key fein"></span> der letzten 3 Tage. Das grüne Band ist dein Tagespensum (${tz.ziel}–${tz.stretch}), die gestrichelte Linie unten der Boden für zähe Tage (${tz.minimum}). Ab heute gestrichelt: so läuft es weiter, <b>wenn du dein aktuelles Tempo hältst</b> — es geht nicht um immer mehr, sondern um dranbleiben.</p>
     ${qualiSvg ? `<p class="hm-sub">Wie gut es sitzt</p>${qualiSvg}${qualiText}` : ""}
   </div>`;
 }
@@ -673,7 +714,7 @@ function home() {
   const letzte = eintraege.slice(0, 7).map((x) => x.html).join("");
 
   h(`<div class="fade-in" id="homeRoot">
-    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
+    <div class="topbar"><h1>Schultheorie‑Trainer ✏️</h1>${geLinkHtml()}${themeBtnHtml()}<button class="btn ghost small" id="gear" title="Einstellungen">⚙️</button></div>
 
     ${tageszielHtml(tz, sich)}
 
@@ -723,6 +764,7 @@ function home() {
     ${statInhaltHtml()}
 
     ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt glim">${letzte}
+      <p class="muted tz-note" style="margin:10px 0 0">Die Pillen an einer Runde sagen, womit du sie geübt hast — eingestellt wird das jedes Mal neu im Baukasten. Immer mit dabei, in jeder Runde: Abrufübung ${M.infoBtn("retrieval")} und verteiltes Üben ${M.infoBtn("relearning")}.</p>
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
 
@@ -766,6 +808,34 @@ function home() {
   C.save();
 }
 
+// Welche Lernmethoden liefen IN DIESER Runde (Jennifer 12.08.: die Info gehoert
+// dorthin, wo man sieht, was zuletzt geuebt wurde — dort ist sie konkret und
+// rundenbezogen statt abstrakt und global). Quelle ist ausschliesslich der
+// gespeicherte cfg-Schnappschuss der Runde, nie eine aktuelle Einstellung:
+// sonst behauptet eine alte Zeile, was heute eingestellt ist. Runden aus alten
+// App-Versionen haben kein cfg — die zeigen dann einfach nichts, das ist
+// ehrlicher als geraten.
+function methodenBadges(s) {
+  const c = s.cfg;
+  if (!c) return "";
+  const p = [];
+  if (c.erklaerModus && c.erklaerModus !== "aus") {
+    // erklaerStreng wird erst seit dem 12.08. an der Runde gespeichert — davor
+    // kam die Strenge aus den Einstellungen und ist nicht mehr rekonstruierbar.
+    // Wo das Feld fehlt, steht darum GAR NICHTS dazu: dieselbe Regel wie beim
+    // fehlenden cfg, nur eine Ebene tiefer.
+    const wieStreng = c.erklaerStreng == null ? ""
+      : c.erklaerStreng === "streng" ? ", ohne Überspringen-Link" : ", mit Überspringen-Link";
+    p.push([c.erklaerModus === "raten" ? "💬 Erst raten" : "💬 Begründen",
+      "Erklär-Abfrage bei Fehlern" + wieStreng]);
+  }
+  if (c.paraphrase) p.push(["🗣 Paraphrasieren", "Erst in eigenen Worten sagen, was die Frage will"]);
+  if (c.stempeln) p.push(["☑️ Optionen einzeln", "Jede Antwortoption einzeln beurteilt"]);
+  if (c.nurPingo || s.nurPingo) p.push(["🎯 Nur Pingo", "Gezogen nur aus den Pingo-Fragen der Vorlesung"]);
+  if (!p.length) return "";
+  return `<div class="methoden-zeile">${p.map(([l, t]) => `<span class="pill mini" title="${t}">${l}</span>`).join("")}</div>`;
+}
+
 function histRow(s) {
   // Ein Blick, ein Zustand: "abgeschlossen, noch nicht bestanden" ist etwas
   // anderes als "Rest offen" — nur beim zweiten gibt es ein Fortsetzen.
@@ -773,7 +843,7 @@ function histRow(s) {
   const status = `<span class="z-badge ${z.cls}" title="${z.label}">${z.icon} ${z.kurz}</span>`;
   const versuch = s.versuchNr > 1 ? `<span class="badge-src badge-versuch">${s.versuchNr}. Versuch</span> ` : "";
   return `<div class="hist-item click" data-open="${s.id}"><div><b>${sessLbl(s)}</b> ${versuch}${status}
-    <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
+    <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div>${methodenBadges(s)}</div>
     <span class="sc">${s.punkte}/${s.max}</span>
     ${z.key === "restOffen" ? `<button class="btn small" data-reopen="${s.id}" title="Die noch leeren Fragen bearbeiten">Rest bearbeiten</button>` : ""}
     ${(s.runde?.length || s.proFrage?.length) ? `<button class="btn ghost small" data-retry="${s.id}" title="Gleiche Fragen nochmal üben — als neuer Versuch, der alte Eintrag bleibt">🔁</button>` : ""}
@@ -909,12 +979,6 @@ function einstellungen() {
       <p class="muted" style="margin:8px 0 0">Automatisch folgt der Einstellung deines Geräts.</p>
     </div>
     <div class="card">
-      <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Lernmethoden</span>
-      <p style="margin:0 0 8px">Selbsterklärung bei Fehlern ${M.infoBtn("selbsterklaerung")}<br><span class="muted" style="font-size:.85rem">Erst kurz selbst überlegen, warum es falsch war — dann kommt die Erklärung.</span></p>
-      <p class="muted" style="margin:0">Alles, was zur Runde gehört, stellst du beim Zusammenstellen ein: <b>ob</b> die Erklär-Abfrage kommt und <b>wie streng</b> sie ist, stehen zusammen im Baukasten unter ‚Erklär-Abfrage bei Fehlern'. Deine letzte Wahl wird gemerkt und dort vorausgewählt. Hier steht nur noch, was gerade aktiv ist:</p>
-      <div class="pillzeile" id="methodenPills"></div>
-    </div>
-    <div class="card">
       <p class="muted">Gewertet wird wie in der echten Klausur: +1 Punkt je richtigem Kreuz, −0,5 je falschem, pro Frage minimal 0.</p>
       <div class="btn-row"><button class="btn secondary small" id="exportBtn">Backup exportieren</button>
       <label class="btn secondary small" style="text-align:center">Import<input type="file" id="importBtn" class="hidden" accept=".json"></label></div>
@@ -937,19 +1001,6 @@ function einstellungen() {
     C.state().settings.theme = b.dataset.v; C.save(); applyTheme();
     document.querySelectorAll("#themeSeg button").forEach((x) => x.classList.toggle("on", x === b));
   });
-  // Pill-Uebersicht (Block F): welche Lernmethoden gerade aktiv sind — auf einen Blick
-  const malPills = () => {
-    const pills = [
-      ["🧠 Abrufübung", true, "retrieval"],
-      ["📅 Verteiltes Üben", true, "relearning"],
-      // Vorwahl, nicht Schalter: was wirklich gilt, sagt die Runde
-      [`💬 Selbsterklärung${seModus({}) === "streng" ? " · zuletzt: erst erklären" : " · zuletzt: mit Überspringen"}`, true, "selbsterklaerung"],
-      ["🎯 Nur Pingo-Fragen", !!s.settings.nurPingo, null],
-    ];
-    document.getElementById("methodenPills").innerHTML = pills.map(([l, an, key]) =>
-      `<span class="pill ${an ? "an" : ""}">${l}${an ? "" : " · zuletzt aus"}${key ? " " + M.infoBtn(key) : ""}</span>`).join("");
-  };
-  malPills();
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); await C.syncLernstand(); home(); } };
 
@@ -2128,9 +2179,19 @@ function explore() {
       const qs = C.pool().filter((q) => q.oberthema === slug && q.unterthema === u && (q.sprache || "schwer") !== "einfach" && !sperr.has(q.id) && exFilter(q))
         .sort((a, b) => C.quelleRank(a.quelle) - C.quelleRank(b.quelle));
       if (!qs.length) return "";
-      const items = qs.map((q) => `<div class="q-item" data-qid="${q.id}">
+      // Ungeuebtes zieht den Blick, Abgearbeitetes wird ruhig (Jennifer 12.08.:
+      // "wenn die noch nicht geuebt wurden, dann soll das richtig auffaellig
+      // sein ... wenn das abgearbeitet wurde, dann soll das richtig satisfying
+      // sein"). Eine noch nie geuebte Frage ist der naechste sinnvolle Schritt —
+      // die Auswahl bevorzugt Ungesehenes ohnehin, hier wird es nur sichtbar.
+      const items = qs.map((q) => {
+        const gesehen = !!C.frageStats(q.id);
+        const sitzt = C.gemeistert(q.id);
+        const stand = !gesehen ? " neu" : sitzt ? " sitzt" : "";
+        return `<div class="q-item${stand}" data-qid="${q.id}">
         <div class="qq">${esc(q.frage)}</div>
         <div class="meta">
+          ${!gesehen ? `<span class="stand-badge neu">✦ noch offen</span>` : sitzt ? `<span class="stand-badge sitzt">✓ sitzt</span>` : ""}
           <span class="badge-src">${esc(C.quelleLabel(q.quelle))}${q.quelleDetail ? " · " + esc(q.quelleDetail) : ""}</span>
           ${q.fragetyp === "negation" ? `<span class="badge-src">NICHT-Frage</span>` : ""}
           ${q.fragetyp === "anwendung" ? `<span class="badge-src">Anwendung</span>` : ""}
@@ -2139,8 +2200,16 @@ function explore() {
           <span class="lvl-dots" style="--tc:${t.color}">${lvlDots(q.id)}</span>
           <button class="btn ghost small" style="margin-left:auto" data-info="${q.id}" title="Statistik zu dieser Frage">ℹ️</button>
           ${q.quizbar ? `<button class="btn ghost small" data-try="${q.id}">Üben ›</button>` : `<span class="muted" style="font-size:.75rem">keine Lösung</span>`}
-        </div><div class="info-zone"></div><div class="try-zone"></div></div>`).join("");
-      return `<details class="sub"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}</summary>${items}</details>`;
+        </div><div class="info-zone"></div><div class="try-zone"></div></div>`;
+      }).join("");
+      // In der zugeklappten Zeile steht, ob hier noch etwas offen ist — sonst
+      // muesste Rose jedes Unterthema aufklappen, um das zu sehen. Alles geuebt
+      // heisst Haken statt Zahl: der ruhige Zustand ist der Lohn.
+      const offenN = qs.filter((q) => !C.frageStats(q.id)).length;
+      const subStand = offenN
+        ? `<span class="stand-badge neu">✦ ${offenN} offen</span>`
+        : `<span class="stand-badge sitzt">✓ alle geübt</span>`;
+      return `<details class="sub${offenN ? " hat-offen" : " alles-durch"}"><summary><span class="chip" style="--tc:${C.subColor(slug, ui)}">${qs.length}</span> ${esc(labelU(u))}${subStand}</summary>${items}</details>`;
     }).join("");
     if (!inner) return "";
     const f = C.themaFortschritt(slug);
@@ -2363,7 +2432,23 @@ function tryInline(qid, btn) {
     const gewaehlt = [...wrap.querySelectorAll("input:checked")].map((x) => +x.dataset.oi);
     const erg = C.scoreFrage(q, gewaehlt);
     const zeit = Math.round((Date.now() - t0) / 1000);
+    const sassSchon = C.gemeistert(q.id);
     C.leitnerUpdate(q.id, erg);
+    // Der Belohnungsmoment (Jennifer 12.08.: "wenn das abgearbeitet wurde, dann
+    // soll das richtig satisfying sein"). Bewusst klein: die Karte wechselt vor
+    // Roses Augen in den Erledigt-Zustand, mit einem kurzen Aufleuchten. Kein
+    // Konfetti — das ist fuers Tagesziel reserviert, und Rose uebt am Handy.
+    // Nur beim UEBERGANG, nicht bei jeder richtigen Antwort auf eine Frage,
+    // die ohnehin schon sass — sonst wird die Belohnung Hintergrundrauschen.
+    item.classList.remove("neu");
+    if (!sassSchon && C.gemeistert(q.id)) {
+      item.classList.add("sitzt", "frisch-erledigt");
+      const b = item.querySelector(".stand-badge");
+      if (b) { b.className = "stand-badge sitzt"; b.textContent = "✓ sitzt"; }
+      else item.querySelector(".meta")?.insertAdjacentHTML("afterbegin", `<span class="stand-badge sitzt">✓ sitzt</span>`);
+    } else {
+      item.querySelector(".stand-badge.neu")?.remove();
+    }
     // Antwort sofort loggen (echte Nachdenkzeit) — Selbsterklaerung & Abgleich
     // werden danach an denselben Eintrag gehaengt (ergaenzeAntwort).
     const eintrag = C.logAntwort({ qid: q.id, modus: "explore", gewaehlt, punkte: erg.punkte, max: q.maxPunkte, voll: erg.voll, zeit });

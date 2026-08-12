@@ -268,8 +268,11 @@ function standHtml(tz) {
     <pre class="mk-ei${anim}" aria-hidden="true">${eiHtml(v, stufe)}</pre>
     <div class="mk-text">
       <p class="mk-satz"><b>${grussVon(stunde)}.</b> ${satz}</p>
-      <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}.${heute}
-        · <button class="mk-link" data-mk-ankunft="wechseln">anderes Ei</button></p>
+      <p class="mk-meta"><b>${st.herzen}</b> ♥${sterne} aus ${st.tage} Übungstagen — ${rest}.${heute}</p>
+      <!-- Der Wechsel-Knopf stand frueher am Ende des Fliesstexts hinter einem
+           Mittelpunkt und war praktisch unauffindbar. Eigene Zeile — auffindbar,
+           aber weiter dezent: das Aussuchen soll ein Moment bleiben, kein Menue. -->
+      <div class="mk-wechsel"><button class="mk-link" data-mk-ankunft="wechseln">anderes Ei aussuchen</button></div>
     </div>
   </div>`;
 }

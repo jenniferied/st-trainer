@@ -70,6 +70,25 @@ const stufenBar = (f, thin) => {
 };
 const fmtMN = (f) => `${f.st.gem + f.st.weg + f.st.ang}/${f.n}`;
 
+// ---- Beherrschungs-Leiter (Jennifer 12.08.). Eine Sprache fuer die ganze App:
+// dieselben vier Stufen wie in der Tagesuebersicht, warm -> gelb -> gruen ->
+// tiefes Gruen. Die Kanten sitzen auf den Marken, die in den Balken ohnehin
+// eingezeichnet sind: 50 % Bestehensgrenze, 75 % sicherer Bereich, 90 %
+// besteht auf jeden Fall — Farbe und Siegel sagen damit endlich dasselbe.
+// Unter 50 ist WARM, nie rot: Rose sieht diese Zahlen bei jedem Zusammenstellen
+// einer Runde, und ein schwaches Unterthema heisst "da bist du noch dran".
+const qStufe = (q) => q == null ? "q0" : q < 50 ? "q1" : q < 75 ? "q2" : q < 90 ? "q3" : "q4";
+const Q_TITEL = {
+  q0: "noch keine Antworten",
+  q1: "da bist du noch dran — hier ist am meisten drin",
+  q2: "über der Bestehensgrenze",
+  q3: "sicherer Bereich",
+  q4: "sitzt",
+};
+// Prozentzahl mit farbiger Unterlegung — die Zahl bleibt stehen, die Farbe
+// kommt dazu (sonst muss man jede Zeile einzeln lesen).
+const quotePille = (q) => q == null ? "" : ` <span class="q-pille ${qStufe(q)}" title="${Q_TITEL[qStufe(q)]}">${q} %</span>`;
+
 // Sticker-Feedback: Roses & Jennifers meistgenutzte WhatsApp-Sticker (animiertes
 // WebP), je nach Ergebnis zufällig gewählt — überall, auch im Exam.UP-Klausurlook
 // (Jennifer 17.07.: Motivation schlägt Nüchternheit). Bei prefers-reduced-motion
@@ -153,11 +172,19 @@ const qBadges = (q) =>
 // ueberlegen, warum es falsch war, DANN die kuratierte Erklaerung — beides wird
 // gespeichert (Hypercorrection-Auswertung spaeter). Drei Stufen in den
 // Einstellungen: standard (Skip-Link sichtbar) / streng (ohne Skip) / aus.
-// Seit 12.08. (Jennifer) sagt diese Einstellung nur noch, WIE STRENG die Abfrage
-// ist — ob sie kommt, entscheidet die Runde (cfg.erklaerModus). Der alte Wert
-// "aus" wird bewusst auf "standard" gemappt: er hat die Abfrage frueher ueberall
-// still abgeschaltet, auch dort, wo im Baukasten "Begruenden" ausgewaehlt war.
-const seModus = () => (C.state().settings.selbstErkl === "streng" ? "streng" : "standard");
+// Seit 12.08. (Jennifer) entscheidet die RUNDE, nicht die Einstellungen-Seite:
+// ob die Abfrage kommt, sagt cfg.erklaerModus, wie streng sie ist cfg.erklaerStreng.
+// Beides wird im Baukasten bedient. settings.selbstErkl ist nur noch die GEMERKTE
+// Vorwahl fuer den naechsten Baukasten und gilt ausserhalb von Runden (Stoebern,
+// Nacharbeit) — genau dieselbe Invariante wie bei pingoFilterGilt(cfg).
+// Zwei Bugs in zwei Tagen kamen aus der Doppelung: ein globaler Schalter hat den
+// Baukasten ueberstimmt. Darum liest JEDE Stelle diese eine Funktion, und die
+// liest zuerst die laufende Runde. Der alte Wert "aus" mappt auf "standard".
+const seModus = (cfg) => {
+  const c = cfg || R?.cfg;
+  const v = c && c.erklaerStreng != null ? c.erklaerStreng : C.state().settings.selbstErkl;
+  return v === "streng" ? "streng" : "standard";
+};
 // Gilt in ALLEN Modi mit Sofort-Feedback (Jennifer 21.07.: die fruehere
 // Schnelle-10er-Ausnahme ist raus — sie hat nur verwirrt). Klausur-Durchlaeufe
 // haben ohnehin kein Sofort-Feedback, Probeklausur-Erstversuch auch nicht.
@@ -309,19 +336,23 @@ function tageszielHtml(tz, sich) {
   if (tz.tage != null && tz.tage < 0) return "";
   if (tz.tage === 0) {
     const sicher = sich.filter((t) => t.stars >= 2).length;
-    return `<div class="card tagesziel klausurtag">
+    return `<div class="card tagesziel klausurtag glim">
       <b style="font-size:1.15rem">💛 Du schaffst das.</b>
       <p style="margin:6px 0 0"><b>${C.state().antwortLog.length}</b> Antworten trainiert, ${sicher} von 6 Themen sicher — das Wissen ist da. Ruhig atmen (4 Sek. ein, 6 Sek. aus), erst die sicheren Fragen, dann die kniffligen. 🍀</p>
     </div>`;
   }
   // Drei dynamische Stufen (aus dem echten Restbedarf, taeglich eingefroren):
-  // Minimum (Boden fuer zaehe Tage) -> Tagespensum (der Plan) -> Streckziel (Gold).
+  // Minimum (Boden fuer zaehe Tage) -> Tagespensum (der Plan) -> Streckziel.
   // Die Bar endet am Streckziel; Zonengrenzen wandern mit den Tageswerten.
   const minP = Math.round((100 * tz.minimum) / tz.stretch);
   const zielP = Math.round((100 * tz.ziel) / tz.stretch);
   const pct = Math.min(100, Math.round((100 * tz.n) / tz.stretch));
-  const zone = tz.n >= tz.stretch ? "gold" : tz.n >= tz.ziel ? "g" : tz.n >= tz.minimum ? "y" : "o";
-  const msg = zone === "gold" ? "Streckziel! 🌟 Du bist dem Plan voraus — Pause ist mehr als verdient."
+  // Fuenf Zonen: unter Minimum -> Minimum -> Tagespensum -> Streckziel (tiefes
+  // leuchtendes Gruen) -> darueber hinaus (Regenbogen). Beide oberen Stufen
+  // seit 12.08.; Gold ist raus, weil es neben dem Orange unten wie Orange las.
+  const zone = tz.n > tz.stretch ? "rb" : tz.n >= tz.stretch ? "st" : tz.n >= tz.ziel ? "g" : tz.n >= tz.minimum ? "y" : "o";
+  const msg = zone === "rb" ? `Über dem Streckziel! 🌈 ${tz.n - tz.stretch} Karten mehr als geplant — das ist ein richtig starker Tag.`
+    : zone === "st" ? "Streckziel! ⭐ Du bist dem Plan voraus — Pause ist mehr als verdient."
     : zone === "g" ? "Tagespensum geschafft 🎉 Alles ab hier ist Vorsprung für morgen."
     : tz.n === 0 ? "Frischer Tag, frische Bar. Die erste Karte ist der ganze Trick — eine ⚡ 10er reicht zum Ankommen."
     : zone === "y" ? `Minimum steht ✓ — ab hier geht's Richtung Tagespensum (${tz.ziel}).`
@@ -330,7 +361,7 @@ function tageszielHtml(tz, sich) {
     : tz.tage === 1 ? `<p class="muted tz-note">Morgen früh ist es so weit. Heute reichen lockere ${tz.ziel} zum Festigen — und dann Feierabend und früh schlafen. 💛</p>`
     : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`;
   const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
-  return `<div class="card tagesziel">
+  return `<div class="card tagesziel glim">
     <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
     <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
       <i class="fill ${zone}" style="width:${pct}%"></i>
@@ -404,8 +435,12 @@ function heatmapHtml(tz) {
   const start = new Date(Math.min(erster, heute.getTime()));
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   // Zellfarbe = dieselben Zonen wie die Tagesziel-Bar (orange unter Minimum,
-  // gelb bis Tagespensum, gruen ab Pensum, gold ab Streckziel); 0 Karten = grau.
-  const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : 4;
+  // gelb bis Tagespensum, gruen ab Pensum, ab Streckziel ein tiefes leuchtendes
+  // Gruen und DARUEBER der Regenbogen (beides 12.08.). Gold ist aus der
+  // Tagesleiter raus: es stand neben dem Orange der untersten Stufe und sah
+  // dort aus wie Orange — unten und oben fast dieselbe Farbe ist der
+  // schlimmste Fall fuer eine Skala. 0 Karten = grau.
+  const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : n === tz.stretch ? 4 : 5;
 
   const kopfzeile = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="hm-wtag">${w}</span>`).join("");
   const zellen = [];
@@ -429,10 +464,10 @@ function heatmapHtml(tz) {
       // zeigt noch das Datum (der Tag laeuft ja noch). Ruhetage kriegen einen
       // freundlichen Smiley statt einer leeren Zelle (Jennifer 22.07.) — Pause
       // ist Teil des Plans, nicht ein Loch im Kalender.
-      inhalt = e.n ? (s === 4 ? `${e.n}<b class="hm-stern">⭐</b>` : String(e.n))
+      inhalt = e.n ? (s >= 4 ? `${e.n}<b class="hm-stern">${s === 5 ? "🌈" : "⭐"}</b>` : String(e.n))
         : (istHeute ? datum : `<span class="hm-ruhe">😴</span>`);
       tip = e.n
-        ? `${wtag} ${datum}: ${e.n} Karten · ${Math.round((100 * e.voll) / e.n)} % voll richtig${s === 4 ? " — Streckziel geknackt!" : ""}`
+        ? `${wtag} ${datum}: ${e.n} Karten · ${Math.round((100 * e.voll) / e.n)} % voll richtig${s === 5 ? ` — ${e.n - tz.stretch} über dem Streckziel!` : s === 4 ? " — Streckziel geknackt!" : ""}`
         : `${wtag} ${datum} — Ruhetag`;
     }
     zellen.push(`<span class="hm-zelle ${cls}${istHeute ? " hm-heute" : ""}" title="${tip}">${inhalt}</span>`);
@@ -534,11 +569,11 @@ function heatmapHtml(tz) {
     qualiText = `<p class="muted tz-note"><b>Wie sicher es sitzt:</b> Punktequote im Schnitt deiner letzten ${C.QUAL_FENSTER} Übungstage — aktuell <b>${letzte.quote} %</b>. Ruhetage zählen nicht mit, eine Pause drückt die Linie also nie. <b>50</b> ist die Bestehensgrenze, ab <b>75</b> bist du im sicheren Bereich.</p>`;
   }
 
-  return `<div class="card hm-card">
+  return `<div class="card hm-card glim">
     <div class="hm-head"><h3>📅 Dein Weg zur Klausur</h3>${M.infoBtn("relearning")}
       <span class="muted hm-rest">noch ${tz.tage} ${tz.tage === 1 ? "Tag" : "Tage"} bis 18.09.</span></div>
     <div class="hm-kal">${kopfzeile}${zellen.join("")}</div>
-    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, <b>gold ⭐ = Streckziel</b>), kommende Tage das Datum. 😴 heißt Ruhetag — die sind eingeplant, jeder Tag startet neu.</p>
+    <p class="muted tz-note">Vergangene Tage zeigen deine geübten Karten in den Tagesziel-Farben (orange → gelb → grün, <b>tiefes Grün ⭐ = Streckziel</b>, <b>Regenbogen 🌈 = darüber hinaus</b>), kommende Tage das Datum. 😴 heißt Ruhetag — die sind eingeplant, jeder Tag startet neu.</p>
     <p class="hm-sub">Wie viel du übst</p>
     ${mengeSvg}
     <p class="muted tz-note">Karten pro Tag: <span class="hm-key stark"></span> Schnitt der letzten 7 Tage, <span class="hm-key fein"></span> der letzten 3 Tage. Das grüne Band ist dein Tagespensum (${tz.ziel}–${tz.stretch}), die gestrichelte Linie unten der Boden für zähe Tage (${tz.minimum}). Ab heute gestrichelt: so läuft es weiter, <b>wenn du dein aktuelles Tempo hältst</b> — es geht nicht um immer mehr, sondern um dranbleiben.</p>
@@ -551,29 +586,37 @@ function heatmapHtml(tz) {
 function klausurtrainingHtml() {
   const pks = C.pkStatus();
   if (!pks.length) return "";
+  // Jede Kachel zeigt EINEN eindeutigen Zustand. Gold + ▶ heisst immer
+  // "laeuft noch, kann weitergehen"; ein zu Ende gebrachter Durchlauf unter der
+  // Grenze bekommt eine eigene, ruhige Optik (.wieder) und nie das Weiter-Zeichen
+  // — vorher sahen beide gleich aus (Jennifer 12.08.).
   const boxen = pks.map((p) => {
     const roem = C.PK_ROEM[p.nr];
     let cls = "zu", icon = "🔒", sub = "gesperrt";
     if (p.bestanden) { cls = "ok"; icon = "✓"; sub = `${p.beste} P.`; }
-    else if (p.offen) { cls = "auf"; icon = "▶"; sub = "offen"; }
-    else if (p.fertige.length) { cls = "auf"; icon = "🔁"; sub = `${p.beste} P.`; }
+    else if (p.offen) { cls = "auf"; icon = "▶"; sub = "angefangen"; }
+    else if (p.nurTeilweise) { cls = "rest"; icon = "⏸"; sub = "Rest offen"; }
+    else if (p.fertige.length) { cls = "wieder"; icon = "◆"; sub = `${p.beste}/${p.besteMax} P.`; }
     else if (!p.bereit) { cls = "zu"; icon = "🔧"; sub = "bald"; }
     else if (p.frei) { cls = "auf neu"; icon = "★"; sub = "bereit"; }
     else if (p.vorherFertig && p.fehltKarten != null) { sub = `${C.PK_FREI_KARTEN - p.fehltKarten}/${C.PK_FREI_KARTEN}`; }
     return `<button class="pk-box ${cls}" data-pk="${p.nr}" aria-label="Probeklausur ${roem}">
       <b>${roem}</b><i>${icon}</i><span>${sub}</span></button>`;
   }).join("");
-  // Eine konkrete naechste-Schritt-Zeile statt fuenf Statusmeldungen
-  const naechste = pks.find((p) => !p.bestanden);
+  // Eine konkrete naechste-Schritt-Zeile statt fuenf Statusmeldungen. Ein
+  // angefangener Durchlauf geht vor — sonst zeigt die Zeile auf I, waehrend II
+  // halb ausgefuellt herumliegt.
+  const naechste = pks.find((p) => p.offen) || pks.find((p) => !p.bestanden);
   let zeile;
   if (!naechste) zeile = "Alle fünf bestanden — du hast den kompletten Stoff unter Klausurbedingungen geschafft. 👑";
-  else if (naechste.offen) zeile = `${pkLbl(naechste.nr)} liegt angefangen bereit — einfach weitermachen.`;
-  else if (naechste.fertige.length) zeile = `${pkLbl(naechste.nr)} nochmal? Beim 2. Durchlauf gibt's auf Wunsch Feedback direkt nach jeder Frage.`;
+  else if (naechste.offen) zeile = `${pkLbl(naechste.nr)} ist angefangen: ${naechste.offen.runde.filter((r) => r.gewaehlt).length} von ${naechste.offen.runde.length} Fragen beantwortet — du kannst direkt weitermachen.`;
+  else if (naechste.nurTeilweise) zeile = `${pkLbl(naechste.nr)} wurde abgegeben, bevor alle Fragen dran waren — den Rest kannst du noch bearbeiten.`;
+  else if (naechste.fertige.length) zeile = `${pkLbl(naechste.nr)} ist durchgelaufen: <b>${naechste.beste} von ${naechste.besteMax} P.</b>, das Ziel liegt bei ${naechste.bestehenBei}. Noch nicht drüber — beim nächsten Anlauf zählt alles neu.`;
   else if (!naechste.bereit) zeile = `${pkLbl(naechste.nr)} ist in Vorbereitung — bis dahin: weiter üben, jede Karte zählt schon fürs Freischalten.`;
-  else if (naechste.frei) zeile = `${pkLbl(naechste.nr)} ist offen: 42 Fragen, die du so noch nie gesehen hast.`;
+  else if (naechste.frei) zeile = `${pkLbl(naechste.nr)} ist freigeschaltet: 42 Fragen, die du so noch nie gesehen hast.`;
   else if (!naechste.vorherFertig) zeile = `Erst ${pkLbl(naechste.nr - 1)} abschließen, dann geht's hier weiter.`;
   else zeile = `${pkLbl(naechste.nr)} schaltet sich frei: noch ${naechste.fehltKarten} Karten üben — egal in welchem Modus.`;
-  return `<div class="card pk-card">
+  return `<div class="card pk-card glim">
     <div class="pk-head"><b>🏆 Klausurtraining</b><span class="muted">5 Probeklausuren · zusammen der ganze Stoff</span></div>
     <div class="pk-track">${boxen}</div>
     <p class="pk-zeile">${zeile}</p>
@@ -587,16 +630,20 @@ function home() {
   const tz = C.tagesStand();
   const sich = C.sicherheit();
 
+  // Angefangene Runden: hier steht IMMER ein Zustand dran, und der Knopftext
+  // sagt genau, was der naechste Schritt ist (Starten / Weitermachen / Abgeben).
   const offenCards = offene.map((o) => {
+    const z = C.sessZustand(o);
     const done = o.runde.filter((r) => r.gewaehlt).length;
     const timed = o.cfg.timerModus && o.cfg.timerModus !== "aus";
-    return `<div class="card" style="display:flex;align-items:center;gap:12px">
+    return `<div class="card glim" style="display:flex;align-items:center;gap:12px">
       <div style="flex:1;min-width:0">
         <b>${sessLbl(o)}</b>${o.versuchNr ? ` <span class="badge-src">${o.versuchNr}. Versuch</span>` : ""}
+        <div class="z-zeile"><span class="z-badge ${z.cls}" title="${z.lang || z.label}">${z.icon} ${z.label}</span></div>
         <div class="muted">erstellt ${datum(o.erstellt)} · ${done}/${o.runde.length} beantwortet${timed ? ` · ⏱ ${o.restSek != null ? Math.ceil(o.restSek / 60) + " min übrig" : C.timerMinuten(o.runde.length, o.cfg.timerModus) + " min"}` : ""}</div>
         <div class="bar thin mt"><i style="width:${(100 * done) / o.runde.length}%"></i></div>
       </div>
-      <button class="btn small" data-resume="${o.id}">Weiter</button>
+      <button class="btn small" data-resume="${o.id}">${z.key === "abgabebereit" ? "Zum Abgeben" : z.key === "neu" ? "Starten" : "Weitermachen"}</button>
       <button class="btn ghost small" data-discard="${o.id}" title="Verwerfen">✕</button>
     </div>`;
   }).join("");
@@ -634,7 +681,7 @@ function home() {
 
     ${Spiele.hubHtml()}
 
-    ${offene.length ? `<h2 class="mt">Offene Sessions</h2>${offenCards}` : ""}
+    ${offene.length ? `<h2 class="mt">Angefangen — du kannst weitermachen</h2>${offenCards}` : ""}
 
     <h2 class="mt">Neue Session</h2>
     ${C.nurPingoGemerkt() ? `<p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">🎯 Zuletzt hast du nur mit den ${C.pingoGesamt()} Pingo-Fragen geübt — Schnellstarts von hier übernehmen das. Im Baukasten steht der Schalter je Runde, die Klausur-Simulationen laufen immer über alles. <button class="btn ghost small" id="pingoAus">Alle Fragen</button></p>` : ""}
@@ -652,7 +699,7 @@ function home() {
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
 
     <h2 class="mt">Wo du stehst</h2>
-    <div class="card mt" style="margin-top:8px">
+    <div class="card mt glim" style="margin-top:8px">
       <div class="progress-row" style="--tc:var(--accent)">
         <span class="lbl">Lernscore</span><span class="bar"><i style="width:${score}%"></i></span><span class="val">${score}%</span>
       </div>
@@ -675,7 +722,7 @@ function home() {
 
     ${statInhaltHtml()}
 
-    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt">${letzte}
+    ${letzte ? `<h2 class="mt">Zuletzt</h2><div class="card hist-kompakt glim">${letzte}
       <button class="btn ghost small mt" data-go="verlauf">Alle ${eintraege.length} Einträge ansehen ›</button></div>` : ""}
   </div>`);
 
@@ -720,12 +767,15 @@ function home() {
 }
 
 function histRow(s) {
-  const status = s.status === "abgebrochen" ? `<span class="badge-src badge-unsicher">abgebrochen</span>` : s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">fertig</span>`;
+  // Ein Blick, ein Zustand: "abgeschlossen, noch nicht bestanden" ist etwas
+  // anderes als "Rest offen" — nur beim zweiten gibt es ein Fortsetzen.
+  const z = C.sessZustand(s);
+  const status = `<span class="z-badge ${z.cls}" title="${z.label}">${z.icon} ${z.kurz}</span>`;
   const versuch = s.versuchNr > 1 ? `<span class="badge-src badge-versuch">${s.versuchNr}. Versuch</span> ` : "";
   return `<div class="hist-item click" data-open="${s.id}"><div><b>${sessLbl(s)}</b> ${versuch}${status}
     <div class="when">erstellt ${datum(s.erstellt || s.ts)} · abgeschlossen ${datum(s.ts)} · ${s.beantwortet}/${s.anzahl} Fragen · ${Math.round(s.dauerSek / 60)} min</div></div>
     <span class="sc">${s.punkte}/${s.max}</span>
-    ${s.runde && !s.bestanden && s.beantwortet < s.anzahl ? `<button class="btn small" data-reopen="${s.id}" title="Offene Fragen weitermachen">Fortsetzen</button>` : ""}
+    ${z.key === "restOffen" ? `<button class="btn small" data-reopen="${s.id}" title="Die noch leeren Fragen bearbeiten">Rest bearbeiten</button>` : ""}
     ${(s.runde?.length || s.proFrage?.length) ? `<button class="btn ghost small" data-retry="${s.id}" title="Gleiche Fragen nochmal üben — als neuer Versuch, der alte Eintrag bleibt">🔁</button>` : ""}
     <button class="btn ghost small" data-del="${s.id}" title="Session löschen">🗑</button></div>`;
 }
@@ -793,8 +843,11 @@ async function reopenSession(id) {
   // zurückrechnen und das bestandene Ergebnis bei Nicht-Abgabe verlieren.
   // Für einen neuen Anlauf gibt es „Wiederholen".
   const s = C.state().sessions.find((x) => x.id === id);
-  if (s?.bestanden) { sag("Diese Runde ist schon bestanden 🎉 - fuer einen neuen Anlauf nimm 'Wiederholen'."); return; }
-  if (!await frag("Session fortsetzen? Sie wandert zurück zu den offenen Sessions, die bisherige Wertung wird zurückgerechnet und beim Abschluss neu gemacht.", { ja: "Fortsetzen", nein: "Lieber nicht" })) return;
+  if (s?.bestanden) { sag("Diese Runde ist schon bestanden 🎉 - fuer einen neuen Anlauf nimm 'Nochmal antreten' (🔁)."); return; }
+  // Nur der Zustand "abgegeben, Rest offen" laesst sich fortsetzen. Ein Durchlauf,
+  // bei dem alle Fragen dran waren, ist zu Ende — dafuer gibt es 🔁 (neuer Versuch).
+  if (s && C.sessZustand(s).key !== "restOffen") { sag("Dieser Durchlauf ist abgeschlossen - alle Fragen waren dran. Fuer einen neuen Anlauf nimm 'Nochmal antreten' (🔁)."); return; }
+  if (!await frag("Die noch leeren Fragen jetzt bearbeiten? Die Runde wandert zurück zu den angefangenen, die bisherige Wertung wird zurückgerechnet und beim Abschluss neu gemacht.", { ja: "Rest bearbeiten", nein: "Lieber nicht" })) return;
   const sess = C.reaktiviereSession(id);
   if (sess) resumeSession(sess.id);
   else sag("Diese Session ist aus einer älteren Version und hat keinen Fragen-Snapshot — Fortsetzen geht hier leider nicht.");
@@ -858,11 +911,7 @@ function einstellungen() {
     <div class="card">
       <span class="flabel" style="font-weight:700;font-size:.92rem;display:block;margin-bottom:7px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em">Lernmethoden</span>
       <p style="margin:0 0 8px">Selbsterklärung bei Fehlern ${M.infoBtn("selbsterklaerung")}<br><span class="muted" style="font-size:.85rem">Erst kurz selbst überlegen, warum es falsch war — dann kommt die Erklärung.</span></p>
-      <div class="seg" id="seSeg">
-        ${[["standard", "Standard"], ["streng", "Streng"]].map(([v, l]) =>
-          `<button data-v="${v}" class="${seModus() === v ? "on" : ""}">${l}</button>`).join("")}
-      </div>
-      <p class="muted" style="margin:8px 0 0">Standard: mit ‚Nur die Antwort zeigen'-Link. Streng: ohne Link — erst erklären, dann weiter. <b>Ob</b> die Erklär-Abfrage kommt, stellst du seit dem 12.08. je Runde ein (‚Erklär-Abfrage bei Fehlern' beim Zusammenstellen) — hier geht es nur darum, wie streng sie ist. Der Timer hält an, solange du tippst.</p>
+      <p class="muted" style="margin:0">Alles, was zur Runde gehört, stellst du beim Zusammenstellen ein: <b>ob</b> die Erklär-Abfrage kommt und <b>wie streng</b> sie ist, stehen zusammen im Baukasten unter ‚Erklär-Abfrage bei Fehlern'. Deine letzte Wahl wird gemerkt und dort vorausgewählt. Hier steht nur noch, was gerade aktiv ist:</p>
       <div class="pillzeile" id="methodenPills"></div>
     </div>
     <div class="card">
@@ -893,18 +942,14 @@ function einstellungen() {
     const pills = [
       ["🧠 Abrufübung", true, "retrieval"],
       ["📅 Verteiltes Üben", true, "relearning"],
-      [`💬 Selbsterklärung${seModus() === "streng" ? " (streng)" : ""}`, true, "selbsterklaerung"],
+      // Vorwahl, nicht Schalter: was wirklich gilt, sagt die Runde
+      [`💬 Selbsterklärung${seModus({}) === "streng" ? " · zuletzt: erst erklären" : " · zuletzt: mit Überspringen"}`, true, "selbsterklaerung"],
       ["🎯 Nur Pingo-Fragen", !!s.settings.nurPingo, null],
     ];
     document.getElementById("methodenPills").innerHTML = pills.map(([l, an, key]) =>
-      `<span class="pill ${an ? "an" : ""}">${l}${an ? "" : " · aus"}${key ? " " + M.infoBtn(key) : ""}</span>`).join("");
+      `<span class="pill ${an ? "an" : ""}">${l}${an ? "" : " · zuletzt aus"}${key ? " " + M.infoBtn(key) : ""}</span>`).join("");
   };
   malPills();
-  document.querySelectorAll("#seSeg button").forEach((b) => b.onclick = () => {
-    C.state().settings.selbstErkl = b.dataset.v; C.save();
-    document.querySelectorAll("#seSeg button").forEach((x) => x.classList.toggle("on", x === b));
-    malPills();
-  });
   document.getElementById("exportBtn").onclick = C.exportState;
   document.getElementById("importBtn").onchange = async (e) => { if (e.target.files[0]) { await C.importState(e.target.files[0]); await C.syncLernstand(); home(); } };
 
@@ -988,7 +1033,7 @@ function builder({ preset }) {
   // quote wie in der Statistik-Sektion. Ohne echte Versuche bleibt die Zeile leer.
   const stat = C.statistik();
   const statThema = Object.fromEntries(stat.proThema.map((x) => [x.slug, x]));
-  const quoteHtml = (q) => q == null ? "" : ` <span class="muted">· ${q} %</span>`;
+  const quoteHtml = quotePille;   // farbige Beherrschungs-Pille statt nackter Prozentzahl
   // Pingo-Filter: gilt in allen Bau-Presets ausser den echten Simulationen
   // (volle + halbe Klausur). Muss exakt derselben Bedingung folgen wie
   // C.pingoFilterGilt() in der Engine — sonst waehlt der Baukasten Unterthemen ab,
@@ -999,6 +1044,9 @@ function builder({ preset }) {
   // den Schalter gar nicht, dort greift der Filter nie (C.pingoFilterGilt).
   const pingoWaehlbar = !C.SIM_MODI.includes(P.modus);
   const pingoVor = pingoWaehlbar && C.nurPingoGemerkt();
+  // Gemerkte Vorwahl fuer die Strenge der Erklaer-Abfrage. Gemerkt werden darf
+  // sie — verbindlich ist trotzdem, was hier im Baukasten steht (cfg.erklaerStreng).
+  const strengVor = seModus({});
   // Die Themenliste haengt am Schalter: sobald er umgelegt wird, wird sie neu
   // gezeichnet. Zahlen, die zum Filter passen, sind der ganze Zweck der Uebung —
   // eine Zahl, die luegt, ist schlimmer als gar keine.
@@ -1042,7 +1090,11 @@ function builder({ preset }) {
     ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span><div class="seg" id="erklaer">
       ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Erst raten"]].map(([v, l]) =>
         `<button data-v="${v}" class="${v === "begruenden" ? "on" : ""}">${l}</button>`).join("")}</div>
-      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. <b>Der Timer hält an, solange du tippst.</b> (Streng/locker stellst du in den Einstellungen.)</p>
+      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. <b>Der Timer hält an, solange du tippst.</b></p>
+      <div id="strengFeld" style="margin-top:10px"><span class="flabel">Wie streng</span><div class="seg" id="streng">
+        ${[["standard", "Mit Überspringen"], ["streng", "Erst erklären"]].map(([v, l]) =>
+          `<button data-v="${v}" class="${strengVor === v ? "on" : ""}">${l}</button>`).join("")}</div>
+      <p class="muted">Mit Überspringen: es gibt einen ‚Nur die Antwort zeigen'-Link. Erst erklären: der Link fehlt, du schreibst erst etwas. Deine Wahl wird gemerkt.</p></div>
       <p class="muted" id="erklaerHint" style="margin-top:6px"></p></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
@@ -1111,6 +1163,9 @@ function builder({ preset }) {
     if (eh) eh.textContent = (segVal("fb") || P.fb) === "ende" && segVal("erklaer") !== "aus"
       ? "Kommt nur bei ‚Sofort je Frage' — mit Feedback erst am Ende gibt es keinen Moment dafür."
       : "";
+    // Die Strenge gehoert zur Abfrage: ohne Abfrage keine Strenge-Frage
+    const sf = document.getElementById("strengFeld");
+    if (sf) sf.classList.toggle("hidden", segVal("erklaer") === "aus");
   };
   bindThemen();
   updateHint();
@@ -1134,6 +1189,9 @@ function builder({ preset }) {
     // Pingo-Wahl dieser Runde merken — als Vorschlag fuer die naechste und fuer
     // die Schnellstart-Knoepfe, die keinen eigenen Baukasten haben
     if (pingoWaehlbar) { C.state().settings.nurPingo = pingoAn(); C.save(); }
+    // Strenge der Erklaer-Abfrage ebenso: gemerkt als Vorwahl, verbindlich ist cfg
+    const streng = segVal("streng") || strengVor;
+    if (!istKlausur) { C.state().settings.selbstErkl = streng; C.save(); }
     starte({
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
       auswahl: segVal("auswahl") || P.auswahl || "smart",
@@ -1146,6 +1204,7 @@ function builder({ preset }) {
       paraphrase: !examLook && !istSprach && segVal("para") === "an",
       stempeln: !examLook && !istSprach && segVal("stempeln") === "an",
       erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "begruenden",
+      erklaerStreng: streng,
     });
   };
 }
@@ -1202,16 +1261,30 @@ function pkScreen(nr) {
     body = `<div class="card">${grund}</div>
       <button class="btn" id="uebeJetzt" style="width:100%">⚡ 10 Karten üben — bringt dich näher ran</button>`;
   } else {
-    const versuche = p.fertige.map((s, i) => `<div class="hist-item click" data-open="${s.id}">
-      <div><b>${i + 1}. Versuch</b> ${s.bestanden ? `<span class="badge-src" style="background:var(--ok-bg);color:var(--ok)">bestanden</span>` : `<span class="badge-src">${s.punkte} P.</span>`}
-      <div class="when">${datum(s.ts)} · ${Math.round(s.dauerSek / 60)} min</div></div>
-      <span class="sc">${s.punkte}/${s.max}</span></div>`).join("");
+    const versuche = p.fertige.map((s, i) => {
+      const z = C.sessZustand(s);
+      return `<div class="hist-item click" data-open="${s.id}">
+      <div><b>${i + 1}. Versuch</b> <span class="z-badge ${z.cls}" title="${z.label}">${z.icon} ${z.kurz}</span>
+      <div class="when">${datum(s.ts)} · ${Math.round(s.dauerSek / 60)} min · ${s.beantwortet}/${s.anzahl} beantwortet</div></div>
+      <span class="sc">${s.punkte}/${s.max}</span></div>`;
+    }).join("");
+    // Klare Ansage, wo dieser Durchlauf steht — abgeschlossen ist abgeschlossen,
+    // auch wenn die Grenze noch nicht erreicht ist. Tonfall: Zahl + Ziel, kein Urteil.
+    const standKarte = p.bestanden
+      ? `<div class="card glim"><p style="margin:0"><span class="z-badge z-ok">✓ bestanden</span> <b>${p.beste} von ${p.besteMax} P.</b> — das Ziel lag bei ${p.bestehenBei}. 🎉 Die Fragen sind für dein Training freigeschaltet.</p></div>`
+      : p.nurTeilweise
+        ? `<div class="card glim"><p style="margin:0"><span class="z-badge z-rest">⏸ Rest offen</span> Dieser Durchlauf wurde abgegeben, bevor alle Fragen dran waren (${p.besteSession.beantwortet} von ${p.besteSession.anzahl}). Du kannst die restlichen Fragen unten im Versuch noch bearbeiten oder komplett neu antreten.</p></div>`
+        : p.fertige.length
+          ? `<div class="card glim"><p style="margin:0"><span class="z-badge z-zuende">◆ abgeschlossen</span> Bester Durchlauf: <b>${p.beste} von ${p.besteMax} P.</b>, das Ziel liegt bei ${p.bestehenBei}. Noch nicht drüber — beim nächsten Anlauf zählt alles neu.</p>
+            <div class="btn-row mt"><button class="btn secondary small" id="pkFehler">Fehler durchgehen</button></div></div>`
+          : "";
     body = `
+    ${standKarte}
     <div class="card">
       <p style="margin:0">42 Fragen, die du in der App noch nie beantwortet hast — im Exam.UP-Look, mit echtem Scoring und dem 📕-Skript daneben, genau wie im Ernstfall. ${p.bestanden ? "Schon bestanden 🎉 — jeder weitere Durchlauf festigt." : "Bestehst du sie, wandern die Fragen danach in dein Training."}</p>
       <p class="muted" style="margin:8px 0 0"><b>Taktik:</b> Keine Frage leer lassen (unter 0 P. geht keine Frage). Erst sicher falsche Optionen streichen, dann kreuzen, sobald du dir besser als 1-zu-3 sicher bist. Zwei Durchgänge: erst die sicheren, dann die kniffligen.</p>
     </div>
-    ${p.offen ? `<div class="card" style="display:flex;align-items:center;gap:12px"><div style="flex:1"><b>Angefangener Durchlauf</b><div class="muted">${p.offen.runde.filter((r) => r.gewaehlt).length}/${p.offen.runde.length} beantwortet</div></div><button class="btn small" id="pkWeiter">Weiter</button></div>` : `
+    ${p.offen ? `<div class="card glim" style="display:flex;align-items:center;gap:12px"><div style="flex:1"><b>Angefangener Durchlauf</b> <span class="z-badge z-auf">▶ angefangen</span><div class="muted">${p.offen.runde.filter((r) => r.gewaehlt).length}/${p.offen.runde.length} beantwortet — läuft noch, nichts ist gewertet</div></div><button class="btn small" id="pkWeiter">Weitermachen</button></div>` : `
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="pkTimer">
       <button data-v="nta" class="${nta ? "on" : ""}">120 min (dein Nachteilsausgleich)</button>
       <button data-v="normal" class="${nta ? "" : "on"}">90 min</button>
@@ -1240,6 +1313,10 @@ function pkScreen(nr) {
   if (uj) uj.onclick = () => starte({ modus: "schnell", anzahl: 10, auswahl: "smart", timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false, sprache: "schwer", nurPingo: C.nurPingoGemerkt() });
   const pw = document.getElementById("pkWeiter");
   if (pw) pw.onclick = () => resumeSession(p.offen.id);
+  // "Fehler durchgehen" = die Auswertung des besten Durchlaufs, dort steht jede
+  // Frage mit Erklaerung. Kein neuer Screen, kein neuer Zustand.
+  const pf = document.getElementById("pkFehler");
+  if (pf) pf.onclick = () => sessionDetail(p.besteSession.id, () => pkScreen(nr));
   const los = document.getElementById("pkLos");
   if (los) los.onclick = () => {
     const segVal = (id) => app.querySelector(`#${id} button.on`)?.dataset.v;
@@ -1276,6 +1353,10 @@ function laufLos(sess) {
 function resumeSession(id) {
   R = C.state().offen.find((o) => o.id === id);
   if (!R) return home();
+  // Fangnetz: eine Runde, in der schon alles beantwortet ist, kann einen idx
+  // hinter der letzten Frage tragen (z. B. aus dem Merge eines anderen Geraets).
+  // Ohne Klemme laeuft zeigFrage() ins Leere.
+  if (R.idx >= R.runde.length) R.idx = Math.max(0, R.runde.length - 1);
   R.startTs = Date.now();
   if (R.restSek != null && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
   // Ohne Timer: erst fragen, ob's losgehen soll — die Fragezeit läuft sonst sofort
@@ -1904,6 +1985,7 @@ function pkErgebnisHtml(session) {
 
 function ergebnis(session, runde, opts = {}) {
   const pass = session.bestanden;
+  const zust = C.sessZustand(session);
   const abgebrochen = session.status === "abgebrochen";
   const insights = C.insights(session);
   const rundeAnalyse = C.bewerteRows(session.proFrage || []);
@@ -1949,20 +2031,21 @@ function ergebnis(session, runde, opts = {}) {
   h(`<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>Auswertung${session.versuchNr > 1 ? ` <span class="badge-src badge-versuch">${session.versuchNr}. Versuch</span>` : ""}</h1>
       <span style="margin-left:auto;display:inline-flex;gap:4px">
-        ${session.runde && !session.bestanden && session.beantwortet < session.anzahl ? `<button class="btn small" id="reopenBtn">Fortsetzen</button>` : ""}
+        ${zust.key === "restOffen" ? `<button class="btn small" id="reopenBtn">Rest bearbeiten</button>` : ""}
         ${(session.runde?.length || session.proFrage?.length) && session.id !== "test-bestanden" ? `<button class="btn ghost small" id="retryBtn" title="Gleiche Fragen nochmal üben (neuer Versuch)">🔁</button>` : ""}
         <button class="btn ghost small" id="delBtn" title="Session löschen">🗑</button></span></div>
-    <div class="card result-big">
+    <div class="card result-big glim">
       ${abgebrochen ? `<img class="sticker big" src="${reactSrc("monkey_side")}" alt="">` : sticker(pass ? "good" : "sanft", true)}
       <h2>${abgebrochen ? "Abgebrochen — trotzdem gewertet, was da war." : pass ? "Bestanden! 🎉" : "Noch nicht — aber jede Runde zählt."}</h2>
       <div class="pts"><span class="js-count" data-to="${session.punkte}">${session.punkte}</span><span style="font-size:1.3rem;color:var(--ink-soft)"> / ${session.max}</span></div>
-      <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `Bestehensgrenze: ${session.bestehenBei} P.`}</span>
-      <p class="muted mt">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
+      <span class="verdict ${pass ? "pass" : "fail"}">${pass ? "✓ über der Bestehensgrenze" : `${session.punkte} von ${session.max} P. — das Ziel liegt bei ${session.bestehenBei}`}</span>
+      <p class="mt" style="margin-bottom:2px"><span class="z-badge ${zust.cls}">${zust.icon} ${zust.lang || zust.label}</span>${zust.key === "restOffen" ? ` <span class="muted" style="font-size:.85rem">${zust.rest} Frage${zust.rest === 1 ? "" : "n"} sind noch leer</span>` : ""}</p>
+      <p class="muted mt" style="margin-top:4px">${session.beantwortet}/${session.anzahl} beantwortet · ${Math.round(session.dauerSek / 60)} min gesamt${avgZeit != null ? ` · Ø ${fmtSek(avgZeit)} pro Frage` : ""}</p>
       ${trendZeile}
     </div>
     ${pkErgebnisHtml(session)}
     ${versuchsHtml(session)}
-    <div class="card an-card"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
+    <div class="card an-card glim"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
     <div class="card"><h3>Nach Thema & Unterthema</h3>${themenRows}</div>
     ${opts.ausVerlauf ? "" : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
@@ -2354,19 +2437,20 @@ function statInhaltHtml() {
   const st = C.statistik();
   const kachel = (wert, lbl) => `<div class="stat-tile"><b>${wert}</b><span>${lbl}</span></div>`;
   const pkt = (v) => `${v.pkt}/${v.maxSchnitt} P.`;
-  // Beherrschungs-Schema (Jennifer 21.07., Feinschliff 22.07.): Trenner in JEDEM
-  // Balken bei 50 % (Bestehensgrenze), 75 % (sicherer Bereich) und 90 % (besteht
-  // auf jeden Fall). Fuellfarbe: rot unter 50, gelb ab 50, GRUEN AB 85 — die
-  // Farbe belohnt schon kurz vor der Medaille, die Siegel bleiben strenger
-  // (Haken ab 75, Medaille erst ab 90: 90 ist die ehrliche "sicher bestanden"-Marke).
-  const GRUEN_AB = 85;
-  const quotenFarbe = (q) => q == null ? "var(--line)" : q < 50 ? "var(--bad)" : q < GRUEN_AB ? "#d9b93a" : "var(--ok)";
+  // Beherrschungs-Schema (Jennifer 21.07., Feinschliff 22.07., Farben neu 12.08.):
+  // Trenner in JEDEM Balken bei 50 % (Bestehensgrenze), 75 % (sicherer Bereich)
+  // und 90 % (besteht auf jeden Fall). Die Fuellfarbe sass vorher in EINEM
+  // gelben Block von 50 bis 85 — bei Roses echten Quoten sah damit fast jeder
+  // Balken gleich aus, egal ob 52 oder 84. Jetzt springt die Farbe genau an den
+  // drei Trennern, die ohnehin im Balken stehen, und benutzt dieselbe Leiter wie
+  // die Tagesuebersicht: warm -> gelb -> gruen -> tiefes Gruen. Kein Rot: unter
+  // 50 heisst "da bist du noch dran", nicht "das kannst du nicht" (qStufe).
   const siegel = (q) => q == null ? ""
     : q >= 90 ? `<span class="siegel gold" title="ab 90 % — besteht auf jeden Fall">🏅</span>`
     : q >= 75 ? `<span class="siegel gut" title="ab 75 % — sicherer Bereich">✓</span>`
     : q < 50 ? `<span class="siegel rot" title="unter 50 % — hier ist am meisten drin">!</span>` : "";
   const markenBar = (quote, thin = false) => `<span class="bar mit-marke${thin ? " thin" : ""}">
-    <i style="width:${quote ?? 0}%;background:${quotenFarbe(quote)}"></i>
+    <i class="${qStufe(quote)}" style="width:${quote ?? 0}%"></i>
     <em class="bar-marke m50" style="left:50%"></em><em class="bar-marke m75" style="left:75%"></em><em class="bar-marke m90" style="left:90%"></em></span>`;
   // Entwicklung je Thema (Jennifer 22.07.): wandert als kleiner Pfeil direkt in
   // die Themenzeile, statt weiter unten eine eigene Sektion zu belegen.
@@ -2444,7 +2528,7 @@ function statInhaltHtml() {
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
     </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren.</p></div>
-    <div class="card an-card"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
+    <div class="card an-card glim"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="stat-sek">Beherrschung nach Thema</h2>
     <div class="card">${ewSatz}
       ${rote.size ? `<div class="wackel-zeile"><span><b>🔴 ${rote.size} wacklige ${rote.size === 1 ? "Stelle" : "Stellen"}</b> — sie sind unten mit ● markiert.</span>

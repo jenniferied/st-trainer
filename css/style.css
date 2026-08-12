@@ -29,6 +29,16 @@
   --badge-gen-bg: #e8e4f5;
   --badge-gen-ink: #5b4a8f;
   --glow: #f6e8d4;          /* Schimmer oben rechts im Seitenhintergrund */
+  /* Karten-Akzent (Jennifer 12.08.): ein leiser Hauch Rot bis Rot-Lila in den
+     Ecken, plus eine dünne Linie oben. Bewusst KEIN Grün — Grün ist in dieser
+     App der Erfolgsfarbton (--ok, geschaffte Tage, bestanden) und darf nicht
+     als Deko verwässern. Regenbogen gibt es nur an einer Stelle: an Tagen, an
+     denen Rose ÜBER ihr Streckziel hinausgekommen ist (.hm-s5 im Kalender,
+     .fill.rb in der Tagesziel-Bar). Im Exam.UP-Klausurmodus aus. */
+  --glim-rot:  rgba(176, 62, 96, .07);
+  --glim-lila: rgba(124, 76, 196, .07);
+  --glim-linie: linear-gradient(90deg, #b0446a, #8e4bbd, #b0446a);
+  --glim-linie-op: .3;
   --mix-hell: #fff;         /* Mix-Ziele für Unterthema-Abstufung (core.js subColor) */
   --mix-dunkel: #29241b;
   --radius: 14px;
@@ -70,6 +80,12 @@
   --badge-gen-bg: #3d3567;
   --badge-gen-ink: #c9bff7;
   --glow: #2b2347;
+  /* Nachts trägt der Akzent etwas mehr: die Karte ist dunkler, der Hauch muss
+     sichtbar bleiben, ohne den Text anzugreifen (Kontrast geht vor). */
+  --glim-rot:  rgba(226, 110, 150, .11);
+  --glim-lila: rgba(167, 129, 250, .11);
+  --glim-linie: linear-gradient(90deg, #e26e96, #a781fa, #e26e96);
+  --glim-linie-op: .42;
   --mix-hell: #e7e2f3;
   --mix-dunkel: #8d86ab;
   --shadow: 0 1px 2px rgba(5,0,20,.4), 0 6px 20px -8px rgba(5,0,20,.6);
@@ -156,6 +172,44 @@ button { font: inherit; cursor: pointer; }
 .badge-unsicher { background: var(--warn-bg); color: var(--warn-ink); }
 .badge-generiert { background: var(--badge-gen-bg); color: var(--badge-gen-ink); }
 
+/* ---------- Zustands-Badge ----------
+   Ein Blick soll reichen: "läuft noch" (gold) sieht anders aus als
+   "abgeschlossen" (ruhig, neutral) und als "Rest offen" (gestrichelt).
+   Ein nicht bestandener Durchlauf wird bewusst NICHT rot — er ist zu Ende,
+   nicht schlecht. Rot bleibt für falsche Antworten reserviert. */
+.z-zeile { margin: 3px 0 1px; }
+.z-badge {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  font-size: .72rem; font-weight: 700; line-height: 1.5;
+  border-radius: 999px; padding: 1px 9px;
+  background: var(--paper-2); color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.z-badge.z-ok { background: var(--ok-bg); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.z-badge.z-auf, .z-badge.z-abgabe { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--warn-border); }
+.z-badge.z-rest { background: transparent; color: var(--warn-ink); border: 1px dashed var(--warn-border); }
+.z-badge.z-zuende { background: color-mix(in srgb, var(--ink-soft) 12%, transparent); color: var(--ink-soft); border-color: color-mix(in srgb, var(--ink-soft) 40%, transparent); }
+.z-badge.z-neu { background: transparent; border: 1px dashed var(--line); }
+
+/* ---------- Karten-Akzent (Deko, kein Bedeutungsträger) ----------
+   Opt-in per .glim, damit nicht jede Karte etwas abbekommt. Der Hauch sitzt in
+   zwei Ecken, die dünne Linie oben — Textfläche und Kontrast bleiben unberührt.
+   Keine Animation: das soll ruhig wirken, nicht unruhig. */
+.glim { position: relative; }
+.glim::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--glim-linie); opacity: var(--glim-linie-op);
+  pointer-events: none;
+}
+.card.glim {
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, var(--glim-lila) 0%, transparent 55%),
+    radial-gradient(105% 85% at 0% 100%, var(--glim-rot) 0%, transparent 58%);
+  background-repeat: no-repeat;
+}
+
 .topbar { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 /* Titel skaliert mit, damit „Schultheorie-Trainer ✏️" auch auf 360px in eine Zeile passt */
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font-size: clamp(1.05rem, 4.8vw, 1.4rem); white-space: nowrap; }
@@ -165,6 +219,46 @@ button { font: inherit; cursor: pointer; }
 .bar { height: 12px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
 .bar > i { display: block; height: 100%; border-radius: 999px; background: var(--tc, var(--accent)); transition: width .5s ease; }
 .bar.thin { height: 7px; }
+
+/* ---------- Beherrschungs-Leiter (Jennifer 12.08.) ----------
+   Vier Stufen, dieselben wie in der Tagesuebersicht: warm -> gelb -> gruen ->
+   tiefes leuchtendes Gruen. Die Kanten sitzen auf 50 / 75 / 90 %, also genau
+   auf den Marken, die in den Balken ohnehin stehen — vorher lief die Fuellung
+   von 50 bis 85 als EIN gelber Block, und bei Roses echten Quoten sah damit
+   fast jeder Balken gleich aus.
+   Unter 50 % ist es warmes Orange, nicht Rot. Rose liest diese Zahlen bei
+   jedem Zusammenstellen einer Runde; das schwaechste Unterthema liegt bei
+   29 %, und das darf nicht wie eine Alarmanlage aussehen.
+   Die Themenfarbe (--tc) bleibt der Bedeutungstraeger fuer das OBERTHEMA — in
+   der Statistik traegt sie die aufklappbare Themenzeile, im Baukasten der Chip
+   mit dem Kuerzel. Die Balkenfarbe kodiert ab jetzt den Stand, nicht das Thema;
+   deshalb greift sie NUR bei Balken, die wirklich eine Quote zeigen (.mit-marke
+   in der Statistik). Reine Fortschrittsbalken (3 von 10 beantwortet, Karten bis
+   zur Freischaltung) bleiben unberuehrt. */
+.bar > i.q0 { background: var(--line); }
+.bar > i.q1 { background: linear-gradient(90deg, color-mix(in srgb, #e08a2e 78%, var(--card)), #e08a2e); }
+.bar > i.q2 { background: linear-gradient(90deg, color-mix(in srgb, #d9b93a 78%, var(--card)), #d9b93a); }
+.bar > i.q3 { background: linear-gradient(90deg, color-mix(in srgb, var(--ok) 78%, var(--card)), var(--ok)); }
+.bar > i.q4 {
+  background: linear-gradient(90deg, var(--ok), #0b6f3c 70%, #064a27);
+  box-shadow: 0 0 7px color-mix(in srgb, #19d073 45%, transparent);
+}
+
+/* Prozentzahl mit Unterlegung — im Baukasten neben jedem Thema und Unterthema.
+   Die Zahl bleibt lesbar, die Farbe sagt auf einen Blick, wo es steht. */
+.q-pille {
+  display: inline-block; margin-left: 4px; padding: 0 7px;
+  border-radius: 999px; font-size: .74rem; font-weight: 700;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  background: var(--q-bg); color: var(--q-ink);
+  border: 1px solid var(--q-bd);
+}
+.q-pille.q1 { --q-bg: color-mix(in srgb, #e08a2e 20%, var(--card)); --q-ink: #8a5411; --q-bd: color-mix(in srgb, #e08a2e 45%, transparent); }
+.q-pille.q2 { --q-bg: color-mix(in srgb, #d9b93a 22%, var(--card)); --q-ink: #75600f; --q-bd: color-mix(in srgb, #d9b93a 50%, transparent); }
+.q-pille.q3 { --q-bg: var(--ok-bg); --q-ink: var(--ok); --q-bd: color-mix(in srgb, var(--ok) 45%, transparent); }
+.q-pille.q4 { --q-bg: #0b6f3c; --q-ink: #fff; --q-bd: #16b262; }
+:root[data-theme="dunkel"] .q-pille.q1 { --q-bg: color-mix(in srgb, #e08a2e 26%, var(--card)); --q-ink: #f2b871; }
+:root[data-theme="dunkel"] .q-pille.q2 { --q-bg: color-mix(in srgb, #d9b93a 24%, var(--card)); --q-ink: #e6cd76; }
 /* Gestufter Balken: gemeistert (kräftig) → auf gutem Weg (mittel) → angefangen (hell).
    Segmente liegen nebeneinander; nur die Außenkanten sind rund. */
 .bar.stufen { display: flex; }
@@ -374,6 +468,13 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
   border: 1.5px solid color-mix(in srgb, #c9971c 45%, var(--line));
   background: linear-gradient(135deg, color-mix(in srgb, #e8b83a 9%, var(--card)), var(--card) 55%);
 }
+/* Der Akzent legt sich UEBER den goldenen Verlauf, statt ihn zu ersetzen */
+.card.pk-card.glim {
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, var(--glim-lila) 0%, transparent 55%),
+    radial-gradient(105% 85% at 0% 100%, var(--glim-rot) 0%, transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, #e8b83a 9%, var(--card)), var(--card) 55%);
+}
 .pk-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 10px; }
 .pk-head b { font-family: "Fraunces", serif; font-size: 1.1rem; }
 .pk-head .muted { font-size: .8rem; }
@@ -390,9 +491,18 @@ label.ans.missed::after  { content: "✓ wäre richtig"; border: 1.5px solid var
 .pk-box span { font-size: .68rem; color: var(--ink-soft); }
 .pk-box.ok { border-color: var(--ok); background: var(--ok-bg); }
 .pk-box.ok i { color: var(--ok); font-weight: 700; }
+/* Gold + Glanz heisst IMMER: laeuft noch, kann weitergehen. */
 .pk-box.auf { border-color: #c9971c; box-shadow: 0 2px 10px rgba(201, 151, 28, .18); }
 .pk-box.auf.neu i { animation: stern-puls 1.6s ease-in-out 2; }
 @keyframes stern-puls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+/* Abgegeben, aber nicht alle Fragen waren dran — gestrichelt = da fehlt was. */
+.pk-box.rest { border-style: dashed; border-color: var(--warn-border); }
+.pk-box.rest i { color: var(--warn-ink); }
+/* Zu Ende gebracht, Ziel noch nicht erreicht: ruhig und deutlich abgeschlossen,
+   kein Weiter-Zeichen, kein Rot. Vorher sah dieser Fall aus wie "angefangen". */
+.pk-box.wieder { border-color: var(--ink-soft); background: var(--paper-2); box-shadow: none; }
+.pk-box.wieder i { color: var(--ink-soft); }
+.pk-box.wieder span { font-variant-numeric: tabular-nums; }
 .pk-box.zu { opacity: .62; }
 .pk-zeile { margin: 10px 0 0; font-size: .88rem; }
 
@@ -513,6 +623,10 @@ details.sub > summary { list-style: none; padding: 10px 12px; font-weight: 700; 
   color: #333; background: #f7f7f7; font-size: 15px;
   border-radius: 8px; overflow: hidden; border: 1px solid #ddd;
 }
+/* Im Exam.UP-Look bleibt alles nüchtern: die Vertrautheit ist der Punkt,
+   deshalb kommt der Glimmer hier bewusst nicht rein. */
+.moodle .glim::before { display: none; }
+.moodle .glim { background-image: none; }
 .moodle-bar { background: var(--up-dark); color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: .95rem; }
 .moodle-bar .brand { font-weight: 700; letter-spacing: .01em; padding-right: 10px; border-right: 1px solid rgba(255, 255, 255, .3); }
 .moodle-bar .timer { margin-left: auto; background: #fff; color: #333; border-radius: 4px; padding: 3px 10px; }
@@ -834,7 +948,24 @@ button.tag-hebel:active { transform: scale(.96); }
   --zone-y: color-mix(in srgb, #d9b93a 26%, var(--paper-2));
   --zone-g: color-mix(in srgb, var(--ok) 24%, var(--paper-2));
 }
-.zonen-bar .fill.gold { background: linear-gradient(90deg, var(--ok), #d4a017 55%, #f0c94a); }
+/* Streckziel (12.08.): tiefes, leuchtendes Gruen statt Gold — Gold sass in
+   derselben Leiste direkt neben dem Orange der untersten Zone. */
+.zonen-bar .fill.st {
+  background: linear-gradient(90deg, var(--ok), #0b6f3c 60%, #064a27);
+  box-shadow: 0 0 8px color-mix(in srgb, #19d073 50%, transparent);
+}
+/* Ueber dem Streckziel (12.08.): derselbe Regenbogen wie die 🌈-Tage im
+   Kalender, damit Leiste und Datumsuebersicht dieselbe Sprache sprechen. */
+.zonen-bar .fill.rb {
+  /* Auf der Leiste steht keine Schrift, hier darf der Regenbogen voll gesaettigt
+     sein — in den Kalenderzellen muss er gedeckt bleiben, weil dort die weisse
+     Zahl drauf liegt. Start ist bewusst das sehr tiefe Gruen der Stufe darunter,
+     damit die Leiste von "Streckziel" nach "darueber hinaus" durchlaeuft. */
+  background: linear-gradient(90deg,
+    #064a27 0%, #0f9d58 13%, #19d073 25%, #35c7cf 40%,
+    #6a86ee 56%, #b45fd8 71%, #e5588f 86%, #f2913f 100%);
+  box-shadow: 0 0 10px color-mix(in srgb, #19d073 55%, transparent);
+}
 
 /* ============ NextGen V2: Info-System (Block F) ============ */
 .info-btn {
@@ -981,7 +1112,8 @@ button.ans:disabled { cursor: default; }
 .hm-s1 { background: color-mix(in srgb, var(--ok) 26%, var(--card)); color: var(--ink); }
 .hm-s2 { background: color-mix(in srgb, var(--ok) 50%, var(--card)); color: var(--ink); }
 .hm-s3 { background: color-mix(in srgb, var(--ok) 76%, var(--card)); color: #fff; }
-.hm-s4 { background: linear-gradient(135deg, #e8b923, #c8930d); color: #fff; box-shadow: 0 0 8px color-mix(in srgb, #d4a017 60%, transparent); }
+.hm-s4 { background: linear-gradient(135deg, #0b6f3c, #075a30); color: #fff; box-shadow: 0 0 8px color-mix(in srgb, #19d073 55%, transparent); }
+.hm-s5 { background: linear-gradient(135deg, #06341c, #03210f); color: #fff; }
 .hm-fut { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--line) 85%, transparent); font-weight: 400; }
 .hm-exam { background: color-mix(in srgb, #d4a017 16%, var(--card)); border: 1.5px solid #d4a017; font-size: 1rem; }
 .hm-heute { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--accent); font-weight: 700; }
@@ -1071,12 +1203,77 @@ button.ans:disabled { cursor: default; }
 .hm-s1 { background: color-mix(in srgb, #e08a2e 60%, var(--card)); color: var(--ink); }
 .hm-s2 { background: color-mix(in srgb, #d9b93a 72%, var(--card)); color: var(--ink); }
 .hm-s3 { background: color-mix(in srgb, var(--ok) 62%, var(--card)); color: #fff; }
-/* Streckziel = eindeutig GOLD (Jennifer 22.07.): der alte Gruen-Gold-Verlauf las
-   sich wie "irgendwo zwischen gut und mittel" — dabei ist es der beste Tag. */
+/* Die beiden obersten Stufen der Tagesleiter (Jennifer 12.08.).
+   Historie: bis 22.07. war das Streckziel ein Gruen-Gold-Verlauf, der sich wie
+   "irgendwo zwischen gut und mittel" las; danach reines Gold. Beides ist jetzt
+   ueberholt — Gold steht in derselben Leiter direkt neben dem Orange der
+   untersten Stufe und liest sich dort als Orange. Unten und oben fast dieselbe
+   Farbe ist der schlimmste Fall fuer eine Skala, also ist Gold hier raus.
+   (Das Gold des Probeklausur-Pfads ist eine andere Sache und bleibt.)
+   Geltend seit 12.08.: Streckziel = tiefes, leuchtendes Gruen mit ⭐.
+   Unterscheidbar von .hm-s3 (hell, in die Karte gemischt) ueber Helligkeit und
+   Leuchten, nicht ueber einen dritten Gruenton in derselben Helligkeit. */
 .hm-s4 {
-  background: linear-gradient(135deg, #e8b923, #c8930d); color: #fff;
-  box-shadow: 0 0 0 1.5px #b98708 inset, 0 0 8px color-mix(in srgb, #d4a017 65%, transparent);
-  text-shadow: 0 1px 1px rgba(80, 55, 0, .35);
+  color: #fff;
+  background: linear-gradient(135deg, #0b6f3c, #064a27 85%);
+  box-shadow:
+    0 0 0 1.5px #16b262 inset,
+    0 0 9px color-mix(in srgb, #19d073 55%, transparent);
+  text-shadow: 0 1px 2px rgba(0, 25, 10, .6);
+}
+/* NEU 12.08. (Jennifer): eine fuenfte Stufe UEBER dem Streckziel. Gold heisst
+   "Streckziel erreicht", der Regenbogen heisst "darueber hinaus" — das eine ist
+   kein Ueberbleibsel des anderen, es sind zwei verschiedene Tage.
+   Grundton ist ein sehr tiefes Gruen (klar unterscheidbar von .hm-s3, dem
+   hellen, in die Karte gemischten Gruen, und von Gold), darueber der
+   Regenbogen und ein gruenes Leuchten nach aussen. Das ganze Spektrum passt in
+   EINE Zelle (kein background-size ueber 100 %), sonst sieht man bei 34 px
+   Hoehe nur einen Farbausschnitt und es liest sich nicht als Regenbogen.
+   Der Schimmer liegt bei .40 Deckkraft: an der hellsten Stelle (Mint) bleibt
+   die weisse Zahl damit bei rund 4,8:1, knapp ueber AA. Weiter aufdrehen geht
+   nur, wenn der Grundton noch dunkler wird — nachgerechnet gegen Mint, Gelb
+   und Cyan, das sind die drei Spitzen des Verlaufs.
+   Vier Erfolgsstufen nebeneinander (hellgruen / gold / tiefgruen-Regenbogen)
+   duerfen auch nachts auf einem schmalen Display nicht ineinanderlaufen —
+   deshalb machen Helligkeit, Leuchten UND das Zeichen (⭐ vs. 🌈) die Arbeit,
+   nicht die Farbe allein. */
+.hm-s5 {
+  color: #fff;
+  background:
+    linear-gradient(112deg,
+      rgba(255, 120, 190, .40) 0%,
+      rgba(255, 165, 90, .40) 20%,
+      rgba(250, 235, 120, .40) 38%,
+      rgba(150, 255, 190, .40) 56%,
+      rgba(120, 220, 255, .40) 74%,
+      rgba(185, 135, 255, .40) 100%),
+    linear-gradient(135deg, #06341c, #03210f 80%);
+  box-shadow:
+    0 0 0 1.5px #12a257 inset,
+    0 0 10px color-mix(in srgb, #19d073 70%, transparent),
+    0 0 22px -4px color-mix(in srgb, #19d073 55%, transparent);
+  text-shadow: 0 1px 2px rgba(0, 25, 10, .75);
+}
+/* Leises Pulsieren des Leuchtens — nur, wenn Bewegung erwuenscht ist. Am Handy
+   laeuft die App oft mit reduzierter Bewegung; dort steht das Leuchten still
+   und der Regenbogen ist trotzdem da. */
+@media (prefers-reduced-motion: no-preference) {
+  .hm-s5 { animation: hm-leuchten 3.4s ease-in-out infinite; }
+  @keyframes hm-leuchten {
+    0%, 100% { box-shadow: 0 0 0 1.5px #0f8d4b inset, 0 0 8px color-mix(in srgb, #19d073 55%, transparent), 0 0 18px -5px color-mix(in srgb, #19d073 40%, transparent); }
+    50% { box-shadow: 0 0 0 1.5px #17b862 inset, 0 0 14px color-mix(in srgb, #19d073 85%, transparent), 0 0 28px -2px color-mix(in srgb, #19d073 65%, transparent); }
+  }
+}
+:root[data-theme="dunkel"] .hm-s5 {
+  background-image:
+    linear-gradient(112deg,
+      rgba(255, 140, 200, .42) 0%,
+      rgba(255, 180, 105, .42) 20%,
+      rgba(252, 240, 140, .42) 38%,
+      rgba(165, 255, 200, .42) 56%,
+      rgba(140, 228, 255, .42) 74%,
+      rgba(198, 155, 255, .42) 100%),
+    linear-gradient(135deg, #073f21, #042a16 80%);
 }
 .hm-exam { font-size: .9rem; }
 
@@ -1085,7 +1282,14 @@ button.ans:disabled { cursor: default; }
 .bar-marke.m75 { background: var(--ink-soft); opacity: .5; }
 .bar-marke.m90 { background: #d4a017; opacity: .85; }
 .bar.thin .bar-marke { top: -1px; bottom: -1px; }
-.siegel.rot { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
+/* Kein Rot mehr (12.08.): dasselbe warme Orange wie die unterste Stufe der
+   Beherrschungs-Leiter. Der Titel sagt "hier ist am meisten drin" — das Siegel
+   soll das auch aussehen. */
+.siegel.rot {
+  background: color-mix(in srgb, #e08a2e 20%, var(--card));
+  color: #8a5411; border: 1px solid color-mix(in srgb, #e08a2e 55%, transparent);
+}
+:root[data-theme="dunkel"] .siegel.rot { background: color-mix(in srgb, #e08a2e 26%, var(--card)); color: #f2b871; }
 
 /* Wackel-Runde (Jennifer 22.07. neu): keine eigene Karte mehr, sondern eine
    schmale Zeile ueber den Themen + Markierung und Blitz an der Kategorie selbst. */

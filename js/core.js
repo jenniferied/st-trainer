@@ -200,8 +200,19 @@ export function pkStatus() {
       }
     }
     const offen = st.offen.find((o) => o.cfg?.modus === "probeklausur" && o.cfg?.pk === pk.nr);
+    // Abgeleitete Zusatzfelder fuer die Darstellung — die Freischalt-Rechnung
+    // oben bleibt unangetastet (ROADMAP 20c: Abschluss + 100 Karten). Wichtig
+    // ist nur, dass ein Durchlauf, der abgegeben wurde BEVOR alle Fragen dran
+    // waren, nicht wie ein zu Ende gebrachter aussieht.
+    const besteS = fertige.length ? fertige.reduce((a, b) => (b.punkte > a.punkte ? b : a)) : null;
+    const ganze = fertige.filter((s) => (s.beantwortet || 0) >= (s.anzahl || 0));
     return { ...pk, frei, fertige, vorherFertig, fehltKarten,
-      beste: fertige.length ? Math.max(...fertige.map((s) => s.punkte)) : null,
+      beste: besteS ? besteS.punkte : null,
+      besteMax: besteS ? besteS.max : null,
+      besteSession: besteS,
+      bestehenBei: besteS ? besteS.bestehenBei : null,
+      // abgegeben, aber nicht zu Ende gebracht — und noch kein ganzer Durchlauf da
+      nurTeilweise: fertige.length > 0 && ganze.length === 0,
       bestanden: fertige.some((s) => s.bestanden), offen };
   });
 }
@@ -407,6 +418,39 @@ export function wiederholeSession(id) {
   st.offen.push(sess); save();
   syncLernstand();
   return sess;
+}
+// ---------- Session-Zustand (rein abgeleitet) ----------
+// Der EINE Ort, an dem "kann weitergehen" von "ist zu Ende" unterschieden wird
+// (Jennifer 12.08.: auf der Startseite sahen ein pausierter und ein
+// abgeschlossener, nicht bestandener Durchlauf gleich aus).
+// Sechs Zustaende, drei Achsen: wo die Session lebt (offen/sessions), wie
+// vollstaendig sie ist (beantwortet vs. anzahl) und wie sie ausging (bestanden/
+// abgebrochen). Nichts davon wird gespeichert — sonst fehlte das Feld an
+// Sessions, die ueber den Lernstand-Merge von einem anderen Geraet kommen.
+//   neu          angelegt, noch keine Frage beantwortet   -> Starten
+//   pausiert     mittendrin                                -> Weitermachen
+//   abgabebereit alles beantwortet, noch nicht abgegeben   -> Abgeben & auswerten
+//   restOffen    abgegeben/abgebrochen, Fragen blieben leer-> Rest bearbeiten
+//   offenZiel    fertig, aber unter der Bestehensgrenze    -> Nochmal antreten
+//   bestanden    fertig und ueber der Grenze               -> Nochmal (Score)
+// Ton: "noch nicht bestanden" / "das Ziel liegt bei N" — nie gescheitert.
+export function sessZustand(s) {
+  if (!s) return null;
+  if (!s.fertig) {
+    const n = (s.runde || []).length;
+    const done = (s.runde || []).filter((r) => r.gewaehlt).length;
+    // "Zum Abgeben", nicht "Abgeben": der Knopf fuehrt in die Runde zurueck, wo
+    // der echte Abgeben-Knopf sitzt — ein Label darf keine Aktion versprechen,
+    // die es nicht ausfuehrt.
+    if (n && done >= n) return { key: "abgabebereit", label: "alles beantwortet", kurz: "abgeben", icon: "📤", cls: "z-abgabe", tat: "Zum Abgeben", lang: "alles beantwortet, noch nicht abgegeben", weiter: true, zuEnde: false };
+    if (!done) return { key: "neu", label: "noch nicht angefangen", kurz: "bereit", icon: "▷", cls: "z-neu", tat: "Starten", weiter: true, zuEnde: false };
+    return { key: "pausiert", label: "angefangen", kurz: "angefangen", icon: "▶", cls: "z-auf", tat: "Weitermachen", weiter: true, zuEnde: false };
+  }
+  const abgebrochen = s.status === "abgebrochen";
+  const rest = Math.max(0, (s.anzahl || 0) - (s.beantwortet || 0));
+  if (s.bestanden) return { key: "bestanden", label: "bestanden", kurz: "bestanden", icon: "✓", cls: "z-ok", tat: "Nochmal antreten", weiter: false, zuEnde: true, abgebrochen };
+  if (rest > 0 && s.runde) return { key: "restOffen", label: abgebrochen ? "abgebrochen, Rest offen" : "abgegeben, Rest offen", kurz: "Rest offen", icon: "⏸", cls: "z-rest", tat: "Rest bearbeiten", weiter: true, zuEnde: false, abgebrochen, rest };
+  return { key: "offenZiel", label: abgebrochen ? "abgebrochen, gewertet" : "abgeschlossen, noch nicht bestanden", kurz: "abgeschlossen", icon: "◆", cls: "z-zuende", tat: "Nochmal antreten", weiter: false, zuEnde: true, abgebrochen };
 }
 // Alle frueheren Versuche derselben Kette (Original = Versuch 1), aelteste zuerst.
 export function vorVersuche(session) {

@@ -52,7 +52,7 @@
 
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
-import { liesHeute, tagesPunktKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte } from "./geteilt-tagesstand.js";
+import { liesHeute, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -213,7 +213,7 @@ export function zeigeGeStand(a) {
     // Die absoluten Karten stehen im Tooltip. Die Farbe traegt der geteilte
     // Leiterpunkt, nicht die Flaeche (Kontrast-Begruendung im Style-Paket).
     if (s.heute) {
-      teile.push(`<span class="tag-pille"><i class="hm-pkt ${tagesPunktKlasse(s.heute)}"></i>${tagesText(s.heute)}</span>`);
+      teile.push(`<span class="tag-pille ${tagesPilleKlasse(s.heute)}">${tagesText(s.heute)}</span>`);
       worte.push(tagesWorte(s.heute, "GE"));
     } else if (s.los) {
       // Kein Zahlenpaar, weil wir das heutige Tagesziel drueben gar nicht

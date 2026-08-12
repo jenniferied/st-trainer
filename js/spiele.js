@@ -91,15 +91,37 @@ export function spieleHeute() {
 // da leuchtet nichts (beim Oeffnen der App gibt es keinen Uebergang).
 let zuletztFertig = null;
 
-export function hubHtml() {
+/* DIE Tagesliste dieser App — eine Quelle fuer beides: die Kacheln im Hub und
+   die Zahl, die im Querlink des GE-Trainers steht.
+
+   Dass das EINE Funktion ist, ist die Lehre aus dem 12.08. abends: vorher hat
+   der GE-Trainer diese Liste aus unserem Snapshot NACHGEBAUT und kam auf eine
+   andere Zahl, als hier Kacheln stehen. Wer hier ein Spiel dazunimmt oder die
+   aktiv-Bedingung aendert, aendert damit automatisch auch die Zahl drueben —
+   und genau so soll es sein. Begruendung ausfuehrlich in
+   geteilt-tagesstand.js bei offenText(). */
+export function dailies() {
   const heute = spieleHeute();
-  const spiele = [
+  return [
     { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },
     { key: "opu", icon: "🔎", name: "Signalwörter", m: "operatoren", n: heute.opu, aktiv: !!OPS?.uebungen?.length },
     { key: "opz", icon: "↔️", name: "Zuordnen", m: "operatoren", n: heute.opz, aktiv: !!OPS },
     { key: "dt", icon: "🕵️", name: "Detektiv", m: "paraphrasieren", n: heute.detektiv, aktiv: true },
     { key: "bg", icon: "🃏", name: "Begriffe", m: "retrieval", n: heute.begriffe, aktiv: C.begriffe().length > 0 },
   ].filter((s) => s.aktiv);
+}
+
+/* Welche davon heute noch offen sind, als Liste ihrer Namen. Wandert ueber
+   snapshot() in den Lernstand und von dort in den Querlink des GE-Trainers:
+   die Laenge wird dort zur Zahl im Abzeichen, die Namen stehen im Tooltip.
+   Die LEERE Liste ist ein gueltiges Ergebnis und heisst "heute alles
+   erledigt" — sie ist etwas anderes als gar keine Liste. */
+export function offeneDailies() {
+  return dailies().filter((s) => !s.n).map((s) => s.name);
+}
+
+export function hubHtml() {
+  const spiele = dailies();
   if (!spiele.length) return "";
 
   const fertig = new Set(spiele.filter((s) => s.n).map((s) => s.key));

@@ -52,7 +52,7 @@
 
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
-import { liesHeute, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
+import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesLos, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
 
 const GE_CODE = "rose-ge";
 const CACHE_KEY = "st-nachbar-ge";
@@ -60,8 +60,6 @@ const CACHE_KEY = "st-nachbar-ge";
 // Zeitstempel (ein paar Byte); der Snapshot selbst wird nur geholt, wenn es
 // wirklich einen neuen gibt — also an Tagen, an denen Rose drueben geuebt hat.
 const POLL_MS = 10 * 60000;
-
-const SPIEL_NAMEN = { operatoren: "Signalwörter", begriffe: "Begriffe-Blitz" };
 
 const tagVon = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const heuteTag = () => tagVon(Date.now());
@@ -84,7 +82,11 @@ const leseUrl = (rest) => konfig().supabaseUrl + "/rest/v1/lernstand?code=eq." +
 // werden, wenn sich die Frage aendert — nicht nur, wenn sich die Antwort aendert.
 // WER DIE RECHNUNG ODER DIE GESPEICHERTEN FELDER AENDERT, ZAEHLT HIER HOCH.
 // v3 (12.08.): quote/sitzt/bekannt sind raus, dafuer der rohe heute-Block.
-const AUSWERTUNG_V = 3;
+// v4 (12.08. abends): das nachgebaute spiele-Verzeichnis ist raus. Die offenen
+// Tagesaufgaben kommen jetzt als fertige Liste im heute-Block (Feld offen),
+// gezaehlt vom GE-Trainer selbst. Grund: die Nachbildung uebersah dessen
+// Wiederholen-Zeile und zeigte 2, wo drueben 3 standen.
+const AUSWERTUNG_V = 4;
 function lies() {
   try {
     const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -96,25 +98,23 @@ function schreib(o) {
 }
 
 // ---------- Auswertung eines Snapshots ----------
-// Abgeleitet wird hier nur noch, was sich ehrlich ableiten laesst: welche
-// Mini-Games es drueben gibt und wann sie zuletzt liefen. Der Tagesfortschritt
-// wird NICHT gerechnet, sondern uebernommen — der GE-Trainer legt ihn fertig in
-// sein Feld heute (geteilt-tagesstand.js). Der Block wird roh gespeichert und
-// erst beim Anzeigen mit liesHeute() geprueft; so faellt er um Mitternacht von
-// selbst weg, auch wenn drueben seither niemand gepusht hat.
+// Hier wird seit dem 12.08. abends GAR NICHTS mehr abgeleitet, und das ist der
+// Punkt. Sowohl der Tagesfortschritt als auch die offenen Tagesaufgaben kommen
+// fertig aus dem fremden Feld heute (geteilt-tagesstand.js); der GE-Trainer
+// zaehlt beides selbst, aus derselben Funktion, aus der er seine Tagesliste
+// baut.
+//
+// Was hier vorher stand — ein Verzeichnis "je Mini-Game der letzte Tag, an dem
+// es lief", gebaut aus dem fremden antwortLog — hat genau den Fehler erzeugt,
+// den Jennifer am Abend gefunden hat: es sah nur Eintraege mit modus "spiel"
+// und uebersah damit die Wiederholen-Zeile des GE-Trainers. Der Link sagte 2,
+// die Liste drueben zeigte 3.
+//
+// Der Block wird roh gespeichert und erst beim Anzeigen mit liesHeute()
+// geprueft; so faellt er um Mitternacht von selbst weg, auch wenn drueben
+// seither niemand gepusht hat.
 function werteAus(ts, daten) {
-  const log = (daten && daten.antwortLog) || [];
-
-  // Je Mini-Game der letzte Tag, an dem es lief. Der Schluesselsatz ist zugleich
-  // die Liste der Spiele, von deren Existenz wir sicher wissen.
-  const spiele = {};
-  for (const a of log) {
-    if (!a || a.modus !== "spiel" || !a.spiel) continue;
-    const t = tagVon(a.ts);
-    if (!(a.spiel in spiele) || t > spiele[a.spiel]) spiele[a.spiel] = t;
-  }
-
-  return { ts, heute: (daten && daten.heute) || null, spiele };
+  return { ts, heute: (daten && daten.heute) || null };
 }
 
 // ---------- Abruf ----------
@@ -135,7 +135,9 @@ export function hole() {
       if (!ts) return null;
       // Schritt 2: den Snapshot nur holen, wenn es ein neuer ist. An Tagen ohne
       // GE-Uebung faellt damit gar kein grosser Abruf an.
-      if (c && c.ts === ts && c.spiele) {
+      // "heute" als Schluessel, nicht als Wert: der Block DARF null sein (drueben
+      // laeuft eine aeltere Fassung), der Cache ist trotzdem vollstaendig.
+      if (c && c.ts === ts && Object.prototype.hasOwnProperty.call(c, "heute")) {
         const frisch = Object.assign({}, c, { geholt: Date.now() });
         schreib(frisch);
         return frisch;
@@ -160,25 +162,23 @@ export function hole() {
 export function geStand() {
   const c = lies();
   if (!c || !c.ts) return null;
-  const heute = heuteTag();
-  const frisch = tagVon(c.ts) === heute;
-  const namen = Object.keys(c.spiele || {});
-  // Ueber heute nur reden, wenn der Snapshot von heute ist (siehe Kopf).
-  const offen = frisch ? namen.filter((n) => c.spiele[n] !== heute) : [];
+  const h = liesHeute(c);
   return {
     ts: c.ts,
-    frisch,
-    offen,
+    frisch: tagVon(c.ts) === heuteTag(),
+    // Die offenen Tagesaufgaben, wie der GE-Trainer sie selbst gezaehlt hat.
+    // null heisst "wir wissen es nicht" (kein Block, fremde Version, oder der
+    // Block ist von gestern) und ist streng etwas anderes als die leere Liste,
+    // die "heute alles erledigt" heisst. Aus null nie Entwarnung machen.
+    offen: liesOffen(h),
     // liesHeute() verwirft alles, was nicht von heute ist — auch einen Block,
     // der noch im Cache liegt, weil drueben seit gestern niemand gepusht hat.
-    heute: liesHeute(c),
+    heute: h,
     // Genau dieser Fall ist der Anstupser: kein frischer Block, weil der letzte
     // Push von gestern oder aelter ist. Begruendung in tagesLos().
     los: tagesLos(c.ts),
   };
 }
-
-const spielName = (k) => SPIEL_NAMEN[k] || k;
 
 /* Traegt den Zustand in den Querlink ein: erst synchron aus dem Cache (damit
    beim Blaettern nichts flackert), dann noch einmal nach dem Abruf. Der Abruf
@@ -199,16 +199,25 @@ export function zeigeGeStand(a) {
     // Dasselbe Bauteil wie auf den Tageskacheln (Muster-Block im CSS,
     // "offen / erledigt"). Gleiches Wort, gleiche Punktgroesse, gleicher Takt —
     // Rose soll es an beiden Stellen ohne Nachdenken wiedererkennen.
-    if (s.offen.length) {
+    if (s.offen && s.offen.length) {
       // .dringend (rot, schneller Puls) und die ZAHL kamen am 12.08. nachmittags
       // dazu — beides, damit dieser Link und der Gegenlink im GE-Trainer dasselbe
       // sagen und gleich aussehen. Wortwahl aus offenText(), damit sie nicht in
       // zwei Dateien getrennt driftet; Farbe und ihre Grenze im CSS, Block 2b.
+      // Zahl UND Namen kommen aus derselben Liste, die der GE-Trainer geschickt
+      // hat — deshalb koennen Abzeichen und Tooltip nicht auseinanderlaufen.
       teile.push(`<span class="stand-badge neu dringend kompakt"><i class="puls dringend">✦</i> ${offenText(s.offen.length)}</span>`);
-      worte.push("heute noch offen: " + s.offen.map(spielName).join(", "));
-    } else if (s.frisch) {
+      worte.push("heute noch offen: " + s.offen.join(", "));
+    } else if (s.offen) {
+      /* Die LEERE Liste, nicht bloss ein frischer Zeitstempel. Hier stand bis zum
+         12.08. abends `s.frisch` — und das war ein Fehler in der verbotenen
+         Richtung: ein Snapshot von heute beweist, dass drueben GEUEBT wurde, aber
+         nicht, dass die Tagesaufgaben erledigt sind. Lief drueben eine aeltere
+         App-Fassung (kein Feld offen), gab dieser Zweig Entwarnung, ohne etwas zu
+         wissen. Ein Testfall dafuer liegt jetzt in pruef-zahl.py.
+         Wortgleich mit der Gegenrichtung im GE-Trainer. */
       teile.push(`<span class="stand-badge sitzt kompakt">✓ heute</span>`);
-      worte.push("heute drüben schon geübt");
+      worte.push("drüben ist heute alles erledigt");
     }
     // Der Tagesfortschritt drueben, in Prozent vom Tagespensum (Jennifer,
     // 12.08.: "ne prozent"). 100 % heisst "Pensum geschafft", nicht "alles

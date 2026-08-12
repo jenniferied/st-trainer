@@ -417,6 +417,25 @@ label.check:has(input:disabled) { opacity: .55; }
 .seg button.on { background: var(--ink); color: var(--paper); }
 .field { margin-bottom: 16px; }
 .field > .flabel { font-weight: 700; font-size: .92rem; margin-bottom: 7px; display: block; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; }
+/* Ein Feld, das die Wahl DARUEBER verfeinert, statt daneben zu stehen (12.08.,
+   Jennifer: "es muss klarer dargestellt werden, dass das Unterpunkte sind").
+   Die Leitlinie links ist der ganze Trick — sie bindet den Block optisch an das
+   Feld darueber, ohne dass ein zweiter Rahmen die Seite zerschneidet. Die
+   Beschriftung wird bewusst KLEINER und ohne Versalien gesetzt: gleiche Optik
+   hiesse gleiche Ebene. Einrueckung bleibt bei 10+10 px, damit die zwei
+   Segment-Knoepfe auf 360 px noch nebeneinander passen. */
+.field.unter { margin-left: 10px; padding-left: 10px; border-left: 2px solid var(--line); }
+.field.unter > .flabel { text-transform: none; letter-spacing: 0; font-size: .86rem; }
+/* Warnung im Baukasten: fuer den Fall, dass eine Einstellung eine andere
+   aushebelt. Muss sich von den grauen Erklaerzeilen abheben — grau in grau
+   liest niemand, und genau diese Zeile beantwortet die Frage "blockiert das
+   eine das andere?".
+   Die Schriftfarbe ist NICHT --warn-ink: das ergibt auf --warn-bg im hellen
+   Theme nur 4,43:1 und reisst damit die 4,5:1, auf die das Abzeichen "offen"
+   am 12.08. gebracht wurde. Eine Spur dunkler sind es 4,86:1. Nachts bleibt
+   --warn-ink (7,56:1) — dort ist nichts zu heilen. */
+.feld-warnung { background: var(--warn-bg); color: #826718; border: 1px solid var(--warn-border); border-radius: 10px; padding: 8px 11px; font-size: .87rem; line-height: 1.45; margin: 8px 0 0; }
+:root[data-theme="dunkel"] .feld-warnung { color: var(--warn-ink); }
 
 /* ---------- Quiz (Trainer-Look) ---------- */
 .q-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }

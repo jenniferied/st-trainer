@@ -4,6 +4,20 @@
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
 import { heuteBlock } from "./geteilt-tagesstand.js";
 
+/* ---------- Wer zaehlt die offenen Tagesaufgaben? ----------
+   Die Liste der Tagesaufgaben lebt in spiele.js (dailies()), und spiele.js
+   importiert diese Datei hier — ein Import in die Gegenrichtung waere ein
+   Kreis. Deshalb meldet sich der Zaehler an, statt geholt zu werden;
+   angemeldet wird er beim Start in main.js.
+
+   Nicht angemeldet heisst null heisst "wir wissen es nicht" — und das ist
+   streng etwas anderes als die 0, die "heute alles erledigt" heisst. Der
+   heute-Block laesst das Feld dann weg, und der Querlink drueben zeigt gar
+   kein Offen-Signal, statt faelschlich Entwarnung zu geben.
+   Der GE-Trainer hat dieselbe Bauweise in sync.js. */
+let offenZaehler = null;
+export function setzeOffenZaehler(f) { offenZaehler = typeof f === "function" ? f : null; }
+
 export const THEMEN = {
   "schultheorie-1":        { name: "Schultheorie I",   kurz: "ST I",  color: "var(--c-st1)", hex: "#2f5d9e" },
   "schultheorie-2":        { name: "Schultheorie II",  kurz: "ST II", color: "var(--c-st2)", hex: "#7a4f9e" },
@@ -1269,7 +1283,8 @@ function snapshot() {
   //     Zahl, die es nie gab.
   const plan = st.settings.tzPlan;
   const heuteKey = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toDateString(); })();
-  const heute = plan && plan.tag === heuteKey ? heuteBlock(heuteAntworten(), plan) : null;
+  const heute = plan && plan.tag === heuteKey
+    ? heuteBlock(heuteAntworten(), plan, offenZaehler ? offenZaehler() : null) : null;
   return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen,
     geloescht: st.geloescht, mk: st.mk || {}, ...(heute ? { heute } : {}) };
 }

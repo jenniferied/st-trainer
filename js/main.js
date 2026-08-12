@@ -1101,6 +1101,38 @@ const AUSWAHL_OPT = [
   ["klausur", "Klausur-Mix", "Klausur-Mix: querbeet über alle Themen verteilt wie in der echten Prüfung, ohne Rücksicht auf schwer oder leicht."],
   ["sprach", "Verstehen", "Verstehen: bevorzugt Fragen, die sich sperrig lesen — NICHT-Fragen, lange Stämme und was dir bisher schwerfiel."],
 ];
+
+/* ---------- Texte der Erklaer-Abfrage (12.08., Jennifer) ----------
+   Vorher stand hier EIN grauer Absatz, der beide Modi in einem Satzpaar
+   abhandelte, und darunter ein zweites Feld "Wie streng", das aussah wie eine
+   dritte, unabhaengige Einstellung. Jennifers Befund: man sieht weder, worin
+   sich die Modi wirklich unterscheiden, noch dass die Strenge zu BEIDEN gehoert
+   — "ich check's nicht ganz, ob das eine das andere blockiert".
+
+   Deshalb jetzt zweistufig und beides wechselnd:
+   ERKLAER_TEXT zeigt den ABLAUF des gewaehlten Modus als Kette. Eine Kette ist
+   hier besser als Prosa, weil der Unterschied zwischen den Modi genau in der
+   Zahl der Stationen liegt (drei gegen fuenf) — das sieht man, ohne zu lesen.
+   STRENG_TEXT haengt an BEIDEN Achsen, nicht nur an der Strenge. Der Grund ist
+   nicht Kosmetik: im Modus "raten" aendert das Ueberspringen die FORM des
+   Ablaufs, es faellt naemlich Stufe 2 komplett weg (erklaerFlow, "if
+   (!selbst.skip)"). Im Modus "begruenden" ist es bloss ein Link mehr. Ein
+   gemeinsamer Satz fuer beide Faelle waere fuer je einen davon gelogen. */
+const ERKLAER_TEXT = {
+  aus: "<b>Ablauf:</b> falsch gekreuzt → Auflösung → Erklärungen. Ohne Zwischenschritt, am schnellsten.",
+  begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung. <i>Ein Tipp-Schritt, der leichtere von beiden.</i>",
+  raten: "<b>Ablauf:</b> falsch gekreuzt → du siehst nur, <b>wie viele</b> daneben lagen, nicht welche → du tippst, welche du meinst und warum → Auflösung + KI-Rückmeldung → du hältst fest, was du nicht auf dem Schirm hattest. <i>Zwei Tipp-Schritte, der anspruchsvollere von beiden.</i>",
+};
+const STRENG_TEXT = {
+  begruenden: {
+    standard: "Unter dem Textfeld steht ein Link ‚Nur die Antwort zeigen'. Wer ihn nimmt, springt direkt zur Erklärung.",
+    streng: "Kein Überspringen-Link. Die Erklärung erscheint erst nach dem Knopf ‚Erklärung ansehen'.",
+  },
+  raten: {
+    standard: "Unter dem Textfeld steht ein Link ‚Nur die Antwort zeigen'. <b>Achtung, hier ändert er mehr als bei ‚Begründen':</b> wer ihn nimmt, überspringt auch den zweiten Schritt — der Ablauf verkürzt sich also wirklich. Und ‚Weiter' geht schon, während der zweite Schritt noch offen steht.",
+    streng: "Kein Überspringen-Link, in keinem der beiden Schritte. Weiter geht es erst nach ‚Merken' am Ende.",
+  },
+};
 // Seit 21.07. (Jennifers Wunsch): ALLE Optionen sind in JEDEM Modus da — die
 // Presets sind nur Voreinstellungen. Einzige Ausnahme: die volle Klausur-
 // Simulation bleibt fix (42 Fragen, Exam-Look, Feedback am Ende — ihr Quirk
@@ -1171,21 +1203,32 @@ function builder({ preset }) {
       <p class="muted" id="auswahlHint"></p></div>
     <div class="field"><span class="flabel">Pausierbar</span><div class="seg" id="pause">
       <button data-v="ja" class="${istKlausur ? "" : "on"}">Ja</button><button data-v="nein" class="${istKlausur ? "on" : ""}">Nein (wie echt)</button></div></div>
-    ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span><div class="seg" id="erklaer">
+    ${!istKlausur ? `<div class="field"><span class="flabel">Erklär-Abfrage bei Fehlern ${M.infoBtn("selbsterklaerung")}</span>
+      <p class="muted" style="margin:0 0 8px">Kommt nur bei Fragen, bei denen etwas falsch war: Du hältst erst selbst fest, woran es lag — <b>bevor</b> du die Erklärung liest. <b>Der Timer hält an, solange du tippst.</b></p>
+      <div class="seg" id="erklaer">
       ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Erst raten"]].map(([v, l]) =>
         `<button data-v="${v}" class="${v === "begruenden" ? "on" : ""}">${l}</button>`).join("")}</div>
-      <p class="muted">Begründen: richtig/falsch ist markiert, du sagst kurz warum — dann Erklärungen + KI-Feedback. Erst raten: du siehst nur, WIE VIELE Kreuze falsch waren, tippst welche und warum — nach der Auflösung hältst du nicht erkannte Fallen kurz fest. <b>Der Timer hält an, solange du tippst.</b></p>
-      <div id="strengFeld" style="margin-top:10px"><span class="flabel">Wie streng</span><div class="seg" id="streng">
+      <p class="muted" id="erklaerModusHint" style="margin-top:7px"></p>
+      <p class="feld-warnung hidden" id="erklaerHint"></p>
+      <div class="field unter" id="strengFeld" style="margin-top:12px"><span class="flabel">↳ Dazu, in beiden Fällen: darfst du überspringen?</span><div class="seg" id="streng">
         ${[["standard", "Mit Überspringen"], ["streng", "Erst erklären"]].map(([v, l]) =>
           `<button data-v="${v}" class="${strengVor === v ? "on" : ""}">${l}</button>`).join("")}</div>
-      <p class="muted">Mit Überspringen: es gibt einen ‚Nur die Antwort zeigen'-Link. Erst erklären: der Link fehlt, du schreibst erst etwas. Deine Wahl wird gemerkt.</p></div>
-      <p class="muted" id="erklaerHint" style="margin-top:6px"></p></div>` : ""}
+      <p class="muted" id="strengHint" style="margin-top:7px"></p>
+      <p class="muted" style="margin-top:7px">Diese Zeile gilt für <b>Begründen und Erst raten gleichermaßen</b> — macht vier Varianten, und keine der beiden Zeilen sperrt etwas in der anderen. Gemerkt wird nur diese untere Wahl; oben startet der Baukasten jedes Mal wieder auf ‚Begründen'.</p></div></div>` : ""}
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Paraphrasieren vor den Antworten ${M.infoBtn("paraphrasieren")}</span><div class="seg" id="para">
       <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
-      <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>
-    <div class="field"><span class="flabel">Optionen einzeln beurteilen ${M.infoBtn("abstempeln")}</span><div class="seg" id="stempeln">
-      <button data-v="aus" class="on">Aus</button><button data-v="an">An</button></div>
-      <p class="muted">An: Jede Antwort erscheint einzeln mit ‚trifft zu / trifft nicht zu' — die Kreuze setzt die App danach automatisch richtig herum, auch bei NICHT-Fragen. Feedback kommt dabei immer direkt nach jeder Frage.</p></div>` : ""}
+      <p class="muted">An: Vor den Antwortoptionen siehst du erst nur die Frage und sagst kurz, was sie will — dann geht es normal weiter.</p></div>` : ""}
+    <!-- ARCHIVIERT 12.08.2026 (Jennifer): hier stand das Feld "Optionen einzeln
+         beurteilen" (id="stempeln"), das jede Frage durch Einzel-Urteile
+         schickte. Raus, weil es in 38 Sessions ueber vier Wochen KEIN EINZIGES
+         MAL an war (cfg.stempeln true: 0/38, ebenso Paraphrase 0/38 und der
+         Modus "sprach" 0/38) und weil es eine Runde spuerbar verlangsamt.
+         Nur der EINSTIEG ist weg, der Ablauf lebt: zeigSprach() laeuft weiter,
+         der Modus "Sprachverstaendnis" benutzt ihn, R.cfg.stempeln bleibt in
+         zeigFrage() abgefragt (alte offene Runden!), die Badge in der Historie
+         zeigt ihn weiter, und der Info-Text "abstempeln" steht in methoden.js.
+         Zurueckholen heisst also: dieses Feld wieder einsetzen und die zwei
+         segVal("stempeln")-Zeilen unten in starte() reaktivieren. -->
     ${!istKlausur && !istSprach ? `<div class="field"><span class="flabel">Feedback</span><div class="seg" id="fb">
       <button data-v="sofort" class="${P.fb === "sofort" ? "on" : ""}">Sofort je Frage</button><button data-v="ende" class="${P.fb === "ende" ? "on" : ""}">Erst am Ende${preset === "halbe" ? " (wie echt)" : ""}</button></div>
       ${`<p class="muted">In der Klausuransicht heißt Sofort: Überprüfen-Button unter jeder Frage — danach ist sie festgelegt.</p>`}</div>` : ""}
@@ -1241,15 +1284,31 @@ function builder({ preset }) {
             : `🎯 ${da} Pingo-Fragen stehen für diese Auswahl bereit.`;
       }
     }
-    // Erklaer-Abfrage braucht Sofort-Feedback — sonst gibt es keinen Moment,
-    // in dem Rose vor der Aufloesung noch selbst denken koennte
+    // ---- Erklaer-Abfrage: drei Zeilen, die zusammen die Frage beantworten
+    // "was aendert sich, und blockiert das eine das andere?"
+    const eModus = segVal("erklaer") || "begruenden";
+    const eStreng = segVal("streng") || strengVor;
+    const emh = document.getElementById("erklaerModusHint");
+    if (emh) emh.innerHTML = ERKLAER_TEXT[eModus] || "";
+    // Die Strenge liest sich in jedem Modus anders — deshalb beide Achsen.
+    const sh = document.getElementById("strengHint");
+    if (sh) sh.innerHTML = (STRENG_TEXT[eModus] || {})[eStreng] || "";
+    // Die EINZIGE echte Blockade im Baukasten, und sie kommt von aussen: ohne
+    // Sofort-Feedback gibt es keinen Moment zwischen Antwort und Aufloesung, in
+    // dem Rose noch selbst denken koennte. Steht darum direkt unter der Wahl,
+    // die ausgehebelt wird, und in Warnfarbe statt in Grau — als graue Zeile
+    // ganz unten hat sie diese Frage vier Wochen lang nicht beantwortet.
     const eh = document.getElementById("erklaerHint");
-    if (eh) eh.textContent = (segVal("fb") || P.fb) === "ende" && segVal("erklaer") !== "aus"
-      ? "Kommt nur bei ‚Sofort je Frage' — mit Feedback erst am Ende gibt es keinen Moment dafür."
-      : "";
+    if (eh) {
+      const blockiert = (segVal("fb") || P.fb) === "ende" && eModus !== "aus";
+      eh.classList.toggle("hidden", !blockiert);
+      eh.innerHTML = blockiert
+        ? "⚠️ <b>So kommt die Abfrage nicht.</b> Weiter unten steht Feedback auf ‚Erst am Ende' — dann gibt es zwischen Antwort und Auflösung keinen Moment für die Zwischenfrage. Für die Erklär-Abfrage muss Feedback auf ‚Sofort je Frage' stehen."
+        : "";
+    }
     // Die Strenge gehoert zur Abfrage: ohne Abfrage keine Strenge-Frage
     const sf = document.getElementById("strengFeld");
-    if (sf) sf.classList.toggle("hidden", segVal("erklaer") === "aus");
+    if (sf) sf.classList.toggle("hidden", eModus === "aus");
   };
   bindThemen();
   updateHint();
@@ -1281,12 +1340,15 @@ function builder({ preset }) {
       auswahl: segVal("auswahl") || P.auswahl || "smart",
       anzahl: fixAnzahl || +(segVal("anz") || 10),
       timerModus: segVal("timer"), pausierbar: segVal("pause") === "ja",
-      feedback: istKlausur ? "ende" : istSprach || segVal("stempeln") === "an" ? "sofort" : segVal("fb") || "ende",
+      feedback: istKlausur ? "ende" : istSprach ? "sofort" : segVal("fb") || "ende",
       examLook, unterthemen,
       sprache,
       nurPingo: pingoAn(),
       paraphrase: !examLook && !istSprach && segVal("para") === "an",
-      stempeln: !examLook && !istSprach && segVal("stempeln") === "an",
+      // Archiviert 12.08. — das Feld dazu ist oben ausgebaut, siehe Kommentar
+      // dort. Bleibt als Feld stehen, damit die Historie und zeigFrage() nicht
+      // zwischen "aus" und "gab es damals noch nicht" raten muessen.
+      stempeln: false,
       erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "begruenden",
       erklaerStreng: streng,
     });
@@ -2822,6 +2884,11 @@ function verlauf() {
     await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
     await C.ladeProbeklausuren(); // optional — ohne Datei fehlt nur die Klausurtraining-Karte
     await Spiele.ladeSpiele(); // optional — Kacheln erscheinen nur mit Daten (Detektiv immer)
+    // Erst JETZT anmelden, nicht frueher: dailies() haengt an den geladenen
+    // Spieldaten (VIG/OPS/Begriffe). Vor dem Laden waere die Liste kuerzer und
+    // wir wuerden zu WENIG offene Aufgaben in den Lernstand schreiben — also in
+    // die verbotene Richtung irren. Steht deshalb vor flushSync(), das pusht.
+    C.setzeOffenZaehler(Spiele.offeneDailies);
     Llm.initChat(C.frage);     // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback
     C.flushSync();
     home();

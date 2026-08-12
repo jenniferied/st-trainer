@@ -192,12 +192,21 @@ async function senden(messages, st) {
   try {
     const steuerung = new AbortController();
     const wecker = setTimeout(() => steuerung.abort(), 14000);
-    budgetVerbrauch();
     const r = await fetch(url(), {
       method: "POST", headers: kopf(), signal: steuerung.signal,
       body: JSON.stringify({ art: "maskottchen", stand: st, messages }),
     });
     clearTimeout(wecker);
+    // Erst zaehlen, wenn wirklich ein Status zurueckkam. Der Zaehler stand
+    // frueher VOR dem fetch: ist die Function tot oder falsch konfiguriert,
+    // lief er trotzdem hoch, Rose bekam zwanzig freundliche Fallbacks und
+    // danach "Fuer heute hab ich genug geredet" — was nicht stimmte und sich
+    // anfuehlt, als wuerde die App sie anluegen. Ein abgebrochener Socket
+    // wirft und kommt hier nie an, kostet also auch nichts.
+    // Auch ein 4xx/5xx zaehlt: der Server wurde erreicht, und ein nicht
+    // zaehlender Fehlerpfad waere eine Schleife ohne Kostenbremse.
+    // Dieselbe Reihenfolge steht in ge-trainer/app/js/llm.js (maskottchen).
+    budgetVerbrauch();
     if (!r.ok) return null;
     const d = await r.json();
     // Der Zweig antwortet mit { antwort }. Alles andere (auch das

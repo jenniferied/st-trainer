@@ -18,14 +18,19 @@ window.ST_CONFIG = {
   // 18.09.2026 von Rose BESTAETIGT (21.07.). GE-Klausur: 10.09.2026.
   klausurTag: "2026-09-18",
   // Kreaturen-Chat, Stufe 2: freier Text ueber die Edge Function.
-  // AUS, bis `supabase functions deploy llm` mit dem Zweig art "maskottchen"
-  // gelaufen ist (Login und Anthropic-Key liegen bei Jennifer). Solange baut
+  // ACHTUNG, Stand 12.08. abends: der Zweig art "maskottchen" ist in
+  // supabase/functions/llm/index.ts NOCH GAR NICHT GESCHRIEBEN — dort steht
+  // weiterhin nur `body.art === "chat" ? "chat" : "feedback"`. Stufe 2 heisst
+  // hier also "noch schreiben, DANN deployen", nicht "nur noch deployen".
+  // Der GE-Trainer hat den Zweig seit dem 12.08. (llm-ge/index.ts), er kann
+  // als Vorlage dienen (SYSTEM_MASKOTTCHEN, SCHEMA_MASKOTTCHEN, standBlock).
+  // Bis dahin AUS (Login und Anthropic-Key liegen bei Jennifer). Solange baut
   // das Sheet gar kein Eingabefeld — Rose sieht nur die Schnellantworten und
   // nichts, was auf ein fehlendes Feature hindeutet.
   // Ein Schalter und kein Ausprobieren, weil die derzeit deployte Function ein
   // unbekanntes art still in den Feedback-Zweig routet und dann Muell liefert
   // statt eines sauberen Fehlers.
-  mkChatFreitext: false,
+  mkChatFreitext: true,
   // Tagesziel ist seit 18.07. dynamisch (tagesPlan() in core.js rechnet Minimum/
   // Tagespensum/Streckziel taeglich aus dem echten Restbedarf) — kein fester Wert mehr.
 };

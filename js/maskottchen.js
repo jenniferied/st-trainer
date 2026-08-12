@@ -101,6 +101,34 @@ export const EIER = [
     regel: (z, sp) => sp % 3 === 1,
     teaser: "Warm. Und es hat sich schon zweimal gedreht, als du weggeschaut hast." },
 ];
+/* Die Ei-Keys sind seit der ersten Fassung umbenannt worden:
+     1. streifen · tupfen · zickzack
+     2. gestreift · herzchen · sternchen · gesprenkelt · gewellt · marmoriert
+     3. herzchen · sternchen · gestreift   (heute)
+   Wer in der ersten Runde ausgesucht hat, haette danach eine tote Wahl im
+   Stand: die Ankunft kaeme neu, obwohl laengst gewaehlt wurde. Im GE-Trainer
+   ist genau das passiert.
+
+   Zuordnung auf das jeweils naechstliegende heutige Ei. Wem das nicht
+   gefaellt, wechselt ueber "anderes Ei aussuchen".
+
+   LEHRE: einen gespeicherten Schluessel umzubenennen entwertet still jede
+   bereits getroffene Wahl. Wenn es sein muss, gehoert die Zuordnung im
+   selben Commit dazu. */
+const ALT_KEYS = {
+  streifen: "gestreift", gewellt: "gestreift", marmoriert: "gestreift",
+  tupfen: "herzchen",
+  zickzack: "sternchen", gesprenkelt: "sternchen",
+};
+(function migriereAltenEiKey() {
+  const k = C.state().mk?.ei;
+  if (!k || EIER.some((e) => e.key === k)) return; // leer oder gueltig
+  const neu = ALT_KEYS[k];
+  if (!neu) return; // unbekannt: lieber die Ankunft neu zeigen als raten
+  C.state().mk.ei = neu;
+  C.save();
+})();
+
 export const eiIndex = () => {
   const k = C.state().mk?.ei;
   const i = EIER.findIndex((e) => e.key === k);

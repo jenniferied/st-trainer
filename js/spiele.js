@@ -75,29 +75,54 @@ export function spieleHeute() {
 // Vier gleich gebaute Karten nebeneinander: grosses Icon, Name darunter,
 // i-Info IMMER oben rechts (frueher sass es im Untertitel und sprang — dazu
 // war es ein Button im Button, den der Parser zerlegt hat; Karte ist jetzt
-// bewusst ein div[role=button]). Heute noch offene Karten sind farbig
-// hervorgehoben und neutralisieren sich nach der ersten Runde (kein Streak-
-// Druck: ein Haekchen, nie ein Zaehler).
+// bewusst ein div[role=button]).
+//
+// Zustand steht seit dem 12.08. an der Karte statt nur in der Bildunterschrift
+// (Jennifer: "die kacheln vom taeglichen training ... offenes soll pulsieren").
+// Bewusst DIESELBE Sprache wie im Stoebern: "✦ offen" mit derselben
+// stand-badge.neu und "✓ geübt" mit derselben stand-badge.sitzt — wer die eine
+// Oberflaeche gelesen hat, kann die andere sofort. Das ✦ pulsiert langsam und
+// versetzt; erledigt heisst gruene Kante plus einmaliges Aufleuchten beim
+// Uebergang. Kein Zaehler, kein Streak-Druck, kein Konfetti.
+//
+// Was beim letzten Aufbau schon erledigt war. Nur der ECHTE Uebergang leuchtet
+// auf — sonst blitzt beim Zurueckkommen auf die Startseite jedes Mal alles auf,
+// was heute frueher schon gelaufen ist. null = erster Aufbau dieser Sitzung,
+// da leuchtet nichts (beim Oeffnen der App gibt es keinen Uebergang).
+let zuletztFertig = null;
+
 export function hubHtml() {
   const heute = spieleHeute();
-  const kachel = (key, icon, name, mKey, n, aktiv) => aktiv
-    ? `<div class="spiel-card ${n ? "done" : "offen"}" data-spiel="${key}" role="button" tabindex="0"
-         aria-label="${name}${n ? " — heute schon geübt" : " — heute noch offen"}">
-        <span class="info-btn spiel-info" data-methode="${mKey}" role="button" title="Warum das hilft">ⓘ</span>
-        ${n ? `<span class="spiel-done" title="heute schon ${n}× geübt">✓</span>` : ""}
-        <span class="spiel-icon">${icon}</span>
-        <b>${name}</b>
-      </div>` : "";
-  const karten = [
-    kachel("vp", "🔀", "Paare", "interleaving", heute.vp, !!VIG),
-    kachel("opu", "🔎", "Signalwörter", "operatoren", heute.opu, !!OPS?.uebungen?.length),
-    kachel("opz", "↔️", "Zuordnen", "operatoren", heute.opz, !!OPS),
-    kachel("dt", "🕵️", "Detektiv", "paraphrasieren", heute.detektiv, true),
-    kachel("bg", "🃏", "Begriffe", "retrieval", heute.begriffe, C.begriffe().length > 0),
-  ].filter(Boolean);
-  if (!karten.length) return "";
+  const spiele = [
+    { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },
+    { key: "opu", icon: "🔎", name: "Signalwörter", m: "operatoren", n: heute.opu, aktiv: !!OPS?.uebungen?.length },
+    { key: "opz", icon: "↔️", name: "Zuordnen", m: "operatoren", n: heute.opz, aktiv: !!OPS },
+    { key: "dt", icon: "🕵️", name: "Detektiv", m: "paraphrasieren", n: heute.detektiv, aktiv: true },
+    { key: "bg", icon: "🃏", name: "Begriffe", m: "retrieval", n: heute.begriffe, aktiv: C.begriffe().length > 0 },
+  ].filter((s) => s.aktiv);
+  if (!spiele.length) return "";
+
+  const fertig = new Set(spiele.filter((s) => s.n).map((s) => s.key));
+  const frisch = zuletztFertig === null
+    ? new Set()
+    : new Set([...fertig].filter((k) => !zuletztFertig.has(k)));
+  zuletztFertig = fertig;
+
+  const karten = spiele.map((s, i) => {
+    const n = s.n;
+    const stand = n
+      ? `<span class="stand-badge sitzt spiel-stand" title="heute schon ${n}× geübt">✓ geübt</span>`
+      : `<span class="stand-badge neu spiel-stand"><i class="puls" style="--pd:${(i * 0.35).toFixed(2)}s">✦</i> offen</span>`;
+    return `<div class="spiel-card ${n ? "done" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
+         aria-label="${s.name}${n ? " — heute schon geübt" : " — heute noch offen"}">
+        <span class="info-btn spiel-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>
+        <span class="spiel-icon">${s.icon}</span>
+        <b>${s.name}</b>
+        ${stand}
+      </div>`;
+  });
   return `<h2 class="mt">Tägliches Training</h2>
-    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Farbig = heute noch offen, ✓ = heute schon geübt. Alles zählt für dein Tagesziel.</p>
+    <p class="muted" style="margin:-2px 2px 8px;font-size:.82rem">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. <b>✦ offen</b> heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
     <div class="spiel-grid">${karten.join("")}</div>`;
 }
 // extra.begriffe: Begriffe-Blitz lebt in main.js — der Hub bekommt den Einstieg gereicht

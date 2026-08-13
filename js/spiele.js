@@ -475,7 +475,11 @@ export function dtSpiel(zurueckFn) {
   // Globaler Pingo-Filter gilt fuer die GEUEBTEN Fragen; die Konzept-Decoys kommen
   // weiter aus dem ganzen Bestand — sonst waeren die Chips im kleinen Pingo-Pool
   // schnell aufgebraucht und das Spiel raet sich von allein.
-  const basis = C.nurPingo() ? pool.filter(C.istPingo) : pool;
+  // Die Tagesspiele haben keine eigene cfg, also gilt hier die GEMERKTE Wahl —
+  // genau wie bei den Schnellstarts auf der Startseite. (Hiess bis zum 12.08.
+  // C.nurPingo(); der Rename beim Umbau auf Optionen-pro-Runde hat diese eine
+  // Stelle uebersehen, und die Kachel ist beim Antippen still gestorben.)
+  const basis = C.nurPingoGemerkt() ? pool.filter(C.istPingo) : pool;
   if (basis.length < DT_RUNDE) return zurueckFn();
   const gew = themenGewichte();
   // Negationen bewusst haeufiger (Roses teuerster Fragetyp) + schwache Unterthemen

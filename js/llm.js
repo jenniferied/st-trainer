@@ -170,10 +170,23 @@ function chatSheet(q) {
     C.frageChatSagen({ ...C.frageChatAid(q.id, chatSidFn ? chatSidFn() : null),
       qid: q.id, art: "frage", role, content });
 
+  /* PIXELSCHRIFT NUR FUER TEXT, DER GERADE AUS DEM NETZ KAM (ki-live).
+     Die Trennlinie laeuft nicht zwischen "KI-Blase" und "Rose-Blase", sondern
+     zwischen live erzeugtem und fest eingebautem Text. Ohne ki-live bleiben
+     darum: Roses eigene Zeilen, der Budget-Satz, die Stoerungsmeldung aus dem
+     catch — und alles, was beim Oeffnen aus dem Lernstand kommt, denn live
+     wird nicht gespeichert. Nach dem Neuladen steht eine frueher live erzeugte
+     Antwort also wieder normal da; sie ist dann auch nicht mehr live, sondern
+     Verlauf. Dieselbe Entscheidung wie im Kreaturen-Chat.
+
+     Getragen wird die Unterscheidung an der VERLAUFSZEILE, nicht am DOM-Knoten:
+     mal() leert den Kasten bei jeder Nachricht und baut ihn neu auf. Eine
+     Klasse nur am Knoten waere nach der naechsten Frage weg, und die erste
+     Antwort spraenge mitten im Gespraech von Pixel auf normal zurueck. */
   const mal = () => {
     box.innerHTML = verlauf.map((m) => m.role === "user"
       ? `<div class="chat-msg du">${esc(m.content)}</div>`
-      : `<div class="chat-msg ki">${Beleg.render(m.content, q.oberthema)}</div>`).join("")
+      : `<div class="chat-msg ki${m.live ? " ki-live" : ""}">${Beleg.render(m.content, q.oberthema)}</div>`).join("")
       || `<p class="muted" style="font-size:.85rem">Frag alles zu dieser Frage — warum eine Option falsch ist, was ein Begriff bedeutet, wie man sich das merkt.</p>`;
     box.scrollTop = box.scrollHeight;
   };
@@ -195,12 +208,23 @@ function chatSheet(q) {
     box.scrollTop = box.scrollHeight;
     let antwort = "";
     let echt = true;   // kam eine echte Antwort, oder reden wir gerade ueber Technik?
+    /* ZWEI FLAGGEN, DIE MAN BEIM LESEN GERN ZUSAMMENZIEHT — bitte nicht:
+         echt     entscheidet, ob die Zeile in Roses Lernstand wandert.
+         vomNetz  entscheidet allein ueber die Schrift.
+       Sie widersprechen sich in genau einem Fall, und der kommt vor: der Strom
+       liefert schon Text und bricht dann ab. Dann steht echter Modelltext in
+       der Blase (vomNetz, also Pixelschrift), aber ein halber Satz gehoert
+       nicht in den gespeicherten Verlauf (echt bleibt false). */
+    let vomNetz = false;
     try {
       tagVerbrauch();
       const r = await fetch(url(), {
         method: "POST", headers: kopf(),
         body: JSON.stringify({
           art: "chat", frage: frageDaten(q), folien: await frageFolien(q),
+          // Das Umschreiben auf role/content war frueher Kosmetik und ist jetzt
+          // tragend: es streift das Anzeigefeld live ab. Ein Feld, das nur sagt,
+          // in welcher Schrift eine Zeile steht, hat im Prompt nichts verloren.
           messages: verlauf.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -211,7 +235,14 @@ function chatSheet(q) {
       let puffer = "";
       const live = () => {
         const el = document.getElementById("chatLive");
-        if (el) { el.textContent = antwort; box.scrollTop = box.scrollHeight; }
+        if (!el) return;
+        /* Die Pixelschrift kommt ERST HIER dazu, nicht schon beim Einsetzen der
+           Blase: bis zum ersten Stueck steht dort das "…" der Warteblase, und
+           das ist App-Text. Ab dem ersten text_delta ist der Inhalt Modelltext,
+           und die Blase wechselt mit ihm die Schrift. */
+        el.className = "chat-msg ki ki-live";
+        el.textContent = antwort;
+        box.scrollTop = box.scrollHeight;
       };
       for (;;) {
         const { done, value } = await leser.read();
@@ -223,7 +254,7 @@ function chatSheet(q) {
           if (!z.startsWith("data:")) continue;
           try {
             const ev = JSON.parse(z.slice(5));
-            if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") { antwort += ev.delta.text; live(); }
+            if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") { antwort += ev.delta.text; vomNetz = true; live(); }
           } catch { /* keep-alive o.ae. */ }
         }
       }
@@ -236,7 +267,13 @@ function chatSheet(q) {
       antwort = antwort || "Die KI ist gerade nicht erreichbar — die Erklaerungen unter den Antworten helfen dir trotzdem weiter.";
     }
     document.getElementById("chatLive")?.remove();
-    verlauf.push({ role: "assistant", content: antwort || "(keine Antwort)" });
+    /* live wird NUR hier gesetzt und nur, wenn wirklich Text aus dem Netz kam.
+       Leer oder nur Leerzeichen zaehlt wie gar nichts — eine leere Blase in
+       Pixelschrift waere eine Behauptung ohne Inhalt. */
+    const kamText = vomNetz && !!antwort.trim();
+    verlauf.push(kamText
+      ? { role: "assistant", content: antwort, live: true }
+      : { role: "assistant", content: antwort || "(keine Antwort)" });
     if (echt && antwort.trim()) merken("assistant", antwort);
     mal();
     laeuft = false; senden.disabled = false;

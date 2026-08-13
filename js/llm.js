@@ -9,6 +9,7 @@
 // referenzierten Folientexte (data/folien-text.json) gehen als Ground Truth mit.
 
 import * as Beleg from "./beleg.js";
+import * as C from "./core.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const cfg = () => window.ST_CONFIG || {};
@@ -109,10 +110,29 @@ export const feedbackHtml = (fb, thema) => `<div class="llm-fb">
 export const chatBtnHtml = (q) => aktiv() && q
   ? `<button type="button" class="llm-chat-btn" data-chat-qid="${esc(q.id)}">💬 Über diese Frage sprechen</button>` : "";
 
-// Verlauf pro Frage, solange die Seite offen ist (bewusst nicht persistiert)
-const verlaeufe = new Map();
+/* Der Verlauf lag hier bis zum 13.08.2026 in einer Map im Speicher, mit dem
+   Kommentar "bewusst nicht persistiert". Das war beim Neuladen weg und auf dem
+   zweiten Geraet nie da — Rose fragt am Handy nach, warum b falsch ist, und
+   abends am Laptop ist das Gespraech verschwunden. Jetzt haengt jede Zeile im
+   Lernstand an der beantworteten Einheit (core.js, frageChat*).
+
+   Der Speicher liegt in core.js und nicht hier, weil er in den Sync gehoert:
+   snapshot() UND signatur() muessen ihn kennen, sonst wird er nie hochgeladen.
+   Dieses Modul kennt nur zwei Funktionen davon — lesen und anhaengen. */
 let chatFrageFn = null; // von main.js gesetzt: qid -> Frage-Objekt
-export function initChat(frageFn) { chatFrageFn = frageFn; }
+let chatSidFn = null;   // von main.js gesetzt: () -> Id der laufenden Session
+export function initChat(frageFn, sidFn) { chatFrageFn = frageFn; chatSidFn = sidFn || null; }
+
+/* Eine KI-Rueckmeldung auf Roses Selbsterklaerung aufheben. Bis zum 13.08. wurde
+   sie angezeigt und danach vergessen — dabei ist sie oft der Satz, der beim
+   naechsten Mal traegt. Liegt im selben Speicher wie das Gespraech, nur mit
+   art "feedback": dieselbe Vereinigung beim Merge, dieselben Grabsteine, und in
+   der Verlaufs-Ansicht steht danach beides untereinander an derselben Frage. */
+export function feedbackMerken(q, text) {
+  if (!q || typeof text !== "string" || !text.trim()) return;
+  C.frageChatSagen({ ...C.frageChatAid(q.id, chatSidFn ? chatSidFn() : null),
+    qid: q.id, art: "feedback", role: "assistant", content: text });
+}
 
 function chatSheet(q) {
   const alt = document.querySelector(".chat-ov");
@@ -136,8 +156,19 @@ function chatSheet(q) {
   const box = ov.querySelector("#chatVerlauf");
   const txt = ov.querySelector("#chatTxt");
   const senden = ov.querySelector("#chatSenden");
-  const verlauf = verlaeufe.get(q.id) || [];
-  verlaeufe.set(q.id, verlauf);
+  // Gelesen wird ueber die qid, also versuchsuebergreifend: hat Rose die Frage
+  // zweimal geuebt, steht hier trotzdem EIN Gespraech, und zwar ihres. Gehaengt
+  // wird die neue Zeile dagegen an den juengsten Versuch (frageChatAid), damit
+  // sie im Verlauf an der richtigen Zeile auftaucht.
+  const verlauf = C.frageChatZuFrage(q.id)
+    .filter((m) => m.art === "frage")
+    .map((m) => ({ role: m.role, content: m.content }));
+  // Erst beim Absenden aufloesen, nicht beim Oeffnen: das Sheet kann laenger
+  // offen sein als die Runde, und die Zeile gehoert an den Versuch, der beim
+  // Tippen der aktuelle war.
+  const merken = (role, content) =>
+    C.frageChatSagen({ ...C.frageChatAid(q.id, chatSidFn ? chatSidFn() : null),
+      qid: q.id, art: "frage", role, content });
 
   const mal = () => {
     box.innerHTML = verlauf.map((m) => m.role === "user"
@@ -158,10 +189,12 @@ function chatSheet(q) {
     }
     laeuft = true; txt.value = ""; senden.disabled = true;
     verlauf.push({ role: "user", content: frage });
-    mal();
+    merken("user", frage);   // sofort, nicht erst mit der Antwort: eine getippte
+    mal();                   // Frage ist auch dann Roses Arbeit, wenn die KI ausfaellt
     box.insertAdjacentHTML("beforeend", `<div class="chat-msg ki" id="chatLive"><span class="chat-tipp">…</span></div>`);
     box.scrollTop = box.scrollHeight;
     let antwort = "";
+    let echt = true;   // kam eine echte Antwort, oder reden wir gerade ueber Technik?
     try {
       tagVerbrauch();
       const r = await fetch(url(), {
@@ -195,10 +228,16 @@ function chatSheet(q) {
         }
       }
     } catch {
+      // Nur die Anzeige, NICHT der gespeicherte Verlauf: eine Stoerungsmeldung ist
+      // kein Gespraechsinhalt. Sonst stuende morgen in Roses Verlauf ein Satz ueber
+      // Technik statt einer Antwort auf ihre Frage — und im Prompt der naechsten
+      // Runde ebenfalls.
+      echt = false;
       antwort = antwort || "Die KI ist gerade nicht erreichbar — die Erklaerungen unter den Antworten helfen dir trotzdem weiter.";
     }
     document.getElementById("chatLive")?.remove();
     verlauf.push({ role: "assistant", content: antwort || "(keine Antwort)" });
+    if (echt && antwort.trim()) merken("assistant", antwort);
     mal();
     laeuft = false; senden.disabled = false;
   };

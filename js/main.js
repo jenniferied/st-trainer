@@ -196,12 +196,12 @@ const qBadges = (q) =>
 // Einstellungen: standard (Skip-Link sichtbar) / streng (ohne Skip) / aus.
 // Seit 12.08. (Jennifer) entscheidet die RUNDE, nicht die Einstellungen-Seite:
 // ob die Abfrage kommt, sagt cfg.erklaerModus, wie streng sie ist cfg.erklaerStreng.
-// Beides wird im Baukasten bedient. settings.selbstErkl ist nur noch die GEMERKTE
-// Vorwahl fuer den naechsten Baukasten und gilt ausserhalb von Runden (Stoebern,
-// Nacharbeit) — genau dieselbe Invariante wie bei pingoFilterGilt(cfg).
+// Beides wird im Baukasten bedient und gilt genau fuer diese eine Runde.
+// Ausserhalb von Runden (Stoebern, Nacharbeit) gibt es kein cfg — dort ist die
+// Antwort deshalb immer "streng", nicht mehr "was zuletzt eingestellt war".
 // Zwei Bugs in zwei Tagen kamen aus der Doppelung: ein globaler Schalter hat den
 // Baukasten ueberstimmt. Darum liest JEDE Stelle diese eine Funktion, und die
-// liest zuerst die laufende Runde.
+// liest ausschliesslich die laufende Runde.
 //
 // VORBELEGUNG SEIT 12.08. ABENDS (Jennifer): "streng" ist der Default, nicht
 // mehr "standard". Nur ein ausdrueckliches "standard" schaltet den
@@ -211,10 +211,22 @@ const qBadges = (q) =>
 // gehoert dann nicht in die Voreinstellung, sondern in die Ausnahme. Das gilt
 // dadurch auch fuer alle Modus-Kacheln auf einen Schlag, weil keine von ihnen
 // eine eigene Strenge mitbringt — sie erben alle diese eine Vorbelegung.
+//
+// NACHGEZOGEN 13.08.2026 (Jennifer: "not skippable everywhere"): die Vorbelegung
+// war zwar "streng", aber sie hielt nicht. settings.selbstErkl merkte sich Roses
+// letzte Wahl und spielte sie als Vorbelegung zurueck — ein einziger Tipp auf
+// "Mit Ueberspringen" machte den Link also DAUERHAFT zum Default, und ausserhalb
+// von Runden (Stoebern, Nacharbeit) galt er ab dann immer. Genau die Doppelung,
+// die schon bei Pingo zwei Bugs erzeugt hat: ein gemerkter globaler Wert
+// ueberstimmt die Voreinstellung.
+// Jetzt entscheidet AUSSCHLIESSLICH die laufende Runde. Ein Ueberspringen-Link
+// existiert nur, wenn genau diese Runde ausdruecklich "standard" gewaehlt hat;
+// alles andere — keine Runde, altes cfg ohne das Feld, unbekannter Wert — ist
+// "streng". settings.selbstErkl wird darum weder gelesen noch geschrieben; alte
+// Staende behalten das Feld, es tut nur nichts mehr.
 const seModus = (cfg) => {
   const c = cfg || R?.cfg;
-  const v = c && c.erklaerStreng != null ? c.erklaerStreng : C.state().settings.selbstErkl;
-  return v === "standard" ? "standard" : "streng";
+  return (c && c.erklaerStreng) === "standard" ? "standard" : "streng";
 };
 // Gilt in ALLEN Modi mit Sofort-Feedback (Jennifer 21.07.: die fruehere
 // Schnelle-10er-Ausnahme ist raus — sie hat nur verwirrt). Klausur-Durchlaeufe
@@ -252,6 +264,28 @@ const abgleichHtml = (sel, qid = "") => `<div class="abgleich" id="abgleich" dat
   ${sel ? `<p class="ab-echo">${AB_ECHO[sel]}</p>` : ""}</div>`;
 const bindAbgleich = (wurzel, onWahl) => wurzel.querySelectorAll("[data-ab]").forEach((b) => b.onclick = () => onWahl(b.dataset.ab));
 
+/* Aufgehobene KI-Gespraeche zu einer Frage (Jennifer, 13.08.). Zeigt beides in
+   EINER Spur, chronologisch: die Rueckmeldung auf Roses eigene Erklaerung und
+   das Gespraech aus "Ueber diese Frage sprechen". Beides ist dasselbe — sie hat
+   nachgedacht und die KI hat geantwortet —, nur an zwei Knoepfen entstanden.
+
+   Zugeklappt (details), weil es beim Durchblaettern nicht im Weg stehen soll,
+   und mit Zahl in der Zeile, damit man ohne Aufklappen sieht, dass da etwas ist.
+   Gelesen wird ueber die qid, also versuchsuebergreifend: hat Rose die Frage
+   dreimal geuebt, will sie ihr Gespraech sehen und nicht drei Fragmente.
+   Leer heisst leer — eine Ueberschrift ohne Inhalt waere nur Rauschen. */
+function gespraechHtml(qid, thema) {
+  const zeilen = C.frageChatZuFrage(qid);
+  if (!zeilen.length) return "";
+  const eine = zeilen.length === 1;
+  return `<details class="ki-verlauf"><summary>💬 ${eine ? "Eine Zeile" : zeilen.length + " Zeilen"} von dir und der KI</summary>
+    ${zeilen.map((m) => m.art === "feedback"
+      ? `<div class="llm-fb"><span class="llm-fb-kopf">💡 Rückmeldung auf deine Erklärung</span><div>${Beleg.render(m.content, thema)}</div></div>`
+      : m.role === "user"
+        ? `<div class="chat-msg du">${esc(m.content)}</div>`
+        : `<div class="chat-msg ki">${Beleg.render(m.content, thema)}</div>`).join("")}</details>`;
+}
+
 // LLM-Feedback auf die Selbsterklaerung (Block E): kommt asynchron nach dem
 // Aufdecken und wird VOR dem Abgleich eingeschoben. Scheitert lautlos —
 // der feste Ablauf (kuratierte Erklaerung + Abgleich) braucht kein LLM.
@@ -259,6 +293,10 @@ function llmSelbstFeedback(q, text, gewaehlt, erg) {
   if (!text || !Llm.aktiv()) return;
   Llm.selbstFeedback(q, text, gewaehlt, erg).then((fb) => {
     if (!fb) return;
+    // Aufheben, bevor gezeichnet wird: die Rueckmeldung gehoert Rose, auch wenn
+    // sie das Sheet in derselben Sekunde zumacht oder der Anker unten nicht mehr
+    // steht (dann kam sie frueher gar nicht erst an).
+    Llm.feedbackMerken(q, fb.feedback);
     const anker = document.getElementById("abgleich");
     if (anker && anker.dataset.qid === q.id && !document.querySelector(".llm-fb"))
       anker.insertAdjacentHTML("beforebegin", Llm.feedbackHtml(fb, q.oberthema));
@@ -1228,9 +1266,13 @@ const AUSWAHL_OPT = [
    Die vier Kombinationen aus Modus x Strenge gibt es weiterhin, und keine
    sperrt etwas in der anderen; im Baukasten steht das nicht mehr als Satz,
    weil es seit der Verschachtelung ohnehin zu sehen ist. Was NICHT symmetrisch
-   ist und deshalb hier stehen bleibt: die Strenge wird gemerkt
-   (settings.selbstErkl, Vorbelegung "streng"), der Modus nicht — oben startet
-   der Baukasten jedes Mal wieder auf "Begruenden". */
+   Seit 13.08.2026 wird KEINE der beiden Achsen mehr gemerkt: der Baukasten
+   startet jedes Mal auf "Zweiter Versuch" und "Erst erklaeren", egal was Rose
+   zuletzt gewaehlt hat. Wer fuer eine einzelne Runde etwas anderes will, stellt
+   es fuer diese Runde um — es bleibt aber nicht haengen. Warum "Zweiter Versuch"
+   und nicht "Begruenden": neu ankreuzen ist eine Diagnose, die die App exakt
+   auswerten kann, und am Handy ist Tippen die teure Bewegung. Begruenden bleibt
+   als Wahl daneben stehen. */
 const ERKLAER_TEXT = {
   aus: "<b>Ablauf:</b> falsch gekreuzt → Auflösung → Erklärungen. Ohne Zwischenschritt, am schnellsten.",
   begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung.",
@@ -1267,8 +1309,10 @@ function builder({ preset }) {
   // den Schalter gar nicht, dort greift der Filter nie (C.pingoFilterGilt).
   const pingoWaehlbar = !C.SIM_MODI.includes(P.modus);
   const pingoVor = pingoWaehlbar && C.nurPingoGemerkt();
-  // Gemerkte Vorwahl fuer die Strenge der Erklaer-Abfrage. Gemerkt werden darf
-  // sie — verbindlich ist trotzdem, was hier im Baukasten steht (cfg.erklaerStreng).
+  // Vorbelegung der Strenge: feste "streng", nicht mehr Roses letzte Wahl.
+  // seModus({}) liefert genau das (leeres cfg = kein ausdrueckliches "standard")
+  // und bleibt hier stehen, damit Vorbelegung und Auswertung dieselbe eine
+  // Funktion benutzen — zwei Stellen, die dasselbe entscheiden, driften.
   const strengVor = seModus({});
   // Die Themenliste haengt am Schalter: sobald er umgelegt wird, wird sie neu
   // gezeichnet. Zahlen, die zum Filter passen, sind der ganze Zweck der Uebung —
@@ -1314,7 +1358,7 @@ function builder({ preset }) {
       <p class="muted" style="margin:0 0 8px">Kommt nur bei Fragen, bei denen etwas falsch war: Du hältst erst selbst fest, woran es lag — <b>bevor</b> du die Erklärung liest. <b>Der Timer hält an, solange du tippst.</b></p>
       <div class="seg" id="erklaer">
       ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Zweiter Versuch"]].map(([v, l]) =>
-        `<button data-v="${v}" class="${v === "begruenden" ? "on" : ""}">${l}</button>`).join("")}</div>
+        `<button data-v="${v}" class="${v === "raten" ? "on" : ""}">${l}</button>`).join("")}</div>
       <p class="muted" id="erklaerModusHint" style="margin-top:7px"></p>
       <p class="feld-warnung hidden" id="erklaerHint"></p>
       <div class="field unter" id="strengFeld" style="margin-top:12px"><span class="flabel">↳ Dazu, in beiden Fällen: darfst du überspringen?</span><div class="seg" id="streng">
@@ -1392,7 +1436,7 @@ function builder({ preset }) {
     }
     // ---- Erklaer-Abfrage: drei Zeilen, die zusammen die Frage beantworten
     // "was aendert sich, und blockiert das eine das andere?"
-    const eModus = segVal("erklaer") || "begruenden";
+    const eModus = segVal("erklaer") || "raten";
     const eStreng = segVal("streng") || strengVor;
     const emh = document.getElementById("erklaerModusHint");
     if (emh) emh.innerHTML = ERKLAER_TEXT[eModus] || "";
@@ -1437,9 +1481,10 @@ function builder({ preset }) {
     // Pingo-Wahl dieser Runde merken — als Vorschlag fuer die naechste und fuer
     // die Schnellstart-Knoepfe, die keinen eigenen Baukasten haben
     if (pingoWaehlbar) { C.state().settings.nurPingo = pingoAn(); C.save(); }
-    // Strenge der Erklaer-Abfrage ebenso: gemerkt als Vorwahl, verbindlich ist cfg
+    // Die Strenge wird NICHT mehr gemerkt (13.08., siehe seModus): sie gilt genau
+    // fuer diese Runde und steht dafuer in cfg.erklaerStreng. Der naechste
+    // Baukasten startet wieder auf "Erst erklaeren".
     const streng = segVal("streng") || strengVor;
-    if (!istKlausur) { C.state().settings.selbstErkl = streng; C.save(); }
     starte({
       modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
       auswahl: segVal("auswahl") || P.auswahl || "smart",
@@ -1454,7 +1499,7 @@ function builder({ preset }) {
       // dort. Bleibt als Feld stehen, damit die Historie und zeigFrage() nicht
       // zwischen "aus" und "gab es damals noch nicht" raten muessen.
       stempeln: false,
-      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "begruenden",
+      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "raten",
       erklaerStreng: streng,
     });
   };
@@ -2193,7 +2238,7 @@ function reviewQ(r, erg) {
       const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
       return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
         ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
-    }).join("")}</div>${Llm.chatBtnHtml(q)}</div>`;
+    }).join("")}</div>${gespraechHtml(q.id, q.oberthema)}${Llm.chatBtnHtml(q)}</div>`;
 }
 
 // Versuchs-Vergleich: frühere Versuche derselben Fragen-Kette als Verlauf mit
@@ -2650,7 +2695,7 @@ function toggleInfo(qid, btn) {
       <div class="stat-head">Letzte Versuche:</div>${st.letzte.map((a) => `<div class="stat-row"><span>${datum(a.ts)}</span><span>${MODUS_LBL[a.modus] || "🗂 Explore"}</span>
         <span>${a.max ? `${a.punkte}/${a.max} P.` : a.voll ? "voll richtig" : "nicht voll"}</span><span>${a.zeit != null ? fmtSek(a.zeit) : "–"}</span></div>`).join("")}`
     : `<div class="muted" style="margin-top:8px">Noch nie geübt — gute Gelegenheit 🙂</div>`;
-  zone.innerHTML = `<div class="q-stats">${kopf}${loesung}${stats}${Llm.chatBtnHtml(q)}</div>`;
+  zone.innerHTML = `<div class="q-stats">${kopf}${loesung}${stats}${gespraechHtml(qid, q.oberthema)}${Llm.chatBtnHtml(q)}</div>`;
 }
 function tryInline(qid, btn) {
   const q = C.frage(qid);
@@ -2991,11 +3036,19 @@ function verlauf() {
     // wir wuerden zu WENIG offene Aufgaben in den Lernstand schreiben — also in
     // die verbotene Richtung irren. Steht deshalb vor flushSync(), das pusht.
     C.setzeOffenZaehler(Spiele.offeneDailies);
-    Llm.initChat(C.frage);     // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback
+    // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback. Die
+    // zweite Funktion liefert die laufende Session: waehrend einer Runde gibt es
+    // die aid der Antwort noch nicht (sie entsteht erst beim Abschluss), die
+    // Session-Id dagegen schon — und ohne sie wuerde ein Loeschen der Runde das
+    // Gespraech stehen lassen.
+    Llm.initChat(C.frage, () => R?.id || null);
     // Kreaturen-Chat: das Maskottchen wird antippbar. Erst hier anmelden, aus
     // demselben Grund wie oben — die Schnellantwort "was ist heute noch offen"
     // liest offeneDailies(), und das haengt an den geladenen Spieldaten.
-    Mk.initChat(MkChat.oeffnen);
+    // frag() wird durchgereicht, damit der Wegwisch-Link im Chat die
+    // Overlay-Rueckfrage dieser App benutzt statt confirm() (das wird in
+    // In-App-Browsern stumm blockiert, siehe oben bei frag()).
+    Mk.initChat(() => MkChat.oeffnen(frag));
     C.flushSync();
     home();
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen

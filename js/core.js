@@ -261,7 +261,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, mkChat: [], mkChatGeloeschtBis: 0, settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, mkChat: [], mkChatGeloeschtBis: 0, frageChat: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
@@ -1368,6 +1368,132 @@ export function chatVerlaufLoeschen() {
   return st.mkChatGeloeschtBis;
 }
 
+/* ---------- Gespraeche ZUR FRAGE (Jennifer, 13.08.2026) ----------
+   Bis hierher waren alle KI-Gespraeche ueber eine Frage fluechtig: llm.js hielt
+   sie in einer Map im Speicher, mit dem ausdruecklichen Kommentar "bewusst nicht
+   persistiert". Beim Neuladen weg, auf dem zweiten Geraet nie da. Dasselbe galt
+   fuer die KI-Rueckmeldung auf Roses Selbsterklaerung: angezeigt und danach
+   verloren. Jennifers Auftrag: aufheben und an die beantwortete Einheit haengen.
+
+   WARUM EIN EIGENER SPEICHER UND KEIN FELD AN DER ANTWORT.
+   Das waere der naheliegende Weg (ergaenzeAntwort(aid, {...})) und er verliert
+   Daten. mergeLernstand vereinigt den antwortLog ueber die aid, aber pro Eintrag
+   gewinnt die LOKALE Fassung als Ganzes (`log.set(aid, a)`, remote zuerst). Ein
+   Feld, das nur auf dem Handy dazukam, faellt auf dem Tablet beim naechsten Merge
+   also einfach heraus — die Antwort ist ja "schon da". Nachrichten dagegen sind
+   einzelne Zeilen mit eigener Id, und die lassen sich vereinigen, ohne dass
+   irgendjemand etwas verwirft. Genau wie beim mkChat.
+
+   ART trennt zwei Dinge im selben Speicher, weil sie dieselbe Mechanik brauchen:
+     "frage"    das Gespraech aus "Ueber diese Frage sprechen" (user + assistant)
+     "feedback" die KI-Rueckmeldung auf Roses eigene Erklaerung (nur assistant,
+                in aller Regel genau eine Zeile je Antwort)
+
+   GELOESCHT WIRD MIT DER ANTWORT, nicht getrennt. Es gibt darum keine zweite
+   Wasserlinie wie beim mkChat: der Grabstein, den loeschSession/loeschEinzel
+   ohnehin setzen, raeumt das Gespraech gleich mit weg. Die Zeile traegt dafuer
+   sid UND aid mit sich — nach welcher der beiden Ids getilgt wurde, weiss sie
+   sonst nicht.
+
+   ZWEI DECKEL, beide deterministisch, damit zwei Geraete nach EINEM Merge
+   dieselbe Menge haben: je Frage die letzten 30 (ein Gespraech, kein Archiv),
+   ueber alles die letzten 400 (der Lernstand faehrt bei jedem Sync mit). */
+const FQ_PRO_FRAGE = 30;
+const FQ_MAX = 400;
+
+function fqSauber(m) {
+  if (!m || (m.role !== "user" && m.role !== "assistant")) return null;
+  if (typeof m.content !== "string" || !m.content.trim()) return null;
+  if (typeof m.aid !== "string" || !m.aid) return null;
+  const ts = Number(m.ts) || 0;
+  const content = m.content.slice(0, MK_CHAT_ZEICHEN);
+  const art = m.art === "feedback" ? "feedback" : "frage";
+  const id = typeof m.id === "string" && m.id ? m.id : "f-" + ts + "-" + m.role[0] + chatHash(m.aid + content);
+  return { id, aid: m.aid, qid: m.qid || null, sid: m.sid || null, art, role: m.role, content, ts };
+}
+
+// Vereinigen, Getilgtes fallen lassen, sortieren, beide Deckel anwenden.
+// Idempotent — zweimal angewandt kommt dasselbe raus, darauf beruht die Konvergenz.
+function fqNormieren(liste, tot) {
+  const m = new Map();
+  for (const roh of liste || []) {
+    const s = fqSauber(roh);
+    if (!s || !s.ts) continue;
+    if (tot && (tot.has(s.aid) || (s.sid && tot.has(s.sid)))) continue;
+    m.set(s.id, s);
+  }
+  const alle = [...m.values()].sort(chatVor);
+  // Deckel je Frage zuerst: sonst frisst ein einzelnes langes Gespraech den
+  // globalen Deckel auf und loescht die Gespraeche aller anderen Fragen.
+  const proAid = new Map();
+  for (const x of alle) {
+    const arr = proAid.get(x.aid) || [];
+    arr.push(x);
+    proAid.set(x.aid, arr);
+  }
+  const behalten = new Set();
+  for (const arr of proAid.values()) for (const x of arr.slice(-FQ_PRO_FRAGE)) behalten.add(x.id);
+  return alle.filter((x) => behalten.has(x.id)).slice(-FQ_MAX);
+}
+
+// Alle Zeilen zu EINER beantworteten Einheit, in Reihenfolge.
+export const frageChat = (aid, art) => (state().frageChat || [])
+  .filter((m) => m.aid === aid && (!art || m.art === art))
+  .slice().sort(chatVor);
+
+// Gibt es zu dieser Antwort ueberhaupt ein Gespraech? Fuer die Marke im Verlauf,
+// damit die Historie nicht fuer jede Zeile die ganze Liste durchsucht.
+export const frageChatAids = () => new Set((state().frageChat || []).map((m) => m.aid));
+
+/* An WELCHE Einheit ein Gespraech geht. Antwort: an die zuletzt gegebene Antwort
+   auf genau diese Frage — das ist die "beantwortete Einheit", von der Jennifer
+   spricht, und sie ist genau die Zeile, die im Verlauf steht.
+
+   WAEHREND EINER LAUFENDEN RUNDE gibt es die aid noch gar nicht: die Antworten
+   einer Runde stehen bis zum Abschluss in der Session und wandern erst dann in
+   den antwortLog, wo sie ihre aid bekommen. Ein Gespraech mitten in der Runde
+   kann also nicht an "diesen Versuch" gehaengt werden — den gibt es als Zeile
+   noch nicht. Darum ist die qid der tragende Anker (jede Zeile traegt sie mit)
+   und die aid nur der genauere Zusatz, wo es ihn schon gibt.
+
+   sidJetzt ist die laufende Session. Sie muss mit, damit ein spaeteres Loeschen
+   der Session das Gespraech mitnimmt — der Grabstein greift ueber die sid, und
+   ohne sie bliebe das Gespraech einer geloeschten Runde stehen. */
+export function frageChatAid(qid, sidJetzt) {
+  let neuste = null;
+  for (const a of state().antwortLog) {
+    if (a.qid !== qid) continue;
+    if (!neuste || (a.ts || 0) > (neuste.ts || 0)) neuste = a;
+  }
+  return neuste
+    ? { aid: neuste.aid || antwortId(neuste), sid: neuste.sid || sidJetzt || null }
+    : { aid: "q:" + qid, sid: sidJetzt || null };
+}
+
+// Alles, was jemals zu DIESER Frage besprochen wurde, versuchsuebergreifend.
+// Fuer die Frage-Ansicht; der Verlauf liest dagegen ueber die aid eines Versuchs.
+export const frageChatZuFrage = (qid) => (state().frageChat || [])
+  .filter((m) => m.qid === qid)
+  .slice().sort(chatVor);
+
+// Eine Zeile anhaengen und SOFORT syncen — dieselbe Begruendung wie bei
+// chatSagen(): ein Gespraech ist der Ort, an dem man das andere Geraet
+// unmittelbar erwartet. Ohne aid wird nichts gespeichert (eine Zeile, die an
+// keiner Antwort haengt, findet nie wieder jemand).
+export function frageChatSagen({ aid, qid, sid, art, role, content }) {
+  if (!aid) return null;
+  const st = state();
+  const liste = st.frageChat || [];
+  const letzte = liste.reduce((mx, x) => Math.max(mx, Number(x.ts) || 0), 0);
+  const ts = Math.max(Date.now(), letzte + 1);
+  const eintrag = fqSauber({ id: "f-" + ts + "-" + Math.random().toString(36).slice(2, 8), aid, qid, sid, art, role, content, ts });
+  if (!eintrag) return null;
+  st.frageChat = fqNormieren([...liste, eintrag], new Set(st.geloescht));
+  save();
+  syncLernstand();
+  return eintrag;
+}
+
 // ---------- Lernstand-Sync (gemeinsamer Stand ueber alle Geraete) ----------
 // Ein Sync-Code = ein Lernstand. Ablauf immer Pull → Merge → Push, damit zwei
 // Geraete, die gleichzeitig ueben, sich nicht gegenseitig ueberschreiben.
@@ -1408,10 +1534,16 @@ function snapshot() {
   // mkChat: der Chatverlauf faehrt mit (Jennifer, 12.08.). Hier normiert und nicht
   // roh durchgereicht, damit auf dem Server nie mehr steht als der Deckel erlaubt —
   // auch dann nicht, wenn der lokale Stand aus einem alten Backup importiert wurde.
+  // frageChat: die Gespraeche zu einzelnen Fragen. Wie mkChat hier normiert und
+  // nicht roh durchgereicht — der Deckel gilt auf dem Server wie lokal, auch wenn
+  // der lokale Stand aus einem alten Backup kam. Getilgtes faellt dabei gleich mit
+  // raus: nach einem Loeschen soll die naechste Zeile nicht das Gespraech einer
+  // Antwort hochladen, die es nicht mehr gibt.
   return { sessions: st.sessions, antwortLog: st.antwortLog, offen: st.offen,
     geloescht: st.geloescht, mk: st.mk || {},
     mkChat: chatNormieren(st.mkChat, st.mkChatGeloeschtBis),
     mkChatGeloeschtBis: st.mkChatGeloeschtBis || 0,
+    frageChat: fqNormieren(st.frageChat, new Set(st.geloescht)),
     ...(heute ? { heute } : {}) };
 }
 
@@ -1452,6 +1584,12 @@ function signatur(d) {
     // Wegwischen hintereinander, das zweite auf einem schon leeren Verlauf). Ohne
     // diese Zeile bliebe das Wegwischen auf dem einen Geraet stehen.
     (d.mkChatGeloeschtBis || 0),
+    // Die Gespraeche zu den Fragen, aus demselben Grund wie mkChat: ein Feld, das
+    // nur im Snapshot steht, wird nie gepusht, weil der Waechter vor dem Push nur
+    // Signaturen vergleicht. Ohne diese Zeile bliebe jedes Gespraech auf dem
+    // Geraet, auf dem es getippt wurde. Die Ids reichen — Zeilen werden nie
+    // geaendert, nur angehaengt oder mit ihrer Antwort getilgt.
+    ids(d.frageChat, (m) => m.id),
   ].join("|");
 }
 
@@ -1541,6 +1679,15 @@ export function mergeLernstand(remote) {
   // dieser Version bringt ihn durch die Vereinigung von selbst zurueck.
   st.mkChatGeloeschtBis = Math.max(st.mkChatGeloeschtBis || 0, remote.mkChatGeloeschtBis || 0);
   st.mkChat = chatNormieren([...(remote.mkChat || []), ...(st.mkChat || [])], st.mkChatGeloeschtBis);
+
+  // Gespraeche zu einzelnen Fragen: dieselbe Vereinigung ueber die Ids. Kein
+  // Ersetzen und kein "der laengere gewinnt" — Rose kann am Handy zu Frage A
+  // gechattet haben, waehrend auf dem Tablet das Gespraech zu Frage B steht, und
+  // danach muessen beide da sein. Getilgt wird ueber dieselbe geloescht-Liste,
+  // die oben schon die Antworten raeumt: `tot` ist an dieser Stelle bereits die
+  // vereinigte Fassung beider Geraete, ein Loeschen auf dem einen wirkt also
+  // sofort auch auf die Gespraeche, die vom anderen kommen.
+  st.frageChat = fqNormieren([...(remote.frageChat || []), ...(st.frageChat || [])], tot);
 
   rebuildLeitner(); // save() steckt drin
   return signatur(snapshot()) !== vorher;

@@ -279,9 +279,30 @@ function avatarHtml(s) {
 /* ---------- Oeffnen ----------
    Keinen titel mehr: der Name der Kreatur steht im Sheet an ihrer Blase und
    heisst schlicht "Ei", solange sie eins ist (kreaturName() im Baustein). */
-export function oeffnen() {
+export function oeffnen(frag) {
   return Chat.chatOeffnen({
-    verlaufKey: "st-mk-chat",
+    // Seit 13.08.2026 im LERNSTAND statt in localStorage (Jennifer: "sync it all
+    // globally"). Der Speicher dafuer lag schon fertig in core.js — chatSagen()
+    // haengt an, chatVerlauf() liest, beides ist in snapshot() UND signatur()
+    // eingetragen und merged als Vereinigung ueber die Ids. Nur benutzt hat ihn
+    // niemand: der Adapter hing weiter am geraetelokalen "st-mk-chat", und damit
+    // war das Gespraech auf dem Tablet nie da und ueber Nacht ohnehin weg.
+    // verlaufKey steht bewusst nicht mehr hier — zwei Speicher fuer dieselbe
+    // Sache waeren genau die Doppelung, die in diesem Repo schon zweimal Bugs
+    // erzeugt hat.
+    laden: () => C.chatVerlauf().map((m) => ({ role: m.role, content: m.content })),
+    merken: (role, content) => C.chatSagen(role, content),
+    // Die Rueckfrage stellt die App: confirm() wird in In-App-Browsern stumm
+    // blockiert, dafuer gibt es frag(). Ohne frag() (alter Aufrufer) gibt es den
+    // Wegwisch-Link gar nicht erst — lieber kein Knopf als einer ohne Rueckfrage.
+    ...(frag ? {
+      wegwischen: () => frag("Das ganze Gespräch mit deiner Kreatur wegwischen? Das gilt dann auf allen deinen Geräten.",
+        { ja: "Wegwischen", nein: "Behalten" }).then((ja) => {
+          if (!ja) return false;
+          C.chatVerlaufLoeschen();
+          return true;
+        }),
+    } : {}),
     hinweis: "Ich weiß, wie dein Tag läuft. Vom Stoff versteh ich nichts - dafür gibt es den Chat an der Übungsfrage.",
     stand,
     avatarHtml,

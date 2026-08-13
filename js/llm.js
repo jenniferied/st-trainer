@@ -18,7 +18,7 @@ export const aktiv = () => !!url();
 
 // Client-seitiges Tageslimit als zweiter Kostenschutz (die Function hat ihr
 // eigenes). Geraetelokal, bewusst nicht im Sync-Lernstand.
-const TAG_LIMIT = 120;
+const TAG_LIMIT = 250;
 function tagBudget() {
   const heute = new Date().toDateString();
   let d;

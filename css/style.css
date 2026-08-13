@@ -1637,3 +1637,50 @@ button.ans:disabled { cursor: default; }
   .mk-schale { display: none; }
   .mk-frisch { animation: none; opacity: 1; }
 }
+
+/* ============ Lehrerzimmer (Story-Modus, js/story.js) ============
+   Der Szenentext soll sich vom Frage-Apparat absetzen, ohne eine zweite Optik
+   aufzumachen: gleiche Karte, nur ruhiger gesetzt und ohne die Chips/Badges der
+   Uebungsmodi. Alles haengt an den vorhandenen Farbvariablen, damit Hell/Dunkel
+   und der Kontrast-Modus automatisch mitkommen. */
+.story-szene { line-height: 1.72; }
+.story-szene p { margin: 0 0 .85em; }
+.story-szene p:last-child { margin-bottom: 0; }
+/* Der erste Absatz einer Szene setzt den Ort — etwas leiser als die Rede danach */
+.story-szene p:first-child { color: var(--ink-soft); }
+
+.story-kaptitel { font-size: .78rem; color: var(--ink-soft); margin-left: auto; }
+
+/* Der Beat ist der eigentliche Reward des Modus und darf auffallen.
+   Linker Balken statt Vollflaeche: der Text bleibt lesbar wie Prosa. */
+.story-beat {
+  margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+  border-left: 4px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--card));
+  line-height: 1.7;
+}
+.story-beat.gut { border-left-color: #3f8f5f; background: color-mix(in srgb, #3f8f5f 8%, var(--card)); }
+.story-beat.weich { border-left-color: var(--ink-soft); background: color-mix(in srgb, var(--ink-soft) 8%, var(--card)); }
+.story-beat p { margin: 0 0 .8em; }
+.story-beat p:last-child { margin-bottom: 0; }
+.story-beat-kopf {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: .9rem; margin-bottom: 10px;
+}
+.story-beat-kopf .sticker { width: 34px; height: 34px; object-fit: contain; }
+
+/* Der Kommentar ist die Merkhilfe: klar als Sachtext markiert, damit Rose die
+   Pointe von der Regel unterscheiden kann. Belege bleiben klickbare Chips. */
+.story-komm {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--ink-soft) 45%, transparent);
+  font-size: .93rem; line-height: 1.6;
+}
+.story-komm p { margin: 0 0 .6em; }
+.story-komm p:last-child { margin-bottom: 0; }
+
+.story-fort { display: flex; align-items: center; gap: 10px; font-size: .86rem; }
+.story-fort .bar { flex: 1; }
+.story-meta { font-size: .8rem; color: var(--ink-soft); }
+.story-kap.fertig { opacity: .62; }
+.story-kap.aktiv { border-color: var(--accent); }

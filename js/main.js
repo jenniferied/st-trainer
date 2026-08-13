@@ -2,6 +2,7 @@ import * as C from "./core.js";
 import * as Beleg from "./beleg.js";
 import * as M from "./methoden.js";
 import * as Spiele from "./spiele.js";
+import * as Story from "./story.js";
 import * as Llm from "./llm.js";
 import * as Mk from "./maskottchen.js";
 import * as Nachbar from "./nachbar.js";
@@ -906,6 +907,7 @@ function home() {
 
     <h2 class="abschnitt-titel">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
+    ${Story.verfuegbar() ? `<button class="mode-card wide story-kachel" data-go="story" style="width:100%"><b>☕ Lehrerzimmer</b><span>${(() => { const s = C.storyStand(); return s.n ? `Eine Geschichte in fünf Kapiteln · ${s.n}/${s.gesamt} Szenen` : "Eine Geschichte in fünf Kapiteln · echte Klausurfragen, aber zum Lesen"; })()}</span></button>` : ""}
 
     <h2 class="abschnitt-titel">Wo du stehst</h2>
     <div class="card mt glim" style="margin-top:8px">
@@ -1131,6 +1133,9 @@ function route(ziel) {
   else if (ziel === "verlauf") verlauf();
   else if (ziel === "statistik") statistik();
   else if (ziel === "begriffe") begriffeHome();
+  // Das Lehrerzimmer hat keine Setup-Seite: es laeuft linear, Kapitel fuer
+  // Kapitel, und weiss selbst, wo es zuletzt war.
+  else if (ziel === "story") Story.oeffne(home);
   else builder({ preset: ziel });
 }
 
@@ -3046,6 +3051,8 @@ function verlauf() {
     await C.ladeFragen();
     await C.ladeBegriffe(); // optional — ohne Datei bleibt der Modus einfach aus
     await C.ladeProbeklausuren(); // optional — ohne Datei fehlt nur die Klausurtraining-Karte
+    await C.ladeStory();  // optional — ohne data/story.json fehlt nur die Lehrerzimmer-Kachel
+    await Story.ladeBilder(); // optional — ohne eigene Bilder laufen die normalen Sticker
     await Spiele.ladeSpiele(); // optional — Kacheln erscheinen nur mit Daten (Detektiv immer)
     // Erst JETZT anmelden, nicht frueher: dailies() haengt an den geladenen
     // Spieldaten (VIG/OPS/Begriffe). Vor dem Laden waere die Liste kuerzer und

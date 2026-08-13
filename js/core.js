@@ -147,6 +147,37 @@ export function begriffStats() {
 // probeklausuren.py): global unique ueber die ganze Serie, alle Unterthemen
 // abgedeckt, lowkey auf Roses Schwaechen gewichtet. I ist offen; jede weitere
 // schaltet sich frei durch Abschluss der vorigen + PK_FREI_KARTEN Karten Ueben.
+// Lehrerzimmer (Story-Modus). Der Modus-Name steht als Konstante, weil er an vier
+// Stellen entscheidet: Leitner-Ausschluss in werteAus() und rebuildLeitner(),
+// Einzelantwort-Erkennung (PSEUDO_SIDS) und der Fortschritt in story.js.
+export const STORY_MODUS = "story";
+let STORY = null;
+export const story = () => STORY;
+// data/story.json entsteht in sync-fragen.py aus fragen/story/kapitel-*.json.
+// Enthaelt nur Szenen mit qid-Zeigern, nie Fragen — die kommen aus dem Pool.
+// Fehlt die Datei, bleibt STORY null und main.js blendet die Kachel aus.
+export async function ladeStory() {
+  try {
+    const r = await fetch("data/story.json");
+    const d = r.ok ? await r.json() : null;
+    if (!d?.kapitel?.length) return (STORY = null);
+    // Szenen ohne auffindbare Frage fliegen still raus, statt die Runde zu
+    // sprengen — dieselbe Haltung wie bei den Probeklausuren.
+    STORY = { ...d, kapitel: d.kapitel.map((k) => ({ ...k, szenen: k.szenen.filter((s) => frage(s.qid)) })).filter((k) => k.szenen.length) };
+  } catch { STORY = null; }
+  return STORY;
+}
+// Alle Szenen der Reihe nach — die Story ist bewusst linear (Jennifer, 13.08.).
+export const storySzenen = () => (STORY?.kapitel || []).flatMap((k) => k.szenen.map((s) => ({ ...s, kapitel: k })));
+// Fortschritt wird ABGELEITET, nicht gespeichert: welche Story-Fragen schon
+// beantwortet sind, steht im antwortLog — und das wird ohnehin gesynct. Damit
+// braucht der Modus kein eigenes Feld in snapshot()/signatur().
+export function storyStand() {
+  const fertig = new Set(state().antwortLog.filter((a) => a.modus === STORY_MODUS).map((a) => a.qid));
+  const alle = storySzenen();
+  return { fertig, n: alle.filter((s) => fertig.has(s.qid)).length, gesamt: alle.length };
+}
+
 let PKS = [];
 export const probeklausuren = () => PKS;
 export const PK_ROEM = ["", "I", "II", "III", "IV", "V"];
@@ -358,7 +389,11 @@ export function ergaenzeAntwort(aid, felder) {
 export function rebuildLeitner() {
   const st = state();
   st.leitner = {};
-  for (const a of [...st.antwortLog].sort((x, y) => x.ts - y.ts)) leitnerApply(st.leitner, a.qid, a, a.ts);
+  // Story-Antworten hier genauso ueberspringen wie in werteAus() — sonst holt
+  // ein Rebuild (z. B. nach dem Loeschen einer Session) genau die Stufen zurueck,
+  // die der Live-Pfad bewusst nicht vergeben hat.
+  for (const a of [...st.antwortLog].sort((x, y) => x.ts - y.ts))
+    if (a.modus !== STORY_MODUS) leitnerApply(st.leitner, a.qid, a, a.ts);
   save();
 }
 
@@ -376,7 +411,7 @@ export function loescheSession(id) {
 // Pseudo-Sessions: Spiel- und Begriffe-Antworten tragen eine feste sid
 // ("spiel"/"begriffe") statt einer echten Session-Id. Fuer Verlauf, Loeschen
 // und Merge zaehlen sie wie Einzelantworten (aid-Grabsteine, keine Session).
-const PSEUDO_SIDS = new Set(["spiel", "begriffe"]);
+const PSEUDO_SIDS = new Set(["spiel", "begriffe", "story"]);
 export const istEinzelAntwort = (a) => !a.sid || PSEUDO_SIDS.has(a.sid);
 
 // Einzelantworten (Stöbern, Spiele, Begriffe) löschen: die aids wandern als
@@ -1168,7 +1203,14 @@ export function werteAus(runde, meta) {
     ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip,
       ...(x.selbstModus ? { selbstModus: x.selbstModus } : {}), ...(x.selbstErkl2 ? { selbstErkl2: x.selbstErkl2 } : {}) } : {}),
     ...(x.paraphrase ? { paraphrase: x.paraphrase } : {}) }));
-  for (const x of proFrage) leitnerUpdate(x.qid, x);
+  // Der Lehrerzimmer-Modus zaehlt NICHT in den Leitner (Jennifer, 13.08.2026).
+  // Seine Fragen sind fuer den Erzaehlfluss bewusst leicht gewaehlt; wuerden sie
+  // regulaer hochstufen, meldeten "Schlaues Wiederholen" und "Fehler-Training"
+  // Stoff als gemeistert, den Rose nicht sicher kann — und genau die zwei Modi
+  // muessen am 18.09. tragen. Die Antworten werden trotzdem geloggt (Verlauf,
+  // Tagesstand, Statistik), sie bewegen nur den Lernstand nicht.
+  // Gegenstueck in rebuildLeitner(): der Wiederaufbau filtert dieselben Zeilen.
+  if (STORY_MODUS !== session.modus) for (const x of proFrage) leitnerUpdate(x.qid, x);
   save();
   syncSession(session);
   syncLernstand();

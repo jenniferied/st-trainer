@@ -58,43 +58,78 @@ export async function ladeBilder() {
   } catch { EIGENE = null; }
   return EIGENE;
 }
-function sticker(cls) {
+// Zwei Groessen, weil zwei Sorten Bild: die kleinen Reaktions-Sticker sind
+// Randnotiz (34 px reichen), die Yuri-Memes sind der eigentliche Lohn und tragen
+// Text — die muessen gross und lesbar sein. Antippen oeffnet sie in Originalgroesse.
+function belohnung(cls) {
   const eigen = EIGENE?.[cls];
   if (eigen?.length) {
     const n = eigen[Math.floor(Math.random() * eigen.length)];
-    return `<img class="sticker" src="assets/story/${esc(n)}" alt="" loading="lazy">`;
+    const src = `assets/story/${esc(n)}`;
+    return `<img class="story-meme" src="${src}" data-gross="${src}" alt="Meme — antippen zum Vergrößern" loading="lazy">`
+      + `<span class="story-meme-hint">Antippen zum Vergrößern</span>`;
   }
   const arr = STICKER[cls] || STICKER.part;
   const n = arr[Math.floor(Math.random() * arr.length)];
   return `<img class="sticker" src="assets/reactions/${n}.${REDUCE_MOTION ? "png" : "webp"}" alt="" loading="lazy">`;
 }
 
+// Lupe: ein Overlay ueber der ganzen Seite, Tippen irgendwohin schliesst es.
+// Bewusst ohne Bibliothek und ohne History-Eintrag — der Zurueck-Knopf des
+// Handys soll aus der Story rausfuehren, nicht nur ein Bild zumachen.
+function bindLupe(wurzel) {
+  wurzel.querySelectorAll("[data-gross]").forEach((img) => img.addEventListener("click", () => {
+    const ov = document.createElement("div");
+    ov.className = "story-lupe";
+    ov.innerHTML = `<img src="${img.dataset.gross}" alt=""><button class="story-lupe-zu" aria-label="Schließen">×</button>`;
+    ov.addEventListener("click", () => ov.remove());
+    document.body.appendChild(ov);
+  }));
+}
+
 let zurueckHome = null;   // Ruecksprung, von main.js gesetzt
-let L = null;             // laufendes Kapitel: { kap, i, t0 }
+let L = null;             // laufende Runde: { szenen, i, t0 }
+let uhrInt = null;        // Intervall des Countdowns auf der Uebersicht
 
 export const verfuegbar = () => !!C.story();
+
+const fmtRest = (ms) => {
+  const min = Math.ceil(ms / 60000);
+  return min > 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+};
 
 // ---------- Uebersicht ----------
 
 export function oeffne(zurueck) {
   if (zurueck) zurueckHome = zurueck;
+  if (uhrInt) { clearInterval(uhrInt); uhrInt = null; }
   const st = C.storyStand();
   const kapitel = C.story()?.kapitel || [];
 
+  // Kapitel dienen nur noch als Fortschrittsanzeige — gelaufen wird in
+  // Zehnerrunden quer durch (Jennifer, 13.08.). Das aktive Kapitel ist das
+  // erste, das noch nicht durch ist.
   const karten = kapitel.map((k) => {
     const fertig = k.szenen.filter((s) => st.fertig.has(s.qid)).length;
-    const zustand = fertig === 0 ? "offen" : fertig < k.szenen.length ? "dran" : "fertig";
-    // Kapitel sind der Reihe nach dran: das erste unfertige ist das aktive.
-    return { k, fertig, zustand };
+    return { k, fertig, zustand: fertig === 0 ? "offen" : fertig < k.szenen.length ? "dran" : "fertig" };
   });
   const aktivIdx = Math.max(0, karten.findIndex((x) => x.zustand !== "fertig"));
+
+  const knopf = st.durch
+    ? `<p class="muted" style="margin:0">Durch. Alle ${st.gesamt} Szenen.</p>`
+    : st.gesperrt
+      ? `<button class="btn" id="los" disabled>Pause — noch <span id="uhr">${fmtRest(st.restMs)}</span></button>
+         <p class="muted" style="margin:8px 0 0;font-size:.86rem">Zehn Szenen am Stück, dann eine Stunde Pause. Damit die Geschichte länger hält als ein Abend.</p>`
+      : `<button class="btn" id="los">${st.imRest ? `Weiter — Runde ${st.runde}` : `Die nächsten 10 · Runde ${st.runde} von ${st.rundenGesamt}`}</button>`;
 
   app().innerHTML = `<div class="fade-in">
     <div class="topbar"><button class="back" id="back">‹</button><h1>☕ Lehrerzimmer</h1></div>
     <div class="card story-intro">
       <p class="muted" style="margin-top:0">Eine Geschichte in fünf Kapiteln. Jede Szene stellt dir eine echte Klausurfrage — richtig oder falsch, die Geschichte geht weiter. Zählt für deinen Tagesstand, aber nicht für den Lernstand: hier darfst du einfach lesen.</p>
       <div class="story-fort"><span class="bar thin"><i style="width:${st.gesamt ? (100 * st.n) / st.gesamt : 0}%"></i></span><span>${st.n}/${st.gesamt}</span></div>
+      <div class="mt">${knopf}</div>
     </div>
+    <h2 class="abschnitt-titel">Wo du bist</h2>
     ${karten.map(({ k, fertig, zustand }, i) => {
       // Spoiler-Sperre (Jennifer, 13.08.): der Vorspann verraet, wohin das
       // Kapitel geht. Sichtbar ist er nur, wo Rose schon ist — angefangene,
@@ -102,34 +137,40 @@ export function oeffne(zurueck) {
       // bleibt zu. Der Titel steht trotzdem da, sonst wirkt die Liste kaputt.
       const offenlegen = zustand !== "offen" || i === aktivIdx;
       return `
-      <button class="mode-card wide story-kap ${zustand}${i === aktivIdx ? " aktiv" : ""}${offenlegen ? "" : " zu"}" data-kap="${k.nr}">
+      <div class="mode-card wide story-kap ${zustand}${i === aktivIdx ? " aktiv" : ""}${offenlegen ? "" : " zu"}">
         <b>${k.nr}. ${esc(k.kapitelTitel)}</b>
         <span>${offenlegen ? esc(k.vorspann) : "Kommt noch."}</span>
         <span class="story-meta">${fertig}/${k.szenen.length} Szenen${zustand === "fertig" ? " · durch" : ""}</span>
-      </button>`;
+      </div>`;
     }).join("")}
-    ${st.n >= st.gesamt && st.gesamt ? `<div class="card"><p style="margin:0">Durch. Alle 42 Szenen. Du kannst jedes Kapitel nochmal lesen — die Antworten zählen dann nicht doppelt.</p></div>` : ""}
   </div>`;
 
   document.getElementById("back").onclick = () => zurueckHome && zurueckHome();
-  app().querySelectorAll("[data-kap]").forEach((b) => b.onclick = () => starteKapitel(+b.dataset.kap));
+  const los = document.getElementById("los");
+  if (los && !los.disabled) los.onclick = starteRunde;
+
+  // Countdown mitlaufen lassen und die Seite neu zeichnen, sobald die Stunde um
+  // ist — sonst muesste Rose raus und wieder rein, um den Knopf zu bekommen.
+  if (st.gesperrt) uhrInt = setInterval(() => {
+    const jetzt = C.storyStand();
+    const u = document.getElementById("uhr");
+    if (!u) { clearInterval(uhrInt); uhrInt = null; return; }
+    if (!jetzt.gesperrt) { clearInterval(uhrInt); uhrInt = null; return oeffne(); }
+    u.textContent = fmtRest(jetzt.restMs);
+  }, 20000);
 }
 
-function starteKapitel(nr) {
-  const kap = (C.story()?.kapitel || []).find((k) => k.nr === nr);
-  if (!kap) return oeffne();
-  const st = C.storyStand();
-  // Beim Wiedereinstieg dort weitermachen, wo es aufhoerte — aber nur, wenn das
-  // Kapitel angefangen und nicht durch ist. Ein durchgelesenes faengt vorn an.
-  const offen = kap.szenen.findIndex((s) => !st.fertig.has(s.qid));
-  L = { kap, i: offen < 0 ? 0 : offen, t0: 0 };
+function starteRunde() {
+  const szenen = C.storyRunde();
+  if (!szenen.length) return oeffne();
+  L = { szenen, i: 0, t0: 0 };
   zeigSzene();
 }
 
 // ---------- Szene ----------
 
 function zeigSzene() {
-  const s = L.kap.szenen[L.i];
+  const s = L.szenen[L.i];
   const q = C.frage(s.qid);
   if (!q) return naechste();          // Fangnetz: Frage verschwunden -> Szene ueberspringen
 
@@ -139,9 +180,9 @@ function zeigSzene() {
   app().innerHTML = `<div class="fade-in story-lauf">
     <div class="q-progress">
       <button class="back" id="raus">‹</button>
-      <span class="bar thin"><i style="width:${(100 * L.i) / L.kap.szenen.length}%"></i></span>
-      <span>${L.i + 1}/${L.kap.szenen.length}</span>
-      <span class="story-kaptitel">${L.kap.nr}. ${esc(L.kap.kapitelTitel)}</span>
+      <span class="bar thin"><i style="width:${(100 * L.i) / L.szenen.length}%"></i></span>
+      <span>${L.i + 1}/${L.szenen.length}</span>
+      <span class="story-kaptitel">${s.kapitel.nr}. ${esc(s.kapitel.kapitelTitel)}</span>
     </div>
     <div class="card story-szene">${prosa(s.vor)}</div>
     <div class="card">
@@ -153,7 +194,7 @@ function zeigSzene() {
       <div id="fbzone"></div>
       <div class="btn-row mt">
         <button class="btn" id="pruefen">Antwort prüfen</button>
-        <button class="btn secondary hidden" id="weiter">${L.i + 1 === L.kap.szenen.length ? "Kapitel abschließen" : "Weiter"}</button>
+        <button class="btn secondary hidden" id="weiter">${L.i + 1 === L.szenen.length ? "Runde abschließen" : "Weiter"}</button>
       </div>
     </div></div>`;
 
@@ -197,29 +238,33 @@ function loese(s, q, gewaehlt) {
   const beat = erg.voll ? s.beatRichtig : s.beatFalsch;
   document.getElementById("fbzone").innerHTML = `
     <div class="story-beat ${erg.voll ? "gut" : "weich"}">
-      <div class="story-beat-kopf">${sticker(cls)}<span>${erg.voll ? `Voll richtig · +${erg.punkte} P.` : erg.punkte > 0 ? `Teilweise · ${erg.punkte} von ${q.maxPunkte} P.` : "Diesmal nicht"}</span></div>
+      <div class="story-beat-kopf">${belohnung(cls)}<span>${erg.voll ? `Voll richtig · +${erg.punkte} P.` : erg.punkte > 0 ? `Teilweise · ${erg.punkte} von ${q.maxPunkte} P.` : "Diesmal nicht"}</span></div>
       ${prosaBeleg(beat, q.oberthema)}
     </div>
     ${s.kommentar ? `<div class="story-komm">${prosaBeleg(s.kommentar, q.oberthema)}</div>` : ""}`;
+  bindLupe(document.getElementById("fbzone"));
 }
 
 function naechste() {
-  if (L.i + 1 < L.kap.szenen.length) { L.i++; return zeigSzene(); }
+  if (L.i + 1 < L.szenen.length) { L.i++; return zeigSzene(); }
   abschluss();
 }
 
 function abschluss() {
-  const kap = L.kap;
-  const naechstes = (C.story()?.kapitel || []).find((k) => k.nr === kap.nr + 1);
+  const gelesen = L.szenen.length;
   L = null;
+  const st = C.storyStand();
   app().innerHTML = `<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>Kapitel ${kap.nr} durch</h1></div>
+    <div class="topbar"><button class="back" id="back">‹</button><h1>${st.durch ? "Durch" : "Runde durch"}</h1></div>
     <div class="card">
-      <h2 style="margin-top:0">${esc(kap.kapitelTitel)}</h2>
-      <p class="muted">${kap.szenen.length} Szenen gelesen. Deine Antworten sind im Tagesstand — dein Lernstand ist unverändert, hier wird nichts hochgestuft.</p>
-      ${naechstes ? `<button class="btn mt" id="weiterKap">Kapitel ${naechstes.nr}: ${esc(naechstes.kapitelTitel)} ›</button>` : `<p style="margin-bottom:0">Das war das letzte Kapitel. Danke fürs Lesen.</p>`}
+      <p class="muted" style="margin-top:0">${gelesen} Szenen gelesen, ${st.n} von ${st.gesamt} insgesamt. Deine Antworten sind im Tagesstand — dein Lernstand ist unverändert, hier wird nichts hochgestuft.</p>
+      ${st.durch
+        ? `<p style="margin-bottom:0">Das war die letzte Szene. Danke fürs Lesen.</p>`
+        : st.gesperrt
+          ? `<p style="margin-bottom:0">Die nächsten zehn gibt es in <b>${fmtRest(st.restMs)}</b>. Bis dahin: die Geschichte läuft ja nicht weg.</p>`
+          : `<button class="btn mt" id="weiterRunde">Weiter — Runde ${st.runde} ›</button>`}
     </div></div>`;
   document.getElementById("back").onclick = () => oeffne();
-  const w = document.getElementById("weiterKap");
-  if (w) w.onclick = () => starteKapitel(naechstes.nr);
+  const w = document.getElementById("weiterRunde");
+  if (w) w.onclick = starteRunde;
 }

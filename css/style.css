@@ -1721,3 +1721,59 @@ button.ans:disabled { cursor: default; }
 .story-kap { width: 100%; }
 /* Noch nicht erreichte Kapitel: Titel bleibt, der Vorspann ist bewusst zu. */
 .story-kap.zu span:first-of-type { color: var(--ink-soft); font-style: italic; opacity: .7; }
+
+/* --- Yuri-Memes im Beat: gross und antippbar (Jennifer, 13.08.)
+   Die Reaktions-Sticker bleiben 34px-Randnotiz, die Memes tragen Text und
+   muessen lesbar sein. Deshalb eigener Block statt .sticker mitzubenutzen. */
+.story-meme {
+  display: block;
+  /* width:auto, NICHT 100%: die WhatsApp-Sticker sind 256px-Quellen und wurden
+     sonst auf Containerbreite hochskaliert (unscharf und viel zu gross fuer
+     einen Blob). Kleine Bilder behalten ihre Groesse, die Memes reizen aus. */
+  width: auto;
+  max-width: min(100%, 340px);
+  max-height: 420px;
+  object-fit: contain;
+  object-position: left top;
+  margin: 0 0 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ink-soft) 30%, transparent);
+  background: #fff;          /* Memes sind fast alle auf Weiss gesetzt */
+  cursor: zoom-in;
+}
+/* Im Beat-Kopf steht dann nur noch die Punktzeile neben dem Bild, nicht daneben */
+.story-beat-kopf { flex-wrap: wrap; }
+/* Am Handy gibt es keinen Cursor, der zoom-in verraet — also hinschreiben. */
+.story-meme-hint {
+  display: block;
+  margin: -4px 0 10px;
+  font-size: .76rem;
+  color: var(--ink-soft);
+}
+
+/* Lupe: Vollbild-Overlay, Tippen irgendwohin schliesst. Bewusst ueber allem,
+   auch ueber der Topbar. */
+.story-lupe {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .82);
+  cursor: zoom-out;
+  animation: story-lupe-auf .12s ease-out;
+}
+@keyframes story-lupe-auf { from { opacity: 0 } to { opacity: 1 } }
+.story-lupe img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+.story-lupe-zu {
+  position: absolute; top: 10px; right: 14px;
+  width: 40px; height: 40px;
+  font-size: 26px; line-height: 1;
+  color: #fff; background: rgba(0, 0, 0, .45);
+  border: 0; border-radius: 50%;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) { .story-lupe { animation: none } }

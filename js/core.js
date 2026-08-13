@@ -169,13 +169,57 @@ export async function ladeStory() {
 }
 // Alle Szenen der Reihe nach — die Story ist bewusst linear (Jennifer, 13.08.).
 export const storySzenen = () => (STORY?.kapitel || []).flatMap((k) => k.szenen.map((s) => ({ ...s, kapitel: k })));
-// Fortschritt wird ABGELEITET, nicht gespeichert: welche Story-Fragen schon
-// beantwortet sind, steht im antwortLog — und das wird ohnehin gesynct. Damit
-// braucht der Modus kein eigenes Feld in snapshot()/signatur().
+// Die Geschichte laeuft in Runden zu zehn Szenen, dazwischen eine Stunde Pause
+// (Jennifer, 13.08.2026). Der Sinn ist Rationierung: 42 Szenen an einem Abend
+// weggelesen sind einmal Spass, ueber zwei Wochen verteilt sind sie ein Grund,
+// die App wieder aufzumachen.
+export const STORY_RUNDE = 10;
+export const STORY_PAUSE_MS = 60 * 60 * 1000;
+
+// Fortschritt und Sperre werden ABGELEITET, nicht gespeichert: welche
+// Story-Fragen wann beantwortet wurden, steht im antwortLog — und das wird
+// ohnehin gesynct. Damit braucht der Modus kein eigenes Feld in
+// snapshot()/signatur(), und die Pause gilt automatisch auf beiden Geraeten.
 export function storyStand() {
-  const fertig = new Set(state().antwortLog.filter((a) => a.modus === STORY_MODUS).map((a) => a.qid));
+  const log = state().antwortLog.filter((a) => a.modus === STORY_MODUS);
+  const fertig = new Set(log.map((a) => a.qid));
   const alle = storySzenen();
-  return { fertig, n: alle.filter((s) => fertig.has(s.qid)).length, gesamt: alle.length };
+  const n = alle.filter((s) => fertig.has(s.qid)).length;
+
+  // Zeitstempel der zuletzt beantworteten Szene — nicht der letzte Log-Eintrag,
+  // denn ein Wiederlesen einer schon bekannten Szene soll die Pause nicht neu
+  // starten. Darum ueber die Menge der frischen qids gehen.
+  const gesehen = new Set();
+  let letzterNeuer = 0;
+  for (const a of [...log].sort((x, y) => x.ts - y.ts)) {
+    if (gesehen.has(a.qid)) continue;
+    gesehen.add(a.qid); letzterNeuer = a.ts;
+  }
+
+  // Gesperrt ist nur die Schwelle zwischen zwei vollen Runden. Wer mittendrin
+  // aufhoert, darf jederzeit weiter — die Pause soll bremsen, nicht bestrafen.
+  const anRundenGrenze = n > 0 && n < alle.length && n % STORY_RUNDE === 0;
+  const restMs = anRundenGrenze ? Math.max(0, STORY_PAUSE_MS - (Date.now() - letzterNeuer)) : 0;
+
+  return {
+    fertig, n, gesamt: alle.length,
+    runde: Math.floor(n / STORY_RUNDE) + 1,
+    rundenGesamt: Math.ceil(alle.length / STORY_RUNDE),
+    imRest: n % STORY_RUNDE,              // wie viele der laufenden Runde schon durch sind
+    gesperrt: restMs > 0, restMs,
+    durch: n >= alle.length,
+  };
+}
+
+// Die naechsten Szenen am Stueck: ab der ersten ungesehenen, hoechstens bis zum
+// Ende der laufenden Zehnerrunde.
+export function storyRunde() {
+  const st = storyStand();
+  const alle = storySzenen();
+  const start = alle.findIndex((s) => !st.fertig.has(s.qid));
+  if (start < 0) return [];
+  const bisEnde = STORY_RUNDE - (start % STORY_RUNDE);
+  return alle.slice(start, start + bisEnde);
 }
 
 let PKS = [];

@@ -1227,7 +1227,18 @@ function testBestanden(stufe) {
 // Jeder Modus startet mit Einstellungs-Screen; Presets belegen sinnvoll vor.
 const PRESETS = {
   klausur: { titel: "🎓 Klausur-Simulation", modus: "klausur", auswahl: "klausur" },
-  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", anzahl: 21, fb: "ende", auswahl: "klausur", ansicht: "exam", hinweis: "Voreingestellt: 21 Fragen im Exam.UP-Look mit halber Zeit, pausierbar. Bestehen ab der Hälfte der Punkte — alles unten frei anpassbar." },
+  // Feedback SOFORT, Erklaer-Abfrage AUS (Jennifer, 13.08. abends). Die halbe
+  // Klausur stand bis dahin auf "Erst am Ende", also wie die echte — und damit
+  // erfuhr Rose 21 Fragen lang nichts und musste hinterher alles nochmal lesen.
+  // Die Realitaetsnaehe leistet die volle Simulation; die halbe ist ein
+  // TRAININGSformat, ihr Zweck ist das Tempo. Darum jetzt: sofort sehen, was
+  // falsch war, und weiter.
+  //
+  // Die Abfrage bleibt hier trotzdem aus, und genau daran haengt es: sie haelt
+  // die Uhr an und macht aus einer getakteten Runde eine nachdenkliche. Feedback
+  // und Zeitdruck vertragen sich, Erklaeren-Muessen und Zeitdruck nicht. Beides
+  // steht unten im Baukasten und laesst sich fuer eine einzelne Runde umstellen.
+  halbe: { titel: "🕧 Halbe Klausur", modus: "halbe", anzahl: 21, fb: "sofort", erklaer: "aus", auswahl: "klausur", ansicht: "exam", hinweis: "Voreingestellt: 21 Fragen im Exam.UP-Look mit halber Zeit, pausierbar. Feedback kommt sofort nach jeder Frage — bei 21 Fragen willst du nicht bis zum Schluss warten. Bestehen ab der Hälfte der Punkte, alles unten frei anpassbar." },
   spaced: { titel: "🧠 Schlaues Wiederholen", modus: "spaced", anzahl: 15, fb: "sofort", spaced: true, auswahl: "smart", hinweis: "Spaced Repetition: Fragen kommen genau dann wieder, wenn sie zu entfallen drohen. Fälliges und Wackliges zuerst, dazu ein paar neue — die effizienteste Art zu üben." },
   schnell: { titel: "⚡ Schnelle 10er", modus: "schnell", anzahl: 10, fb: "sofort", auswahl: "smart", hinweis: "10 Fragen, Feedback direkt nach jeder Antwort. Anpassen, was du magst — oder einfach starten." },
   fehler: { titel: "🔁 Fehler-Training", modus: "fehler", anzahl: 15, fb: "sofort", nurFehler: true, auswahl: "fokus", hinweis: "Nur Fragen, die noch wackeln (Level unter 3). Anpassen oder direkt starten." },
@@ -1309,6 +1320,11 @@ function builder({ preset }) {
   // den Schalter gar nicht, dort greift der Filter nie (C.pingoFilterGilt).
   const pingoWaehlbar = !C.SIM_MODI.includes(P.modus);
   const pingoVor = pingoWaehlbar && C.nurPingoGemerkt();
+  // Vorbelegung der Erklaer-Abfrage. Normalerweise "Zweiter Versuch"; ein Preset
+  // darf etwas anderes vorgeben (halbe Klausur: "aus", weil die Abfrage die Uhr
+  // anhaelt und das Format vom Tempo lebt). Gemerkt wird auch das nicht — beim
+  // naechsten Mal steht wieder da, was zum jeweiligen Modus passt.
+  const erklaerVor = P.erklaer || "raten";
   // Vorbelegung der Strenge: feste "streng", nicht mehr Roses letzte Wahl.
   // seModus({}) liefert genau das (leeres cfg = kein ausdrueckliches "standard")
   // und bleibt hier stehen, damit Vorbelegung und Auswertung dieselbe eine
@@ -1358,7 +1374,7 @@ function builder({ preset }) {
       <p class="muted" style="margin:0 0 8px">Kommt nur bei Fragen, bei denen etwas falsch war: Du hältst erst selbst fest, woran es lag — <b>bevor</b> du die Erklärung liest. <b>Der Timer hält an, solange du tippst.</b></p>
       <div class="seg" id="erklaer">
       ${[["aus", "Aus"], ["begruenden", "Begründen"], ["raten", "Zweiter Versuch"]].map(([v, l]) =>
-        `<button data-v="${v}" class="${v === "raten" ? "on" : ""}">${l}</button>`).join("")}</div>
+        `<button data-v="${v}" class="${v === erklaerVor ? "on" : ""}">${l}</button>`).join("")}</div>
       <p class="muted" id="erklaerModusHint" style="margin-top:7px"></p>
       <p class="feld-warnung hidden" id="erklaerHint"></p>
       <div class="field unter" id="strengFeld" style="margin-top:12px"><span class="flabel">↳ Dazu, in beiden Fällen: darfst du überspringen?</span><div class="seg" id="streng">
@@ -1436,7 +1452,7 @@ function builder({ preset }) {
     }
     // ---- Erklaer-Abfrage: drei Zeilen, die zusammen die Frage beantworten
     // "was aendert sich, und blockiert das eine das andere?"
-    const eModus = segVal("erklaer") || "raten";
+    const eModus = segVal("erklaer") || erklaerVor;
     const eStreng = segVal("streng") || strengVor;
     const emh = document.getElementById("erklaerModusHint");
     if (emh) emh.innerHTML = ERKLAER_TEXT[eModus] || "";
@@ -1499,7 +1515,7 @@ function builder({ preset }) {
       // dort. Bleibt als Feld stehen, damit die Historie und zeigFrage() nicht
       // zwischen "aus" und "gab es damals noch nicht" raten muessen.
       stempeln: false,
-      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || "raten",
+      erklaerModus: istKlausur ? "aus" : segVal("erklaer") || erklaerVor,
       erklaerStreng: streng,
     });
   };

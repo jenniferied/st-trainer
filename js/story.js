@@ -95,12 +95,19 @@ export function oeffne(zurueck) {
       <p class="muted" style="margin-top:0">Eine Geschichte in fünf Kapiteln. Jede Szene stellt dir eine echte Klausurfrage — richtig oder falsch, die Geschichte geht weiter. Zählt für deinen Tagesstand, aber nicht für den Lernstand: hier darfst du einfach lesen.</p>
       <div class="story-fort"><span class="bar thin"><i style="width:${st.gesamt ? (100 * st.n) / st.gesamt : 0}%"></i></span><span>${st.n}/${st.gesamt}</span></div>
     </div>
-    ${karten.map(({ k, fertig, zustand }, i) => `
-      <button class="mode-card wide story-kap ${zustand}${i === aktivIdx ? " aktiv" : ""}" data-kap="${k.nr}">
+    ${karten.map(({ k, fertig, zustand }, i) => {
+      // Spoiler-Sperre (Jennifer, 13.08.): der Vorspann verraet, wohin das
+      // Kapitel geht. Sichtbar ist er nur, wo Rose schon ist — angefangene,
+      // durchgelesene und das aktuell dran seiende Kapitel. Was danach kommt,
+      // bleibt zu. Der Titel steht trotzdem da, sonst wirkt die Liste kaputt.
+      const offenlegen = zustand !== "offen" || i === aktivIdx;
+      return `
+      <button class="mode-card wide story-kap ${zustand}${i === aktivIdx ? " aktiv" : ""}${offenlegen ? "" : " zu"}" data-kap="${k.nr}">
         <b>${k.nr}. ${esc(k.kapitelTitel)}</b>
-        <span>${esc(k.vorspann)}</span>
+        <span>${offenlegen ? esc(k.vorspann) : "Kommt noch."}</span>
         <span class="story-meta">${fertig}/${k.szenen.length} Szenen${zustand === "fertig" ? " · durch" : ""}</span>
-      </button>`).join("")}
+      </button>`;
+    }).join("")}
     ${st.n >= st.gesamt && st.gesamt ? `<div class="card"><p style="margin:0">Durch. Alle 42 Szenen. Du kannst jedes Kapitel nochmal lesen — die Antworten zählen dann nicht doppelt.</p></div>` : ""}
   </div>`;
 

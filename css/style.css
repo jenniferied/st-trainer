@@ -1684,3 +1684,40 @@ button.ans:disabled { cursor: default; }
 .story-meta { font-size: .8rem; color: var(--ink-soft); }
 .story-kap.fertig { opacity: .62; }
 .story-kap.aktiv { border-color: var(--accent); }
+
+/* --- Lehrerzimmer-Kachel: abgesetzt, mit Herz, lowkey pink (Jennifer, 13.08.)
+   Eigene Variable statt fester Farbe, damit Hell und Dunkel unterschiedlich
+   saettigen koennen — im Nachtmodus braucht Pink mehr Helligkeit, sonst
+   verschwindet es im Indigo. */
+:root { --story-pink: #d4568c; }
+[data-theme="dunkel"] { --story-pink: #f08bb4; }
+
+/* Der Abstand, der unter "Stoebern" gefehlt hat: die Kachel bekommt Luft nach
+   oben (zur Browsen-Karte) und nach unten (zur naechsten Ueberschrift). */
+.story-kachel {
+  margin-top: 14px;
+  margin-bottom: 22px;
+  border: 1px solid color-mix(in srgb, var(--story-pink) 42%, transparent);
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--story-pink) 9%, var(--card)),
+    var(--card) 70%);
+}
+.story-kachel:hover { border-color: var(--story-pink); }
+.story-herz {
+  /* Emoji statt ♥ + CSS-Farbe: Chromium rendert U+2665 als Emoji und ignoriert
+     dabei color, auch mit Variantenselektor VS15. Ein von Haus aus rosa Herz ist
+     verlaesslicher als der Kampf gegen den Font-Fallback. */
+  font-size: .8em;
+  margin-left: 3px;
+  vertical-align: 1px;
+}
+/* Im Modus selbst dieselbe Handschrift: Fortschrittsbalken und aktives
+   Kapitel in Pink statt im Terracotta der Uebungsmodi. */
+.story-fort .bar i { background: var(--story-pink); }
+.story-kap.aktiv { border-color: color-mix(in srgb, var(--story-pink) 55%, transparent); }
+/* Die Kapitel-Karten stehen ausserhalb von .mode-grid — dort kommt die Breite
+   vom Grid, hier muss sie explizit her. Ohne das schrumpfen die kurzen Karten
+   ("Kommt noch.") auf Textbreite und die Liste sieht ausgefranst aus. */
+.story-kap { width: 100%; }
+/* Noch nicht erreichte Kapitel: Titel bleibt, der Vorspann ist bewusst zu. */
+.story-kap.zu span:first-of-type { color: var(--ink-soft); font-style: italic; opacity: .7; }

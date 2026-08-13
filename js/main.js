@@ -907,7 +907,7 @@ function home() {
 
     <h2 class="abschnitt-titel">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
-    ${Story.verfuegbar() ? `<button class="mode-card wide story-kachel" data-go="story" style="width:100%"><b>☕ Lehrerzimmer</b><span>${(() => { const s = C.storyStand(); return s.n ? `Eine Geschichte in fünf Kapiteln · ${s.n}/${s.gesamt} Szenen` : "Eine Geschichte in fünf Kapiteln · echte Klausurfragen, aber zum Lesen"; })()}</span></button>` : ""}
+    ${Story.verfuegbar() ? `<button class="mode-card wide story-kachel" data-go="story" style="width:100%"><b>☕ Lehrerzimmer <span class="story-herz">💗</span></b><span>${(() => { const s = C.storyStand(); return s.n ? `Eine Geschichte in fünf Kapiteln · ${s.n}/${s.gesamt} Szenen` : "Eine Geschichte in fünf Kapiteln · echte Klausurfragen, aber zum Lesen"; })()}</span></button>` : ""}
 
     <h2 class="abschnitt-titel">Wo du stehst</h2>
     <div class="card mt glim" style="margin-top:8px">

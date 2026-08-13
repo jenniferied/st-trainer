@@ -1458,7 +1458,16 @@ export const frageChatAids = () => new Set((state().frageChat || []).map((m) => 
 
    sidJetzt ist die laufende Session. Sie muss mit, damit ein spaeteres Loeschen
    der Session das Gespraech mitnimmt — der Grabstein greift ueber die sid, und
-   ohne sie bliebe das Gespraech einer geloeschten Runde stehen. */
+   ohne sie bliebe das Gespraech einer geloeschten Runde stehen.
+
+   sidJetzt SCHLAEGT die Session der alten Antwort, und das ist der ganze Witz an
+   der Zeile. Uebt Rose eine Frage ein zweites Mal (Fehler-Training, Spaced,
+   PK-Wiederholung), dann ist neuste die Antwort aus der ALTEN Runde. Stuende
+   deren sid hier, haette das Gespraech von heute den Grabstein von gestern:
+   Loeschen der alten Runde raeumte ein Gespraech weg, das in der neuen
+   stattfand, und Loeschen der neuen liesse es stehen. Beides falsch herum, und
+   es trifft nicht den Rand, sondern den Normalfall — Wiederholen ist das,
+   wofuer die App gebaut ist. Wer gerade redet, bestimmt also die Zugehoerigkeit. */
 export function frageChatAid(qid, sidJetzt) {
   let neuste = null;
   for (const a of state().antwortLog) {
@@ -1466,7 +1475,7 @@ export function frageChatAid(qid, sidJetzt) {
     if (!neuste || (a.ts || 0) > (neuste.ts || 0)) neuste = a;
   }
   return neuste
-    ? { aid: neuste.aid || antwortId(neuste), sid: neuste.sid || sidJetzt || null }
+    ? { aid: neuste.aid || antwortId(neuste), sid: sidJetzt || neuste.sid || null }
     : { aid: "q:" + qid, sid: sidJetzt || null };
 }
 

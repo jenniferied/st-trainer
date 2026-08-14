@@ -635,7 +635,13 @@ export function bewerteRows(input) {
   const themen = grp((r) => r.thema);
   const belastbar = Object.entries(themen).filter(([, a]) => a.length >= THEME_MIN)
     .map(([thema, a]) => ({ thema, ...stat(a) }));
-  const staerken = belastbar.filter((x) => x.quote >= 80).sort((a, b) => b.quote - a.quote);
+  /* STAERKE ab 75, nicht ab 80 (14.08.2026). Die App hatte zwei Leitern fuer
+     dieselbe Frage: die Balken und Siegel in der Statistik sagen seit dem
+     21.07. "ab 75 % sicherer Bereich, ab 90 % Gold", die Auswertung hier sagte
+     80. Roses bestes Thema stand am 14.08. bei 79 % — sie sah also ein
+     gruenes Siegel und daneben den Satz, es reiche noch nicht fuer eine
+     Aussage. Eine Leiter reicht, und es ist die, die schon sichtbar ist. */
+  const staerken = belastbar.filter((x) => x.quote >= 75).sort((a, b) => b.quote - a.quote);
   const schwaechen = belastbar.filter((x) => x.quote < 55)
     .map((x) => ({ ...x, tempo: x.zeit != null && zAll != null && x.zeit < 0.55 * zAll,
       // schwaechstes belastbares Unterthema im Thema (fuer den konkreten Fokus)
@@ -648,7 +654,13 @@ export function bewerteRows(input) {
     .sort((a, b) => (1 - b.quote / 100) * b.n - (1 - a.quote / 100) * a.n);
   const verw = Object.entries(grp((r) => (r.punkte < r.max && r.paar) ? r.paar : null))
     .filter(([, a]) => a.length >= 2).map(([paar, a]) => ({ paar, n: a.length }));
-  return { staerken, schwaechen, verwechslung: verw, overallQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null, nQual: qual.length };
+  /* belastbar faehrt seit dem 14.08. MIT nach draussen (absteigend sortiert).
+     Grund: ohne sie konnte analyseHtml nicht unterscheiden, ob gar keine Daten
+     da sind oder ob nur kein Thema eine der beiden Schwellen reisst — und hat
+     beides gleich beschriftet ("noch zu wenig echte Antworten"). Bei 939
+     gewerteten Antworten war dieser Satz schlicht falsch. Wer die Liste hat,
+     kann relativ vergleichen, wenn absolut nichts heraussticht. */
+  return { staerken, schwaechen, verwechslung: verw, belastbar: belastbar.slice().sort((a, b) => b.quote - a.quote), overallQuote: qual.length ? Math.round(100 * avg(qual.map((r) => r.punkte / r.max))) : null, nQual: qual.length };
 }
 
 // ---------- Qualitaet je UEBUNGSTAG (eine einzige Definition) ----------

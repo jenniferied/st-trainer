@@ -2796,10 +2796,35 @@ function tryInline(qid, btn) {
 // Nur belastbare Aussagen — die Schwellen stecken in core.bewerteRows.
 function analyseHtml(a, scope = "global") {
   const tn = (slug) => (C.THEMEN[slug] || {}).name || slug;
-  if (!a || a.nQual < 3 || (!a.staerken.length && !a.schwaechen.length)) {
+  const bel = (a && a.belastbar) || [];
+  /* "Zu wenig Antworten" darf nur dastehen, wenn es WIRKLICH zu wenige sind —
+     also kein einziges Thema die vier Antworten zusammenbekommt.
+
+     Bis zum 14.08.2026 stand hier zusaetzlich (!staerken && !schwaechen), und
+     das war der Fehler: die Schwellen waren 80 und 55, Roses sechs Themen lagen
+     bei 56, 62, 62, 62, 69 und 79 Prozent. Alle sechs in der Luecke, beide
+     Enden um EINEN Punkt verfehlt. Sie hatte 939 gewertete Antworten aus 1212
+     Runden ueber vier Wochen — und las, es seien noch zu wenige. Genau die
+     Sorte Satz, die diese App nicht sagen soll. */
+  if (!a || a.nQual < 3 || !bel.length) {
     return `<p class="muted">${scope === "runde" ? "Für klare Muster war die Runde noch zu kurz" : "Noch zu wenig echte Antworten für eine klare Auswertung"} — je mehr Runden, desto konkreter wird's hier. 💪</p>`;
   }
   const p = [];
+
+  /* Nichts reisst eine Schwelle, aber Daten sind da: dann wird RELATIV
+     verglichen statt geschwiegen. Das ist auch fachlich das Ehrlichere — wer
+     ueberall aehnlich steht, hat trotzdem ein schwaechstes und ein staerkstes
+     Thema, und genau das wuerde ein Mensch als Naechstes ansprechen. */
+  if (!a.schwaechen.length && bel.length >= 2) {
+    const stark = bel[0], schwach = bel[bel.length - 1];
+    // Den Anker nur hier nennen, wenn unten keine Staerken-Zeile kommt - sonst
+    // stuende dasselbe Thema zweimal auf derselben Karte.
+    const anker = a.staerken.length ? ""
+      : ` Am sichersten stehst du gerade bei ${esc(tn(stark.thema))} (${stark.quote} %).`;
+    p.push(`<div class="fokus"><b>Kein Thema fällt ab</b> — deine Quoten liegen zwischen ${schwach.quote} und ${stark.quote} %. `
+      + `Relativ am meisten drin ist bei ${esc(tn(schwach.thema))} (${schwach.quote} % bei ${schwach.n} ${schwach.n === 1 ? "Frage" : "Fragen"}).${anker}`
+      + `<div style="margin-top:8px"><button class="btn small" data-uebe="${schwach.thema}">⚡ 10 Karten ${esc(tn(schwach.thema))} üben</button></div></div>`);
+  }
   if (a.schwaechen.length) {
     const w = a.schwaechen[0];
     const bp = w.brennpunkt ? `, vor allem bei ${esc(labelU(w.brennpunkt.u))}` : "";

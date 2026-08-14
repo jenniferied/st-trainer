@@ -131,16 +131,17 @@ export function oeffne(zurueck) {
     </div>
     <h2 class="abschnitt-titel">Wo du bist</h2>
     ${karten.map(({ k, fertig, zustand }, i) => {
-      // Spoiler-Sperre (Jennifer, 13.08.): der Vorspann verraet, wohin das
-      // Kapitel geht. Sichtbar ist er nur, wo Rose schon ist — angefangene,
-      // durchgelesene und das aktuell dran seiende Kapitel. Was danach kommt,
-      // bleibt zu. Der Titel steht trotzdem da, sonst wirkt die Liste kaputt.
+      // Spoilersperre, zweite Stufe (Jennifer, 14.08.): nicht nur der Vorspann,
+      // auch der TITEL bleibt zu, bis Rose in dem Kapitel ist. "Das Schulfest"
+      // und "Der Wettkampf" verraten sonst den ganzen Bogen, bevor sie in
+      // Kapitel 2 ist. Aufgedeckt wird genau eins nach dem anderen: alles, was
+      // sie erreicht hat, plus das gerade laufende.
       const offenlegen = zustand !== "offen" || i === aktivIdx;
       return `
       <div class="mode-card wide story-kap ${zustand}${i === aktivIdx ? " aktiv" : ""}${offenlegen ? "" : " zu"}">
-        <b>${k.nr}. ${esc(k.kapitelTitel)}</b>
-        <span>${offenlegen ? esc(k.vorspann) : "Kommt noch."}</span>
-        <span class="story-meta">${fertig}/${k.szenen.length} Szenen${zustand === "fertig" ? " · durch" : ""}</span>
+        <b>${offenlegen ? `${k.nr}. ${esc(k.kapitelTitel)}` : `${k.nr}. <span class="story-schloss">— noch verdeckt</span>`}</b>
+        ${offenlegen ? `<span>${esc(k.vorspann)}</span>` : ""}
+        <span class="story-meta">${offenlegen ? `${fertig}/${k.szenen.length} Szenen${zustand === "fertig" ? " · durch" : ""}` : `${k.szenen.length} Szenen`}</span>
       </div>`;
     }).join("")}
   </div>`;

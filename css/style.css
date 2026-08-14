@@ -1743,7 +1743,11 @@ button.ans:disabled { cursor: default; }
 }
 /* Im Beat-Kopf steht dann nur noch die Punktzeile neben dem Bild, nicht daneben */
 .story-beat-kopf { flex-wrap: wrap; }
-/* Am Handy gibt es keinen Cursor, der zoom-in verraet — also hinschreiben. */
+/* Am Handy gibt es keinen Cursor, der zoom-in verraet — also hinschreiben.
+   flex-basis:100% ist hier nicht Deko: Bild, Hinweis und Punktzeile liegen im
+   selben Flex-Container (.story-beat-kopf), und ohne den Umbruch setzt sich der
+   Hinweis NEBEN die Punktzeile ("Antippen zum Vergroessern  Diesmal nicht"). */
+.story-meme, .story-meme-hint { flex-basis: 100%; }
 .story-meme-hint {
   display: block;
   margin: -4px 0 10px;
@@ -1777,3 +1781,40 @@ button.ans:disabled { cursor: default; }
   cursor: pointer;
 }
 @media (prefers-reduced-motion: reduce) { .story-lupe { animation: none } }
+
+/* --- Luft im Lehrerzimmer (Jennifer, 14.08.) ------------------------------
+   Die Kapitelliste stand als Block ohne Zwischenraum, die Karten klebten
+   aneinander und der Szenentext sass zu dicht an der Frage. Alles hier ist
+   reiner Abstand, nichts aendert Farbe oder Groesse. */
+.story-kap {
+  margin-bottom: 12px;      /* Karten trennen sich voneinander */
+  padding: 15px 16px;       /* und atmen nach innen */
+}
+.story-kap:last-child { margin-bottom: 4px; }
+.story-kap b { margin-bottom: 4px; }
+.story-kap .story-meta { margin-top: 7px; }
+
+/* Die verdeckten Kapitel sind kuerzer (kein Vorspann) und wuerden sonst
+   zusammensacken — Mindesthoehe haelt die Liste im Rhythmus. */
+.story-kap.zu { min-height: 76px; }
+.story-schloss { font-weight: 400; color: var(--ink-soft); font-style: italic; }
+
+/* Ueberschrift "Wo du bist" braucht Abstand nach oben zum Startknopf */
+.story-intro { margin-bottom: 20px; }
+.story-intro .story-fort { margin-top: 14px; }
+
+/* Im Lauf: Szene, Frage und Beat deutlicher voneinander absetzen */
+.story-lauf .story-szene { margin-bottom: 16px; padding: 18px 16px; }
+.story-lauf .q-progress { margin-bottom: 14px; }
+.story-beat { margin-top: 16px; padding: 14px 16px; }
+.story-komm { margin-top: 14px; padding: 12px 14px; }
+
+/* Der Startknopf trug noch das Terracotta der Uebungsmodi und stiess sich am
+   Pink der aktiven Kapitelkarte direkt darunter. Im Lehrerzimmer ist Pink die
+   Leitfarbe, also auch hier. Der gesperrte Zustand bleibt bewusst neutral -
+   eine leuchtende Pause-Taste sieht aus, als koennte man sie druecken. */
+.story-intro .btn:not([disabled]) {
+  background: var(--story-pink);
+  border-color: var(--story-pink);
+}
+.story-intro .btn[disabled] { opacity: .55; }

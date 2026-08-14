@@ -2840,7 +2840,7 @@ function analyseHtml(a, scope = "global") {
     p.push(`<p class="an-zeile"><b>Hier ist am meisten drin</b> (antippen = direkt üben): ${a.schwaechen.map((x) => `<button class="tag-hebel" data-uebe="${x.thema}" title="10 Karten ${esc(tn(x.thema))} üben">${esc(tn(x.thema))} ${x.quote}% ›</button>`).join(" ")}</p>`);
   if (a.verwechslung?.length)
     p.push(`<p class="muted an-zeile">Leicht zu verwechseln: ${a.verwechslung.slice(0, 3).map((v) => esc(v.paar)).join(" · ")}.</p>`);
-  p.push(`<p class="muted an-zeile" style="font-size:.78rem">Basis: deine echten Versuche${scope === "runde" ? " dieser Runde" : ""} (min. 3 s Lesezeit, keine Sofort-Wiederholung), gruppiert nach Thema — Aussagen erst ab 4 Antworten pro Thema.</p>`);
+  p.push(`<p class="muted an-zeile" style="font-size:.78rem">Basis: deine echten Versuche${scope === "runde" ? " dieser Runde" : ""} (min. 3 s Lesezeit, keine Sofort-Wiederholung), gruppiert nach Thema — Aussagen erst ab 4 Antworten pro Thema. Begriffe-Blitz, Operatoren- und Detektiv-Runden zählen hier nicht mit: sie gehören zu keinem Thema.</p>`);
   return p.join("");
 }
 
@@ -2941,7 +2941,7 @@ function statInhaltHtml() {
       ${kachel(st.avgZeit != null ? fmtSek(st.avgZeit) : "–", "Ø Zeit pro Frage")}
       ${kachel(st.uebungsTage, st.uebungsTage === 1 ? "Übungstag" : "Übungstage")}
       ${kachel(st.sessions, "Sessions")}
-    </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt alles. In die Quoten fließen nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit und keine Sofort-Wiederholung derselben Frage — sonst würden Schnelltipps die Zahlen verzerren. Hier zählt jede Antwort einzeln, Begriffe-Blitz und Stöbern also mit. Der Schnitt in der Auswertung einer Runde meint etwas anderes: der nimmt nur ganze Fragenrunden und liegt deshalb meist ein paar Punkte tiefer.</p></div>
+    </div><p class="muted tz-note" style="margin:10px 0 0">„Antworten gesamt" zählt wirklich alles — auch Begriffe-Blitz, Operatoren- und Detektiv-Runden. In die Quoten fließen dagegen nur Klausurfragen, und davon nur echte Versuche (${st.nQual}): mindestens 3 s Lesezeit, keine Sofort-Wiederholung derselben Frage. Der größere Teil der Differenz sind dabei die Spiel- und Trainingsrunden: sie gehören zu keinem Thema, und eine Begriffskarte ist leichter als eine Klausurfrage — mitgezählt würden sie die Quote schöner aussehen lassen, als sie ist. Der Schnitt in der Auswertung einer Runde meint noch etwas anderes: der nimmt nur ganze Fragenrunden und liegt deshalb meist ein paar Punkte tiefer.</p></div>
     <div class="card an-card glim"><div class="an-head"><h3>💡 Wo du stehst</h3>${standSticker(st.punkteQuote)}</div>${analyseHtml(st.analyse, "global")}</div>
     <h2 class="abschnitt-titel">Beherrschung nach Thema</h2>
     <div class="card">${ewSatz}

@@ -82,6 +82,23 @@ function frag(text, opts = {}) {
   });
 }
 const sag = (text) => frag(text, { nurOk: true, ja: "Ok" });
+/* Eine Nebenbei-Ansage: erscheint, bleibt kurz stehen, geht von allein wieder.
+   Gegenstueck zu sag(), das ein Modal mit Ok-Knopf ist (frag mit nurOk).
+   Angelegt am 19.08.2026 fuer die verkuerzte Runde: die Wackel-Runde und die
+   Unterthema-Blitze ziehen aus schmalen Poolen und werden regelmaessig kuerzer
+   als bestellt. Als Modal waere das ein Tap vor JEDER dieser Runden — also
+   Genoergel, und Rose lernt, es wegzuklicken, ohne zu lesen. Eine Ansage, die
+   von allein geht, kostet nichts und sagt trotzdem die Wahrheit.
+   role=status, damit ein Screenreader sie vorliest, ohne den Fokus zu klauen. */
+function nebenbei(text, ms = 6000) {
+  document.querySelector(".nebenbei")?.remove();
+  const el = document.createElement("div");
+  el.className = "nebenbei";
+  el.setAttribute("role", "status");
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => { el.classList.add("weg"); setTimeout(() => el.remove(), 400); }, ms);
+}
 const datum = (ts) => new Date(ts).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 // Fortschritts-Anzeige in Stufen: kräftig = gemeistert, mittel = auf gutem Weg,
 // hell = angefangen. Zahl daneben = Fragen in Arbeit (alles außer "neu") — die
@@ -293,9 +310,20 @@ function notizHtml(roh) {
   return `<div class="eigene-notiz">${zeile("Deshalb angekreuzt:", t.warum)}${zeile("Könnte falsch sein, weil:", t.falsch)}</div>`;
 }
 
-function selbstErklStart(zone, erg, done, frageText) {
+/* opt.skipLink erzwingt den Ueberspringen-Link, egal was seModus() sagt.
+   GENAU EIN Aufrufer benutzt das: das Stoebern (Jennifer, 19.08.2026). Grund:
+   dort gibt es keine Runde, die man abbrechen kann, und keine Strenge, die Rose
+   selbst gewaehlt haette — die "streng"-Vorbelegung ausserhalb von Runden ist
+   ein Erbe, keine Entscheidung. Solange die Pflicht zahnlos war, fiel das nicht
+   auf; seit sie greift, waere Stoebern ein Browsing-Modus, in dem man an keine
+   Erklaerung mehr kommt, ohne etwas hinzuschreiben.
+   Das ist KEIN zweiter globaler Schalter (die Sorte hat hier schon zwei Bugs
+   gemacht): der Wert wird nirgends gemerkt, ist nicht einstellbar und kann per
+   Konstruktion nicht in eine Runde lecken — seModus() bleibt die einzige
+   Instanz, die ueber Runden entscheidet. */
+function selbstErklStart(zone, erg, done, frageText, opt = {}) {
   const frage = frageText || (erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?");
-  const streng = seModus() === "streng";
+  const streng = opt.skipLink ? false : seModus() === "streng";
   zone.innerHTML = `<div class="selbst-box" id="selbstBox">
     <div class="selbst-kopf"><b>${frage}</b> ${M.infoBtn("selbsterklaerung")}</div>
     <textarea id="selbstTxt" rows="2" placeholder="Deine Vermutung — Stichworte reichen" autocapitalize="sentences"></textarea>
@@ -307,9 +335,14 @@ function selbstErklStart(zone, erg, done, frageText) {
     const text = zone.querySelector("#selbstTxt").value.trim();
     done({ text: text || null, skip: !!skip && !text });
   };
+  // Die Leer-Sperre gilt IMMER, auch wenn es einen Link gibt: der Knopf heisst
+  // "Erklärung ansehen" und bedeutet "ich hab was hingeschrieben", der Link
+  // heisst "Nur die Antwort zeigen" und bedeutet "heute nicht". Ein Knopf, der
+  // beides tut, ist genau die stille Optionalitaet, um die es hier ging — die
+  // Wahl gehoert sichtbar auf zwei Bedienelemente, nicht in ein leeres Feld.
   zone.querySelector("#selbstOk").onclick = () => {
     const ta = zone.querySelector("#selbstTxt");
-    if (streng && !genugText(ta.value)) { maekelFeld(ta, zone.querySelector("#selbstHint")); return; }
+    if (!genugText(ta.value)) { maekelFeld(ta, zone.querySelector("#selbstHint")); return; }
     fertig(false);
   };
   const sk = zone.querySelector("#selbstSkip");
@@ -543,10 +576,11 @@ function erklaerFlow(q, r, erg, done) {
       ${streng ? "" : `<button class="linkish" id="warumSkip">Überspringen</button>`}`;
     fz.appendChild(knopf);
     const absenden = (mitText) => {
-      // In "streng" ist jedes Feld Pflicht — der Knopf bringt einen nicht mehr
-      // an der Denkarbeit vorbei. Beim ersten leeren Feld anhalten und dorthin
-      // springen, statt alles auf einmal rot zu faerben.
-      if (mitText && streng) {
+      // Jedes Feld ist Pflicht — der Knopf bringt einen nicht mehr an der
+      // Denkarbeit vorbei. Wer heute nicht mag, nimmt in "standard" den Link
+      // daneben; ein leeres Feld ist keine dritte Antwort. Beim ersten leeren
+      // Feld anhalten und dorthin springen, statt alles auf einmal rot zu faerben.
+      if (mitText) {
         for (const [oi, box] of felder) {
           const leer = [...box.querySelectorAll("textarea")].find((t) => !genugText(t.value));
           if (leer) { maekelFeld(leer, box.querySelector(`#warumHint-${oi}`)); return; }
@@ -1482,7 +1516,8 @@ function builder({ preset }) {
     ${P.hinweis ? `<div class="card"><p style="margin:0">${P.hinweis}</p></div>` : ""}
     ${!pingoWaehlbar && C.nurPingoGemerkt() ? `<div class="card" style="border-left:4px solid var(--c-sq)"><p style="margin:0">🎯 Hier gilt <b>Nur Pingo-Fragen</b> nicht — Klausur-Simulationen laufen immer über den ganzen Bestand, damit sie die echte Klausur abbilden.</p></div>` : ""}
     ${!fixAnzahl ? `<div class="field"><span class="flabel">Fragenzahl</span><div class="seg" id="anz">
-      ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div></div>` : ""}
+      ${[10, 15, 21, 30, 42].map((n) => `<button data-v="${n}" class="${n === (P.anzahl || 10) ? "on" : ""}">${n}</button>`).join("")}</div>
+      <p class="feld-warnung hidden" id="anzahlWarn"></p></div>` : ""}
     <div class="field"><span class="flabel">Timer</span><div class="seg" id="timer">
       <button data-v="aus" class="${timerAn ? "" : "on"}">Ohne</button>
       <button data-v="normal" class="${timerAn && !nta ? "on" : ""}">Normal</button>
@@ -1551,12 +1586,46 @@ function builder({ preset }) {
     });
     app.querySelectorAll(".uth").forEach((cb) => cb.onchange = () => updateHint());
   };
+  /* Die Felder aus der laufenden Einstellung, die auf die FRAGENAUSWAHL wirken —
+     genau die, die C.baueRunde() liest, und in derselben Form, in der sie unten
+     in starte() landen. Ohne die Ablauf-Felder (Timer, Feedback, Ansicht aendern
+     nichts daran, welche und wie viele Fragen kommen). Die Auswahl-Strategie
+     gehoert dazu: "Schwächen" kann aus demselben Themenpool weniger hergeben als
+     "Schlau". */
+  const filterCfg = () => ({
+    modus: P.modus, nurFehler: P.nurFehler || false, spaced: P.spaced || false,
+    auswahl: segVal("auswahl") || P.auswahl || "smart", sprache: "schwer",
+    unterthemen: [...app.querySelectorAll(".uth:checked")].map((x) => x.value),
+    nurPingo: pingoAn(),
+  });
   const updateHint = () => {
     const n = fixAnzahl || +(segVal("anz") || 10);
     const t = segVal("timer");
     document.getElementById("timerHint").textContent = t === "aus" ? "Ohne Zeitdruck üben." : `≈ ${C.timerMinuten(n, t)} Minuten für ${n} Fragen (${t === "nta" ? "mit" : "ohne"} Nachteilsausgleich, relativ zur echten Klausur).`;
     const ah = document.getElementById("auswahlHint");
     if (ah) ah.textContent = (AUSWAHL_OPT.find(([v]) => v === segVal("auswahl")) || [])[2] || "";
+    /* Reicht der Bestand fuer die eingestellte Fragenzahl? (Jennifer, 19.08.2026:
+       "sie hat das Preset genutzt und dann 15 gewaehlt" — und bekam 10, ohne dass
+       irgendwo stand, warum.) Gezaehlt wird mit C.poolGroesse(), also mit
+       DERSELBEN Filterkette, aus der die Runde nachher gebaut wird — eine
+       Vorschau, die die Runde nicht einloest, waere schlimmer als keine.
+       Kein Alarm, nur eine Ansage: die kuerzere Runde ist voellig in Ordnung,
+       still passieren darf sie nur nicht. Sprachregel beachtet — es fehlt nichts
+       an Rose, der Bestand gibt gerade nicht mehr her.
+       Wenn der Pingo-Filter den Engpass schon namentlich erklaert, bleibt es bei
+       seiner Zeile; zwei Warnungen ueber dieselbe Sache lesen sich wie zwei
+       Probleme. */
+    const aw = document.getElementById("anzahlWarn");
+    if (aw) {
+      const { sicher, hoechstens } = C.rundenLaenge({ ...filterCfg(), anzahl: n });
+      const kurz = hoechstens < n;
+      const pingoErklaertEs = pingoAn() && kurz;
+      aw.classList.toggle("hidden", !kurz || pingoErklaertEs);
+      if (kurz && !pingoErklaertEs) {
+        const zahl = sicher === hoechstens ? `<b>${sicher}</b>` : `<b>${sicher}–${hoechstens}</b>`;
+        aw.innerHTML = `Zu dieser Auswahl gibt es gerade ${zahl} passende Fragen — die Runde wird also kürzer als ${n}. Mehr Themen dazunehmen macht sie länger.`;
+      }
+    }
     // Warnung, BEVOR die Runde startet: reichen die Pingo-Fragen fuer die
     // gewaehlten Unterthemen ueberhaupt? pingoCounts() zaehlt nach denselben
     // Regeln wie baueRunde, die Zahl stimmt also mit dem ueberein, was kommt.
@@ -1774,6 +1843,11 @@ function starte(cfg) {
       ? "Zu wenig Pingo-Fragen für diese Auswahl. Nimm mehr Themen dazu oder stell in den Einstellungen wieder auf alle Fragen um."
       : "Zu wenig passende Fragen gefunden. Wähle mehr Themen."); return;
   }
+  // Kürzer als bestellt? Dann sagen, nicht still kürzen (Jennifer, 19.08.2026).
+  // Der Baukasten warnt schon vorher; das hier faengt die Wege ab, die an ihm
+  // vorbeigehen — Schnellstart-Kacheln, "Nächster Stern", Wackel-Runde.
+  if (cfg.anzahl && sess.runde.length < cfg.anzahl)
+    nebenbei(`Es sind ${sess.runde.length} statt ${cfg.anzahl} Fragen geworden — mehr passende gibt es zu dieser Auswahl gerade nicht.`);
   laufLos(sess);
 }
 // Frisch erstellte Session (Preset, Baukasten oder Probeklausur) sofort loslegen
@@ -2900,13 +2974,16 @@ function tryInline(qid, btn) {
       document.getElementById(`re-${qid}`).onclick = () => tryInline(qid, btn);
     };
     if (!erg.voll && seAktiv("explore")) {
+      // skipLink: im Stoebern gibt es keine Runde, die man abbrechen kann —
+      // ohne Link bliebe die Erklaerung hinter einem Feld, zu dem Rose vielleicht
+      // gerade keine Vermutung hat. Der Knopf verlangt trotzdem eigene Worte.
       selbstErklStart(wrap.querySelector(".fbz"), erg, (selbst) => {
         C.ergaenzeAntwort(eintrag.aid, { selbstErkl: selbst.text, selbstSkip: !!selbst.skip });
         reveal(selbst);
         // wurzel ausdruecklich: im Stoebern koennen mehrere Fragen gleichzeitig
         // offen stehen, und ein id-Anker findet immer nur die erste von ihnen.
         llmSelbstFeedback(q, selbst.text, gewaehlt, erg, { wurzel: wrap.querySelector(".fbz") });
-      });
+      }, null, { skipLink: true });
     } else reveal(null);
   };
 }

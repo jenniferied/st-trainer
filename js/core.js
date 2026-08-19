@@ -1007,7 +1007,18 @@ export function pruefungsStreak() {
 }
 
 // ---------- Runden bauen ----------
-export function baueRunde(cfg) {
+/* Der Fragen-Pool einer Runde: alles, was nach den Filtern uebrig bleibt, schon
+   auf einen Vertreter je Varianten-Gruppe eingedampft. Also GENAU die Menge, aus
+   der baueRunde() danach zieht — laenger kann eine Runde nicht werden.
+
+   Seit dem 19.08.2026 eine eigene Funktion, weil der Baukasten sie VORHER
+   braucht: Rose hat 15 Fragen eingestellt und 10 bekommen, ohne dass irgendwo
+   stand, warum (Jennifer beim Zuschauen). Die Zahl still zu kuerzen ist die
+   unangenehmste Variante — sie sieht aus wie ein Fehler der App oder wie ein
+   Fehler von ihr. Sie muss aber aus DERSELBEN Rechnung kommen wie die Runde,
+   sonst steht in der Vorschau eine Zahl, die die Runde nicht einloest. Darum
+   eine Funktion und zwei Aufrufer, nicht zwei Filterketten. */
+export function rundenPool(cfg) {
   let qs = POOL.filter((q) => q.quizbar);
   if (!cfg.inklNichtRelevant) qs = qs.filter((q) => q.relevanz !== "laut-rose-nicht-relevant");
   // Probeklausur-Quarantaene: diese Fragen kommen erst nach bestandener PK ins Training
@@ -1028,15 +1039,6 @@ export function baueRunde(cfg) {
   // Globaler Pingo-Filter: greift in JEDEM Uebungsmodus (Schnellrunde, Baukasten,
   // Wackel-Runde, Unterthema-Blitz, Empfehlungen) — ausser in Klausur-Simulationen
   if (pingoFilterGilt(cfg)) qs = qs.filter(istPingo);
-  // Auswahl-Strategie: wie wird aus dem gefilterten Pool die Runde gebaut?
-  //   smart   = Spaced Repetition (Wackliges/Fälliges zuerst, dazu Neues) — die Wissenschaft
-  //   fokus   = nur Ungelerntes & Schwieriges, das Härteste zuerst
-  //   zufall  = rein zufällig, alle Fragen gleich wahrscheinlich
-  //   klausur = repräsentativer Mix über alle Themen wie in der echten Klausur
-  // Alt-Configs ohne `auswahl` werden aus den früheren Flags abgeleitet.
-  const strat = cfg.auswahl || (cfg.spaced ? "smart" : cfg.nurFehler ? "fokus"
-    : (cfg.modus === "klausur" || cfg.modus === "halbe") ? "klausur" : "smart");
-  const nMax = Math.min(cfg.anzahl || 10, qs.length);
   // Nie zwei Varianten derselben Frage in einer Runde: pro Gruppe genau ein Vertreter
   const grp = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
   const gruppen = new Map();
@@ -1051,6 +1053,41 @@ export function baueRunde(cfg) {
     const kand = arr.filter((q) => repRang(q) === best);
     return kand[Math.floor(Math.random() * kand.length)];
   });
+  return reps;
+}
+/* Wie lang wird die Runde? Die Zahl, die der Baukasten anzeigt, BEVOR Rose
+   startet — als Spanne, weil sie eine Spanne IST.
+
+   Der Pool ist nur die Obergrenze. Danach fallen noch Archiv-Fragen weg, deren
+   umgeschriebene Fassung schon in der Runde steht (Jennifers Regel vom 10.08.:
+   nie beide zusammen) — und WIE VIELE das sind, haengt daran, welche Vertreter
+   gezogen wurden. Gemessen: dieselbe Einstellung lieferte abwechselnd 14 und 15.
+   Erst hier stand, die Laenge sei deterministisch; fuenf Messungen hintereinander
+   haben das widerlegt. Eine Vorschau, die "15" verspricht und 14 liefert, waere
+   schlimmer als die stille Kuerzung, die wir gerade abschaffen.
+
+   Deshalb zwei Zahlen mit klarer Bedeutung:
+     sicher     — so viele kommen mit Sicherheit (alle Nicht-Archiv-Fragen)
+     hoechstens — mehr koennen es nicht werden
+   Meistens sind beide gleich (Archiv-Fragen sind selten), dann steht in der
+   Oberflaeche eine einzelne Zahl und niemand muss ueber Spannen nachdenken. */
+export function rundenLaenge(cfg) {
+  const reps = rundenPool(cfg);
+  const n = Math.min(cfg.anzahl || 10, reps.length);
+  return { sicher: Math.min(n, reps.filter((q) => !q.archiv).length), hoechstens: n };
+}
+
+export function baueRunde(cfg) {
+  const reps = rundenPool(cfg);
+  // Auswahl-Strategie: wie wird aus dem gefilterten Pool die Runde gebaut?
+  //   smart   = Spaced Repetition (Wackliges/Fälliges zuerst, dazu Neues) — die Wissenschaft
+  //   fokus   = nur Ungelerntes & Schwieriges, das Härteste zuerst
+  //   zufall  = rein zufällig, alle Fragen gleich wahrscheinlich
+  //   klausur = repräsentativer Mix über alle Themen wie in der echten Klausur
+  // Alt-Configs ohne `auswahl` werden aus den früheren Flags abgeleitet.
+  const strat = cfg.auswahl || (cfg.spaced ? "smart" : cfg.nurFehler ? "fokus"
+    : (cfg.modus === "klausur" || cfg.modus === "halbe") ? "klausur" : "smart");
+  const nMax = Math.min(cfg.anzahl || 10, reps.length);
   const auswahl = waehleFragen(reps, nMax, strat);
   shuffle(auswahl); // Anzeige-Reihenfolge mischen (auch bei Klausur-Mix wie im Ernstfall)
   return auswahl.map((q) => ({ qid: q.id, optOrder: shuffle([...q.optionen.keys()]), gewaehlt: null }));

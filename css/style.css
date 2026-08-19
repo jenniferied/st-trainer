@@ -398,6 +398,20 @@ label.check:has(input:disabled) { opacity: .55; }
    Theme nur 4,43:1 und reisst damit die 4,5:1, auf die das Abzeichen "offen"
    am 12.08. gebracht wurde. Eine Spur dunkler sind es 4,86:1. Nachts bleibt
    --warn-ink (7,56:1) — dort ist nichts zu heilen. */
+/* Nebenbei-Ansage (19.08.2026): unten eingeblendet, geht von allein wieder.
+   Unten und nicht oben, weil dort am Handy der Daumen ist und der Kopf der
+   Frage frei bleibt. Ueber allem, aber ohne Overlay — sie blockiert nichts. */
+.nebenbei {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 60; max-width: min(92vw, 460px);
+  background: var(--card); color: var(--ink); border: 1.5px solid var(--warn-border);
+  border-radius: 12px; padding: 10px 14px; font-size: .88rem; line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+  animation: nebenbeiRein .28s ease-out;
+}
+.nebenbei.weg { opacity: 0; transition: opacity .4s ease; }
+@keyframes nebenbeiRein { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .nebenbei { animation: none; } }
 .feld-warnung { background: var(--warn-bg); color: #826718; border: 1px solid var(--warn-border); border-radius: 10px; padding: 8px 11px; font-size: .87rem; line-height: 1.45; margin: 8px 0 0; }
 :root[data-theme="dunkel"] .feld-warnung { color: var(--warn-ink); }
 

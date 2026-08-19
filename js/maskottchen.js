@@ -98,6 +98,37 @@ export function herzenHeute(tz) {
    (Jennifer, 12.08.). Nach dem Schluepfen passiert dann etwa jeden Uebungstag
    etwas — die Abstaende sind mit Absicht 3 und 4 Herzen, nicht mehr.
 
+   NACHKALIBRIERT AM 19.08.2026 (Jennifer: "waechst ein bisschen schnell").
+   Die Rechnung oben unterstellt, dass Rose alle 2,5 Tage uebt. Sie uebt
+   inzwischen fast taeglich (7 von 8 Tagen seit dem 12.08.) und sammelt so rund
+   2,25 Herzen pro KALENDERtag statt pro anderthalb. Ihr Stand am 19.08.: 45
+   Herzen, Stufe 6 — die Leiter waere am 21./22.08. durch gewesen, knapp vier
+   Wochen vor der Klausur, und danach passiert nichts mehr.
+
+   Darum sind NUR die beiden letzten Sprossen nach oben gerueckt:
+     Stufe 7   48 -> 56   etwa der 24.08.
+     Stufe 8   51 -> 68   etwa der 30.08. bis 04.09.
+
+   Die Spanne bei Stufe 8 ist ehrlich und kein Rundungsfehler: herzenStand()
+   rechnet die ganze Historie mit dem HEUTIGEN Tagesziel, und das steigt zur
+   Klausur hin Richtung 100. Roses 18 Uebungstage sind bei Ziel 60 = 45 Herzen
+   wert, bei Ziel 100 nur noch 39. Sie klettert also gegen eine langsam
+   absackende Grundlinie an. Wer Stufe 8 verschiebt, muss das mitrechnen.
+
+   0 BIS 6 BLEIBEN UNANGETASTET. Roses gesyncte mk.stufeMax steht auf 6, das
+   ist der einzige je gespeicherte Index — an dem darf sich die Bedeutung nicht
+   aendern (siehe Absatz unten). 7 und 8 hat noch nie jemand erreicht, deren
+   Zahlen sind darum frei.
+
+   WAS DAS KOSTET, offen notiert: zwischen Stufe 6 und 8 liegen jetzt zwei
+   Abstaende von 12 statt 3 und 4 Herzen — gegen die Regel eine Zeile weiter
+   oben. Ertragbar ist das nur, weil Stufe 7 ohnehin KEIN neues Bild hat:
+   figurEbenen() liest von `sub` nur die Ohren und die Blob-Ahnung, "jung sub 0"
+   und "jung sub 1" zeichnen dieselbe Katze. Der einzige echte Bild-Moment, der
+   noch aussteht, ist erwachsen. Enger takten liesse sich das erst mit neuen
+   Figuren (Zwischengroesse oder ein Merkmal fuer jung sub 1) — das ist
+   Zeichenarbeit und Jennifers Entscheidung, keine Zahlenfrage.
+
    ANHAENGEN IST SICHER, UMSORTIEREN NICHT. mk.stufeMax speichert die hoechste
    je erreichte Stufe als INDEX und synct. Wird die Liste umsortiert, zeigt ein
    gespeicherter Wert auf ein anderes Bild — der Wert ueberlebt, seine Bedeutung
@@ -110,8 +141,8 @@ const STUFEN = [
   { ab: 37, art: "blob", sub: 1, satz: "Zwei Augen! Die waren gestern noch nicht da." },
   { ab: 41, art: "blob", sub: 2, satz: "Da wachsen Ohren. Ich glaub, ich werd was Bestimmtes." },
   { ab: 44, art: "jung", sub: 0, satz: "Jetzt sieht man's. Ich bin eine Katze." },
-  { ab: 48, art: "jung", sub: 1, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
-  { ab: 51, art: "erwachsen", sub: 0, satz: "Ausgewachsen. Ab jetzt sammeln wir zusammen." },
+  { ab: 56, art: "jung", sub: 1, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
+  { ab: 68, art: "erwachsen", sub: 0, satz: "Ausgewachsen. Ab jetzt sammeln wir zusammen." },
 ];
 /* Die Stufe, bei der aus dem Ei ein Tier wird. Als Konstante, weil drei Stellen
    sie brauchen (Moment ausloesen, Bild waehlen, Test) und eine 3 im Code an der

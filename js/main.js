@@ -235,19 +235,83 @@ const seModus = (cfg) => {
 // Ausserhalb der Runden (Explore, Nacharbeit) ist sie damit immer an.
 const seAktiv = () => true;
 
+/* PFLICHT HEISST PFLICHT (Jennifer, 19.08.2026).
+   Bis hierhin war "streng" nur halb streng: es nahm den Ueberspringen-Link weg,
+   aber der Knopf darunter nahm ein LEERES Feld genauso an wie ein volles. Wer
+   also nichts tippte und einmal tippte, bekam die Erklaerungen — der Denkmoment,
+   um den es geht, war faktisch optional. Genau die Luecke hat Jennifer beim
+   Zuschauen gesehen ("thats a no no").
+   Ab jetzt gilt in "streng": ohne eigene Worte kein Weiterkommen. Zwei Zeichen
+   reichen als Schwelle — es geht nicht darum, Laenge zu erzwingen, sondern
+   darum, dass ein Gedanke da war. Ein leerer Klick ist kein Gedanke.
+   Der Ausgang bleibt in "standard" offen (Link "Nur die Antwort zeigen"), und
+   der Weiter-Knopf der Runde ist waehrend der Abfrage ohnehin versteckt — es
+   gibt also keine stille Hintertuer, die die Pflicht wieder aushebelt. */
+const MIN_ZEICHEN = 2;
+const genugText = (s) => String(s || "").trim().length >= MIN_ZEICHEN;
+// Ein leeres Pflichtfeld anmeckern: markieren, Hinweis zeigen, hinspringen.
+// Bewusst kein toter Knopf — ein Knopf, der nicht reagiert, liest sich am Handy
+// wie eine kaputte App, ein Satz daneben sagt, was fehlt.
+function maekelFeld(ta, hinweis) {
+  ta.classList.add("fehlt");
+  if (hinweis) hinweis.hidden = false;
+  ta.focus();
+  ta.addEventListener("input", () => {
+    ta.classList.remove("fehlt");
+    if (hinweis) hinweis.hidden = true;
+  }, { once: true });
+}
+const pflichtHinweis = (id, txt = "Ein paar eigene Worte — zwei Stichworte reichen schon.") =>
+  `<p class="pflicht-hinweis" id="${id}" hidden>${txt}</p>`;
+
+/* Die zwei Antworten pro Option — drei Formen, ein Datenstand.
+   Gespeichert wird {warum, falsch} je Option-Index. ALLE drei Leser vertragen
+   zusaetzlich die alte Form (ein blosser String): Staende von vor dem
+   19.08.2026 haben genau die, und ein alter Lernstand darf nicht deshalb leer
+   aussehen, weil das Format gewachsen ist. */
+const alsPaar = (t) => (typeof t === "string" ? { warum: t, falsch: null } : (t || {}));
+// Fuer Log und Anzeige: ein lesbarer Satz pro Option, mit dem Optionstext davor.
+function warumText(q, texte) {
+  const zeilen = Object.entries(texte || {}).map(([oi, roh]) => {
+    const t = alsPaar(roh);
+    const opt = q.optionen[+oi]?.text || `Option ${+oi + 1}`;
+    const teile = [t.warum ? `angekreuzt, weil: ${t.warum}` : "", t.falsch ? `könnte falsch sein, weil: ${t.falsch}` : ""].filter(Boolean);
+    return teile.length ? `„${opt}" — ${teile.join(" | ")}` : "";
+  }).filter(Boolean);
+  return zeilen.join("\n") || null;
+}
+// Fuer die KI: strukturiert statt zusammengeklebt, mit dem Buchstaben, den auch
+// der Prompt fuer die Optionen benutzt (Index-Reihenfolge, nicht Anzeigereihenfolge).
+const llmProOption = (q, texte) => Object.entries(texte || {}).map(([oi, roh]) => {
+  const t = alsPaar(roh);
+  return { option: "abcdefghijkl"[+oi] || String(+oi + 1), text: q.optionen[+oi]?.text || "", warum: t.warum || null, falsch: t.falsch || null };
+});
+// Fuer die Anzeige an der Option, nachdem abgeschickt wurde
+function notizHtml(roh) {
+  const t = alsPaar(roh);
+  const zeile = (lbl, v) => (v ? `<p><b>${lbl}</b> ${esc(v)}</p>` : "");
+  return `<div class="eigene-notiz">${zeile("Deshalb angekreuzt:", t.warum)}${zeile("Könnte falsch sein, weil:", t.falsch)}</div>`;
+}
+
 function selbstErklStart(zone, erg, done, frageText) {
   const frage = frageText || (erg.punkte > 0 ? "Ein Teil hat gefehlt — was, glaubst du, war es?" : "Warum, glaubst du, war das falsch?");
+  const streng = seModus() === "streng";
   zone.innerHTML = `<div class="selbst-box" id="selbstBox">
     <div class="selbst-kopf"><b>${frage}</b> ${M.infoBtn("selbsterklaerung")}</div>
     <textarea id="selbstTxt" rows="2" placeholder="Deine Vermutung — Stichworte reichen" autocapitalize="sentences"></textarea>
+    ${pflichtHinweis("selbstHint")}
     <div class="btn-row" style="margin-top:8px"><button class="btn small" id="selbstOk">Erklärung ansehen</button></div>
-    ${seModus() === "streng" ? "" : `<button class="linkish" id="selbstSkip">Nur die Antwort zeigen</button>`}
+    ${streng ? "" : `<button class="linkish" id="selbstSkip">Nur die Antwort zeigen</button>`}
   </div>`;
   const fertig = (skip) => {
     const text = zone.querySelector("#selbstTxt").value.trim();
     done({ text: text || null, skip: !!skip && !text });
   };
-  zone.querySelector("#selbstOk").onclick = () => fertig(false);
+  zone.querySelector("#selbstOk").onclick = () => {
+    const ta = zone.querySelector("#selbstTxt");
+    if (streng && !genugText(ta.value)) { maekelFeld(ta, zone.querySelector("#selbstHint")); return; }
+    fertig(false);
+  };
   const sk = zone.querySelector("#selbstSkip");
   if (sk) sk.onclick = () => fertig(true);
 }
@@ -287,20 +351,51 @@ function gespraechHtml(qid, thema) {
         : `<div class="chat-msg ki">${Beleg.render(m.content, thema)}</div>`).join("")}</details>`;
 }
 
-// LLM-Feedback auf die Selbsterklaerung (Block E): kommt asynchron nach dem
-// Aufdecken und wird VOR dem Abgleich eingeschoben. Scheitert lautlos —
-// der feste Ablauf (kuratierte Erklaerung + Abgleich) braucht kein LLM.
-function llmSelbstFeedback(q, text, gewaehlt, erg) {
+/* LLM-Feedback auf die Selbsterklaerung (Block E): kommt asynchron nach dem
+   Aufdecken. Scheitert lautlos — der feste Ablauf (kuratierte Erklaerung +
+   Abgleich) braucht kein LLM.
+
+   ZWEI FEHLER, DIE HIER BIS ZUM 19.08.2026 STECKTEN (Jennifer beim Zuschauen):
+
+   1. Die Rueckmeldung haengte sich an #abgleich — und genau das Element gibt es
+      im Modus "Zweiter Versuch" bewusst NICHT (zeigeFeedback: dort weiss die App
+      selbst, ob Rose es getroffen hat). Kein Anker, kein Rendern: das Feedback
+      wurde geholt, bezahlt, gespeichert und nie gezeigt. Rose tippte also ihre
+      Erklaerung und bekam sichtbar nichts zurueck. Jetzt setzt diese Funktion
+      IHREN EIGENEN Platz — der Abgleich ist nur noch eine von drei Vorlieben,
+      wo er hinkommt.
+   2. Es gab keinen Warte-Zustand. Der Feedback-Zweig laeuft seit dem 14.08. auf
+      dem Urteils-Modell mit Denkzeit; bis zu 14 Sekunden Stille zwischen "Ab-
+      schicken" und einer Blase, die aus dem Nichts auftaucht, liest sich wie
+      "nichts passiert". Jetzt steht sofort ein Platzhalter da.
+
+   Der Platzhalter traegt die qid, und gezeichnet wird nur in IHN. Damit kann die
+   Antwort zu Frage N nicht mehr in der Zone von Frage N+1 landen, wenn Rose in
+   der Zwischenzeit weitergeblaettert hat — dann ist der Platzhalter aus dem DOM
+   und die Rueckmeldung lebt nur noch im gespeicherten Verlauf. */
+function feedbackPlatz(q, wurzel) {
+  const anker = document.getElementById("abgleich");
+  const passt = anker && anker.dataset.qid === q.id;
+  const root = wurzel || (passt ? anker.parentElement : null) || document.getElementById("fbzone");
+  if (!root || root.querySelector(".llm-fb")) return null;
+  const slot = document.createElement("div");
+  slot.className = "llm-fb warte";
+  slot.dataset.qid = q.id;
+  slot.innerHTML = `<span class="llm-fb-kopf">💭 Die KI liest gerade deine Erklärung …</span>`;
+  const vor = (passt && root.contains(anker)) ? anker : root.querySelector(".llm-chat-btn");
+  if (vor) root.insertBefore(slot, vor); else root.appendChild(slot);
+  return slot;
+}
+function llmSelbstFeedback(q, text, gewaehlt, erg, opt = {}) {
   if (!text || !Llm.aktiv()) return;
-  Llm.selbstFeedback(q, text, gewaehlt, erg).then((fb) => {
-    if (!fb) return;
+  const slot = feedbackPlatz(q, opt.wurzel);
+  Llm.selbstFeedback(q, text, gewaehlt, erg, opt.proOption).then((fb) => {
     // Aufheben, bevor gezeichnet wird: die Rueckmeldung gehoert Rose, auch wenn
-    // sie das Sheet in derselben Sekunde zumacht oder der Anker unten nicht mehr
-    // steht (dann kam sie frueher gar nicht erst an).
-    Llm.feedbackMerken(q, fb.feedback);
-    const anker = document.getElementById("abgleich");
-    if (anker && anker.dataset.qid === q.id && !document.querySelector(".llm-fb"))
-      anker.insertAdjacentHTML("beforebegin", Llm.feedbackHtml(fb, q.oberthema));
+    // sie das Sheet in derselben Sekunde zumacht oder der Platz nicht mehr steht.
+    if (fb) Llm.feedbackMerken(q, fb.feedback);
+    if (!slot || !slot.isConnected) return;      // weitergeblaettert
+    if (!fb) { slot.remove(); return; }          // Stoerung: still zurueck zum festen Ablauf
+    slot.outerHTML = Llm.feedbackHtml(fb, q.oberthema);
   });
 }
 
@@ -401,7 +496,7 @@ function erklaerFlow(q, r, erg, done) {
     const zuErklaeren = auswahl.filter((oi) => !q.optionen[oi].richtig).slice(0, 2);
     const fertig = (texte) => {
       r.selbst = { modus: "raten", proOption: texte || null,
-        text: texte ? Object.values(texte).filter(Boolean).join(" · ") || null : null, skip: !texte };
+        text: texte ? warumText(q, texte) : null, skip: !texte };
       C.save();
       tauSelbstAuf();
       zeigeFeedback(q, r, auswahl);                 // jetzt die kuratierten Erklaerungen
@@ -411,7 +506,12 @@ function erklaerFlow(q, r, erg, done) {
       // lag, bekam gar keine Felder, lief also sofort hierher und hat sein
       // "hattest du's" nie zu sehen bekommen.
       if (urteilHtml) fz.querySelector(".fb-banner")?.insertAdjacentHTML("afterend", urteilHtml);
-      if (r.selbst.text) llmSelbstFeedback(q, r.selbst.text, r.gewaehlt, erg);
+      // wurzel: fz ausdruecklich mitgeben — in diesem Modus gibt es keinen
+      // Abgleich, an dem sich die Rueckmeldung sonst festhalten koennte.
+      // proOption geht strukturiert mit, damit die KI beide Fragen getrennt
+      // beantworten kann statt einen zusammengeklebten Satz zu deuten.
+      if (r.selbst.text) llmSelbstFeedback(q, r.selbst.text, r.gewaehlt, erg,
+        { wurzel: fz, proOption: llmProOption(q, texte) });
       done();
     };
     if (!zuErklaeren.length) { fertig(null); return; }   // nichts falsch gesetzt = nichts zu erklaeren
@@ -423,8 +523,17 @@ function erklaerFlow(q, r, erg, done) {
       if (!label) continue;
       const box = document.createElement("div");
       box.className = "opt-warum";
-      box.innerHTML = `<label for="warum-${oi}">Warum hast du das angekreuzt?</label>
-        <textarea id="warum-${oi}" rows="2" placeholder="Stichworte reichen" autocapitalize="sentences"></textarea>`;
+      // ZWEI FRAGEN, NICHT EINE (Jennifer, 19.08.2026). Vorher stand hier nur
+      // "Warum hast du das angekreuzt?" — das ist die Spur des Denkfehlers, aber
+      // noch keine Korrektur. Die zweite Frage dreht den Blick um: was spricht
+      // GEGEN meine eigene Wahl? Genau dieser Wechsel ist der Hypercorrection-
+      // Moment (Butterfield & Metcalfe), und er ist der Grund, warum ein Fehler,
+      // bei dem man sich sicher war, danach besonders gut sitzt.
+      box.innerHTML = `<label for="warum-${oi}">Warum hast du das ausgewählt?</label>
+        <textarea id="warum-${oi}" rows="2" placeholder="Stichworte reichen" autocapitalize="sentences"></textarea>
+        <label for="falsch-${oi}" class="zweite">Und warum, meinst du, könnte es falsch sein?</label>
+        <textarea id="falsch-${oi}" rows="2" placeholder="Deine Vermutung — auch ein halber Gedanke hilft" autocapitalize="sentences"></textarea>
+        ${pflichtHinweis(`warumHint-${oi}`, "Beide Zeilen bitte — auch ein unsicherer Gedanke zählt.")}`;
       label.insertAdjacentElement("afterend", box);
       felder.push([oi, box]);
     }
@@ -434,12 +543,21 @@ function erklaerFlow(q, r, erg, done) {
       ${streng ? "" : `<button class="linkish" id="warumSkip">Überspringen</button>`}`;
     fz.appendChild(knopf);
     const absenden = (mitText) => {
+      // In "streng" ist jedes Feld Pflicht — der Knopf bringt einen nicht mehr
+      // an der Denkarbeit vorbei. Beim ersten leeren Feld anhalten und dorthin
+      // springen, statt alles auf einmal rot zu faerben.
+      if (mitText && streng) {
+        for (const [oi, box] of felder) {
+          const leer = [...box.querySelectorAll("textarea")].find((t) => !genugText(t.value));
+          if (leer) { maekelFeld(leer, box.querySelector(`#warumHint-${oi}`)); return; }
+        }
+      }
       const texte = {};
       for (const [oi, box] of felder) {
-        const t = mitText ? box.querySelector("textarea").value.trim() : "";
-        if (t) texte[oi] = t;
+        const [w, f] = ["warum", "falsch"].map((p) => (mitText ? box.querySelector(`#${p}-${oi}`).value.trim() : ""));
+        if (w || f) texte[oi] = { warum: w || null, falsch: f || null };
         // Das eigene Wort bleibt an der Option stehen, neben der Erklaerung
-        box.outerHTML = t ? `<div class="eigene-notiz"><b>Deine Erklärung:</b> ${esc(t)}</div>` : "";
+        box.outerHTML = (w || f) ? notizHtml({ warum: w, falsch: f }) : "";
       }
       knopf.remove();
       fertig(Object.keys(texte).length ? texte : null);
@@ -1292,11 +1410,11 @@ const AUSWAHL_OPT = [
 const ERKLAER_TEXT = {
   aus: "<b>Ablauf:</b> falsch gekreuzt → Auflösung → Erklärungen. Ohne Zwischenschritt, am schnellsten.",
   begruenden: "<b>Ablauf:</b> falsch gekreuzt → du siehst sofort, <b>welche</b> Kreuze daneben lagen → du tippst kurz, warum → Erklärungen + KI-Rückmeldung.",
-  raten: "<b>Ablauf:</b> falsch gekreuzt → du siehst nur, <b>wie viele</b> daneben lagen → die Kästchen gehen wieder auf und du <b>kreuzt neu an</b> → die App sagt dir, ob du es gefunden hast → nur zu den Kreuzen, die auch dann noch falsch sind, schreibst du kurz warum → Erklärungen. <i>Für die Punkte zählt immer der erste Versuch. Triffst du es im zweiten, bist du sofort durch.</i>",
+  raten: "<b>Ablauf:</b> falsch gekreuzt → du siehst nur, <b>wie viele</b> daneben lagen → die Kästchen gehen wieder auf und du <b>kreuzt neu an</b> → die App sagt dir, ob du es gefunden hast → nur zu den Kreuzen, die auch dann noch falsch sind, schreibst du zwei Zeilen: <b>warum du es ausgewählt hast</b> und <b>warum es falsch sein könnte</b> → KI-Rückmeldung darauf → Erklärungen. <i>Für die Punkte zählt immer der erste Versuch. Triffst du es im zweiten, bist du sofort durch.</i>",
 };
 const STRENG_TEXT = {
   standard: "An jedem Schritt steht zusätzlich ein Link, der direkt zur Auflösung springt — beim zweiten Versuch wie beim Schreiben.",
-  streng: "Kein Überspringen-Link: die Auflösung kommt erst, wenn du den Schritt wirklich gemacht hast. <i>So voreingestellt, weil der Denkmoment der ganze Zweck der Abfrage ist.</i>",
+  streng: "Kein Überspringen-Link, und ein leeres Feld zählt nicht als gemacht: die Auflösung kommt erst, wenn wirklich ein Gedanke dasteht. Stichworte reichen. <i>So voreingestellt, weil der Denkmoment der ganze Zweck der Abfrage ist.</i>",
 };
 // Seit 21.07. (Jennifers Wunsch): ALLE Optionen sind in JEDEM Modus da — die
 // Presets sind nur Voreinstellungen. Einzige Ausnahme: die volle Klausur-
@@ -2785,7 +2903,9 @@ function tryInline(qid, btn) {
       selbstErklStart(wrap.querySelector(".fbz"), erg, (selbst) => {
         C.ergaenzeAntwort(eintrag.aid, { selbstErkl: selbst.text, selbstSkip: !!selbst.skip });
         reveal(selbst);
-        llmSelbstFeedback(q, selbst.text, gewaehlt, erg);
+        // wurzel ausdruecklich: im Stoebern koennen mehrere Fragen gleichzeitig
+        // offen stehen, und ein id-Anker findet immer nur die erste von ihnen.
+        llmSelbstFeedback(q, selbst.text, gewaehlt, erg, { wurzel: wrap.querySelector(".fbz") });
       });
     } else reveal(null);
   };

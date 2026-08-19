@@ -1175,6 +1175,20 @@ button.tag-hebel:active { transform: scale(.96); }
   font: inherit; font-size: .93rem; background: var(--card); color: var(--ink);
 }
 .opt-warum textarea:focus { outline: none; border-color: var(--accent); }
+/* Die zweite Frage ("und warum koennte es falsch sein?") braucht Luft nach oben,
+   sonst lesen sich Feld und naechstes Label wie ein Block. */
+.opt-warum label.zweite { margin-top: 10px; }
+/* ---- Pflichtfeld-Rueckmeldung (19.08.2026) ----
+   "Streng" heisst ab jetzt: ohne eigene Worte geht es nicht weiter. Damit das
+   nicht wie eine kaputte App wirkt, sagt ein Satz, was fehlt, statt dass ein
+   Knopf stumm bleibt. Warnfarbe, keine Fehlerfarbe: hier ist nichts schiefge-
+   gangen, es fehlt nur noch etwas. */
+.pflicht-hinweis {
+  margin: 6px 0 0; font-size: .84rem; font-weight: 600; color: var(--warn-ink, var(--ink-soft));
+}
+.selbst-box textarea.fehlt, .opt-warum textarea.fehlt {
+  border-color: var(--warn-border); background: color-mix(in srgb, var(--warn-bg) 40%, var(--card));
+}
 /* Was Rose selbst geschrieben hat, bleibt neben der Option stehen — sonst
    verschwindet die eigene Deutung in dem Moment, in dem die fertige daneben
    auftaucht, und der Vergleich waere weg. */
@@ -1184,6 +1198,10 @@ button.tag-hebel:active { transform: scale(.96); }
   font-size: .9rem; line-height: 1.45;
 }
 .eigene-notiz b { color: var(--ink-soft); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+/* Seit dem 19.08. stehen hier zwei Zeilen (angekreuzt weil / falsch weil) —
+   untereinander, damit man ihren Denkweg und ihren Zweifel getrennt sieht. */
+.eigene-notiz p { margin: 0; }
+.eigene-notiz p + p { margin-top: 5px; }
 .linkish {
   border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
   color: var(--ink-soft); text-decoration: underline; padding: 4px 0 0; display: inline-block;
@@ -1299,6 +1317,15 @@ button.ans:disabled { cursor: default; }
   border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: .92rem; line-height: 1.5;
 }
 .llm-fb-kopf { display: block; font-weight: 700; margin-bottom: 4px; font-size: .86rem; }
+/* Warte-Zustand (19.08.2026): der Feedback-Zweig laeuft auf dem Urteils-Modell
+   mit Denkzeit — bis zu 14 Sekunden. Ohne sichtbares Warten liest sich das wie
+   "ich hab getippt und nichts ist passiert". Gedaempft und pulsierend, damit es
+   die kuratierten Erklaerungen nicht ueberstrahlt: die sind die Hauptsache, die
+   KI ist Verstaerkung. */
+.llm-fb.warte { border-style: dashed; opacity: .75; animation: fbPuls 1.6s ease-in-out infinite; }
+.llm-fb.warte .llm-fb-kopf { margin-bottom: 0; font-weight: 600; color: var(--ink-soft); }
+@keyframes fbPuls { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+@media (prefers-reduced-motion: reduce) { .llm-fb.warte { animation: none; opacity: .75; } }
 .llm-chat-btn {
   display: inline-block; border: 1.5px solid var(--line); background: var(--card); color: var(--ink-soft);
   border-radius: 999px; padding: 6px 12px; margin: 8px 0 0; font: inherit; font-size: .82rem; cursor: pointer;

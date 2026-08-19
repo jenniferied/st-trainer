@@ -78,7 +78,11 @@ function kopf() {
 
 // ---- Einsatzort 1: Feedback auf die Selbsterklaerung ----
 // Liefert { trifftKern, feedback } oder null (Fallback: nichts anzeigen).
-export async function selbstFeedback(q, selbstText, gewaehlt, erg) {
+// proOption (optional, Modus "Zweiter Versuch"): [{option, text, warum, falsch}]
+// — die beiden Antworten je falsch angekreuzter Option getrennt statt zu einem
+// Satz zusammengeklebt. Die Function stellt daraus den Auftrag; fehlt es, bleibt
+// es beim alten Ein-Text-Auftrag.
+export async function selbstFeedback(q, selbstText, gewaehlt, erg, proOption) {
   if (!aktiv() || !tagFrei() || !selbstText) return null;
   try {
     const steuerung = new AbortController();
@@ -88,6 +92,7 @@ export async function selbstFeedback(q, selbstText, gewaehlt, erg) {
       method: "POST", headers: kopf(), signal: steuerung.signal,
       body: JSON.stringify({
         art: "feedback", frage: frageDaten(q), selbstText,
+        ...(Array.isArray(proOption) && proOption.length ? { proOption } : {}),
         gewaehlt: gewaehlt || [], punkte: erg?.punkte, max: q.maxPunkte,
         folien: await frageFolien(q),
       }),

@@ -141,7 +141,7 @@ const STUFEN = [
   { ab: 37, art: "blob", sub: 1, satz: "Zwei Augen! Die waren gestern noch nicht da." },
   { ab: 41, art: "blob", sub: 2, satz: "Da wachsen Ohren. Ich glaub, ich werd was Bestimmtes." },
   { ab: 44, art: "jung", sub: 0, satz: "Jetzt sieht man's. Ich bin eine Katze." },
-  { ab: 56, art: "jung", sub: 1, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
+  { ab: 56, art: "halbwuechsig", sub: 0, satz: "Ich wachse noch. Aber ich weiß schon, wie du lernst." },
   { ab: 68, art: "erwachsen", sub: 0, satz: "Ausgewachsen. Ab jetzt sammeln wir zusammen." },
 ];
 /* Die Stufe, bei der aus dem Ei ein Tier wird. Als Konstante, weil drei Stellen
@@ -238,6 +238,48 @@ export function stufeJetzt(herzen) {
   // Sekunde Verzoegerung, damit nicht jede Neuzeichnung einen Request ausloest.
   if (stufe > (mk.stufeMax || 0)) { mk.stufeMax = stufe; C.save(); C.syncBald(500); }
   return stufe;
+}
+
+/* ---------- Die zweite Sperrklinke: auch die ZAHL faellt nicht ----------
+   stufeMax rettet das BILD, aber nicht die Zahl daneben. Dieselbe Ursache:
+   herzenStand() rechnet die ganze Historie mit dem HEUTIGEN Tagesziel, und das
+   steigt zur Klausur hin (ziel = restBedarf/restTage, geklemmt auf 60-100).
+   Roses 18 Uebungstage am 19.08.2026, durchgerechnet:
+
+     Ziel  60  ->  45 ♥  ·  8 ★      (minimum 25, Streckziel  80)
+     Ziel  80  ->  42 ♥  ·  5 ★      (minimum 30, Streckziel 100)
+     Ziel 100  ->  38 ♥  ·  2 ★      (minimum 40, Streckziel 130)
+
+   Die STERNE sind der schlimmere Fall: das Streckziel waechst mit 1,25 schneller
+   als das Tagesziel selbst, und aus acht Sternen werden zwei. Beide Zahlen
+   stehen unverhandelt in der Blase ("45 ♥ · 8 ★ aus 18 Übungstagen") — sie
+   sinken zu sehen, ohne etwas falsch gemacht zu haben, liest sich als Strafe.
+   Genau das soll eine Belohnungswaehrung nie tun.
+
+   Also dieselbe Antwort wie bei der Stufe: das einmal Erreichte bleibt. Zwei
+   Felder, weil Herzen und Sterne unabhaengig voneinander kippen koennen.
+
+   WAS DAS KOSTET, offen: steigt das Tagesziel, steht die Zahl kurz still,
+   waehrend Rose weiteruebt — die neuen Herzen fuellen erst den Rueckstand auf.
+   Pro 10 Punkte Tagesziel sind das 1 bis 2 Herzen, bei ~2,25 Herzen pro Tag
+   also etwa ein flacher Tag je Stufe, ueber den ganzen Monat verteilt. Eine
+   Zahl, die kurz steht, ist deutlich besser als eine, die rueckwaerts laeuft.
+
+   tage wird NICHT gesperrt: die Zahl der Uebungstage kann gar nicht sinken.
+
+   herzenStand() bleibt unangetastet und rein genug fuer die Testseite
+   (aktOverride) — nur die App geht ueber standJetzt(). */
+export function standJetzt(tz) {
+  const st = herzenStand(tz);
+  const mk = C.state().mk || (C.state().mk = {});
+  const herzen = Math.max(st.herzen, mk.herzenMax || 0);
+  const sterne = Math.max(st.sterne, mk.sterneMax || 0);
+  // Nur schreiben, wenn wirklich etwas dazugekommen ist — sonst loest jede
+  // Neuzeichnung einen Sync aus (dieselbe Regel wie bei stufeJetzt).
+  if (herzen > (mk.herzenMax || 0) || sterne > (mk.sterneMax || 0)) {
+    mk.herzenMax = herzen; mk.sterneMax = sterne; C.save(); C.syncBald(500);
+  }
+  return { herzen, sterne, tage: st.tage };
 }
 
 /* ---------- Das Ei, Blockgrafik ----------
@@ -380,6 +422,29 @@ const VOLL_TIER = "█▟▙▐▌▝▘▄▀";
      - ES GIBT EINE HELLE SCHNAUZE. Augen und Maul direkt auf der Fellflaeche
        lesen sich als Loecher im Tier statt als Gesicht. */
 const KOERPER = {
+  /* Der Zwischenschritt, 19.08.2026. Bis dahin zeichnete Stufe 7 dieselbe Katze
+     wie Stufe 6 — figurEbenen() liest aus `sub` nur die Ohren und die
+     Blob-Ahnung, "jung sub 0" und "jung sub 1" waren Pixel fuer Pixel gleich.
+     Zwoelf Herzen lang passierte am Bild also nichts.
+
+     WARUM HOEHER UND NICHT BREITER, obwohl der Absatz drueber die Breite zur
+     Wachstumsachse erklaert: die Breite von erwachsen ist 13, und ein
+     13-Zellen-Zwischenschritt sieht dem erwachsenen Tier bis auf eine Zeile und
+     die zwei Brustmarken gleich. Der Reveal am Ende ist der Sinn der ganzen
+     Leiter — der darf nicht eine Stufe zu frueh verraten werden. Erwachsen hat
+     ohnehin schon 6 Zeilen; die Hoehe ist also keine neue Achse, sie kommt nur
+     einen Schritt frueher. So traegt jeder der beiden letzten Momente genau
+     eine sichtbare Aenderung: erst laenger, dann breiter (plus Brustmarke).
+
+     Die Alternative (13x5, Breite zuerst) liegt im Archiv-Eintrag vom
+     19.08.2026 — falls die Reihenfolge doch andersherum gewollt ist, sind es
+     zwei Tabellen-Zeilen. */
+  halbwuechsig: {
+    zeilen: ["  ▄▄▄▄▄▄▄  ", " ▟███████▙ ", " ▐███████▌ ",
+             " ▐███████▌ ", " ▐███████▌ ", " ▝▀▀▀▀▀▀▀▘ "],
+    augen: [[2, 2], [2, 7]], augenBreit: 2,
+    schnauze: [[4, 4], [4, 5], [4, 6]], maul: [[4, 5]], brust: [],
+  },
   blob: {
     zeilen: ["  ▄▄▄▄▄  ", " ▟█████▙ ", " ▐█████▌ ", " ▐█████▌ ", " ▝▀▀▀▀▀▘ "],
     augen: [[2, 2], [2, 6]], augenBreit: 1, schnauze: [], maul: [[3, 4]], brust: [],
@@ -399,7 +464,12 @@ const KOERPER = {
 /* Die Katze: zwei schmale Spitzen mittig auf dem Kopf. Drueben im GE-Trainer
    sitzt der Hund mit Schlappohren an den Seiten - die OHRENZEILE ist der ganze
    Unterschied zwischen den beiden Tieren, alles andere ist identisch. */
-const OHREN = { blob: ["  ▟▙ ▟▙  "], jung: ["  ▟▙   ▟▙  "], erwachsen: ["  ▟▙     ▟▙  "] };
+/* JEDE art braucht hier eine Zeile UND eine in KOERPER. Fehlt eine, ist es kein
+   Fehler beim Laden, sondern ein undefined, das erst beim Zeichnen zuschlaegt —
+   dieselbe Falle wie beim Fragen-Detektiv (siehe CLAUDE.md). halbwuechsig ist
+   11 breit wie jung und bekommt darum dessen Ohrenabstand. */
+const OHREN = { blob: ["  ▟▙ ▟▙  "], jung: ["  ▟▙   ▟▙  "],
+  halbwuechsig: ["  ▟▙   ▟▙  "], erwachsen: ["  ▟▙     ▟▙  "] };
 
 /* Eine Zelle setzen - Zeichen UND Farbschluessel zugleich, damit die beiden
    Ebenen nie auseinanderlaufen koennen. ch === null laesst das Zeichen stehen. */
@@ -759,11 +829,11 @@ export function chatTitel(stufe) {
    html() und standHtml() sie beide brauchen und zwei Rechnungen zwei Wahrheiten
    waeren (dieselbe Falle wie bei Bild und Text am 12.08.). */
 function aktuelleStufe(tz) {
-  return stufeJetzt(herzenStand(tz).herzen);
+  return stufeJetzt(standJetzt(tz).herzen);
 }
 
 function standHtml(tz) {
-  const st = herzenStand(tz);
+  const st = standJetzt(tz);
   // stufeJetzt() zieht die Sperrklinke nach; blaseText() bekommt sie herein und
   // rechnet nicht selbst. Sonst haette die Blase eine andere Stufe als das Bild.
   const t = blaseText({ herzen: st.herzen, sterne: st.sterne, tage: st.tage,

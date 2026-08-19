@@ -1678,8 +1678,14 @@ function signatur(d) {
     // der heute-Block. Stuende es nur im Snapshot, wuerde es nie gepusht — und
     // Rose saehe das Schluepfen auf dem Tablet ein zweites Mal, obwohl es
     // ausdruecklich genau einmal vorkommen soll (Jennifer, 12.08.).
+    // herzenMax/sterneMax stehen aus demselben Grund hier wie stufeMax: sie
+    // bewegen sich beim Zeichnen der Blase, ohne dass zwingend eine neue Antwort
+    // dazukommt (das Tagesziel kann sich auch ueber Nacht verschoben haben).
+    // Auf 0 normiert, damit eine Server-Zeile aus der Zeit davor nicht dauerhaft
+    // als verschieden gilt und jeden Start einen Push ausloest.
     ((d.mk && d.mk.ei) || "") + ":" + ((d.mk && d.mk.ts) || 0) + ":" + ((d.mk && d.mk.stufeMax) || 0) +
-      ":" + ((d.mk && d.mk.geschluepft) || 0),
+      ":" + ((d.mk && d.mk.geschluepft) || 0) +
+      ":" + ((d.mk && d.mk.herzenMax) || 0) + ":" + ((d.mk && d.mk.sterneMax) || 0),
     // Der Chatverlauf. Er MUSS hier stehen, sonst passiert bei einer neuen
     // Nachricht gar nichts: der Push-Waechter unten vergleicht nur Signaturen, und
     // ein Feld, das nur im Snapshot steht, geht nie hoch. Genau daran haengt
@@ -1764,6 +1770,15 @@ export function mergeLernstand(remote) {
   // niedrigerer, aber neuerer Stufe die hoehere ueberschreiben — also genau der
   // Rueckfall, den stufeMax verhindern soll. Darum bedingungslos das Maximum.
   st.mk.stufeMax = Math.max(st.mk.stufeMax || 0, rMk.stufeMax || 0);
+  // herzenMax und sterneMax sind Zaehlwerke wie stufeMax und folgen derselben
+  // Regel: bedingungslos das Maximum, NIE nach Zeitstempel. Zwei Geraete rechnen
+  // am selben Tag verschiedene Herzenzahlen aus (settings.tzPlan ist
+  // geraetelokal) — nach ts-Regel wuerde das zuletzt geoeffnete Geraet den
+  // hoeheren Stand des anderen ueberschreiben, also genau der Rueckfall, den die
+  // Sperrklinke verhindern soll. Grosszuegig ist hier richtig: ein Herz zu viel
+  // ist harmlos, eines zu wenig fuehlt sich wie Betrug an.
+  st.mk.herzenMax = Math.max(st.mk.herzenMax || 0, rMk.herzenMax || 0);
+  st.mk.sterneMax = Math.max(st.mk.sterneMax || 0, rMk.sterneMax || 0);
   // geschluepft ist ein Ereignis-Protokoll, kein Messwert: "hat Rose die
   // Animation gesehen" laesst sich aus der Historie nicht ausrechnen (anders als
   // "ist Stufe 3 erreicht"). Die Regel ist ein ODER — hat es IRGENDEIN Geraet

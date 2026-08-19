@@ -74,7 +74,9 @@ function dabeiSeitTagen() {
 
 function stand() {
   const tz = C.tagesStand();
-  const hs = Mk.herzenStand(tz);
+  // standJetzt statt herzenStand: dieselbe Sperrklinke wie in der Blase, sonst
+  // nennt der Chat eine andere Herzenzahl als das Bild daneben.
+  const hs = Mk.standJetzt(tz);
   const stufe = Mk.stufeJetzt(hs.herzen);
   const mk = C.state().mk || {};
   // Einmal holen, zweimal benutzt (beantwortet und Themen). statistik() ist die

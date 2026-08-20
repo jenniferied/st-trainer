@@ -924,7 +924,13 @@ function tagesPlan(heute, tage) {
   const fokus = fokusFaktor(heute);
   let ziel = Math.max(r10(60 * fokus), Math.min(r10(100 * fokus), r10(restBedarf * fokus / restTage)));
   if (tage === 1) ziel = Math.min(ziel, r10(50 * fokus));
-  const plan = { v: 3, tag: key, ziel, minimum: Math.max(r10(25 * fokus), r10(ziel * 0.35)),
+  // Der geschuetzte Boden: 25 bleibt 25, sobald die Fokus-Woche vorbei ist. NICHT
+  // r10(25 * fokus) schreiben - Math.round(2.5) ist in JS 3, der Boden staende ab dem
+  // 27.08. dauerhaft auf 30 statt 25, und zwar lautlos, weil an dieser Zeile dann kein
+  // Faktor mehr sichtbar ist. Genau die Sorte Rest, die eine befristete Aenderung
+  // hinterlaesst, wenn man sie nur halb zurueckdreht.
+  const boden = fokus === 1 ? 25 : r10(25 * fokus);
+  const plan = { v: 3, tag: key, ziel, minimum: Math.max(boden, r10(ziel * 0.35)),
     stretch: Math.min(140, r10(ziel * 1.25)), restBedarf };
   st.settings.tzPlan = plan; save();
   return plan;

@@ -875,11 +875,37 @@ export function tagesStand() {
 // durch persoenliche Voll-Quote geteilt, auf Resttage verteilt), nur sanft
 // geklemmt. Vortag der Klausur fest locker (50). Plan friert 1x pro Tag ein
 // (settings.tzPlan, geraetelokal); v:2 verdraengt eingefrorene Alt-Plaene.
+/* ---------- Fokus-Woche GE (Jennifer, 20.08.2026) ----------
+   BEFRISTET BIS ZUM 26.08.2026 - danach ersatzlos loeschen, samt der drei
+   Zeilen unten in tagesPlan. Jennifer woertlich: "die kommende Woche ist GE
+   der Fokus. Fuege 50% zu der dynamischen Tageskala hinzu und ziehe 50% bei ST
+   ab, fuer 1 Woche." Das Gegenstueck steht in ge-trainer/app/js/stats.js
+   (FOKUS_FAKTOR 1,5) - wer hier dreht, muss dort mitziehen, sonst wandert das
+   Pensum nur einseitig. Grund: die GE-Klausur ist am 10.09. und damit die
+   naehere von beiden; ST hat bis zum 18.09. acht Tage mehr Luft.
+
+   WARUM DER FAKTOR AN DIE BANDGRENZEN MUSS UND NICHT IN DIE ROHRECHNUNG: das
+   Ziel ist hier auf 60-100 geklemmt. Ein Faktor weiter innen liefe gegen den
+   BODEN von 60 und waere je nach Restbedarf ganz oder halb wirkungslos - Rose
+   saehe weiter 60. Deshalb wandert das ganze Band mit auf 30-50, und der
+   geschuetzte Boden (minimum) zieht nach; sonst laege er bei 25 und damit fast
+   auf dem Tagesziel selbst.
+
+   Nicht angefasst: der Deckel von 140 bei stretch. Er bindet in diesem Band
+   ohnehin nicht (50 * 1,25 = 63). */
+const FOKUS_VON = "2026-08-20", FOKUS_BIS = "2026-08-26", FOKUS_FAKTOR = 0.5;
+
+function fokusFaktor(d) {
+  const m = d.getMonth() + 1, t = d.getDate();
+  const tag = d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (t < 10 ? "0" : "") + t;
+  return tag >= FOKUS_VON && tag <= FOKUS_BIS ? FOKUS_FAKTOR : 1;
+}
+
 function tagesPlan(heute, tage) {
   const st = state();
   const key = heute.toDateString();
   const alt = st.settings.tzPlan;
-  if (alt && alt.tag === key && alt.v === 2) return alt;
+  if (alt && alt.tag === key && alt.v === 3) return alt;
   let vollBedarf = 0;
   for (const q of POOL) {
     if (!(q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach")) continue;
@@ -895,9 +921,10 @@ function tagesPlan(heute, tage) {
   const restBedarf = Math.ceil(vollBedarf / rate) + Math.ceil(bgBedarf / 0.85);
   const restTage = Math.max(1, tage == null ? 30 : tage);
   const r10 = (x) => Math.round(x / 10) * 10;
-  let ziel = Math.max(60, Math.min(100, r10(restBedarf / restTage)));
-  if (tage === 1) ziel = Math.min(ziel, 50);
-  const plan = { v: 2, tag: key, ziel, minimum: Math.max(25, r10(ziel * 0.35)),
+  const fokus = fokusFaktor(heute);
+  let ziel = Math.max(r10(60 * fokus), Math.min(r10(100 * fokus), r10(restBedarf * fokus / restTage)));
+  if (tage === 1) ziel = Math.min(ziel, r10(50 * fokus));
+  const plan = { v: 3, tag: key, ziel, minimum: Math.max(r10(25 * fokus), r10(ziel * 0.35)),
     stretch: Math.min(140, r10(ziel * 1.25)), restBedarf };
   st.settings.tzPlan = plan; save();
   return plan;

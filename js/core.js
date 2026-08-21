@@ -1196,8 +1196,28 @@ function waehleFragen(reps, n, strat) {
   if (strat === "zufall") return shuffle([...reps]).slice(0, n);
 
   if (strat === "klausur") {
-    // Stratifiziert nach Oberthema, proportional zur Poolgröße (Largest Remainder),
-    // zufällig innerhalb der Themen — deckt alle Themen ab wie die echte Klausur.
+    // Stratifiziert nach Oberthema, proportional zur Poolgröße (Largest Remainder) —
+    // deckt alle Themen ab wie die echte Klausur.
+    // Innerhalb des Themas seit dem 21.08. GEWICHTET statt rein zufällig (Jennifer:
+    // "tendenziell eher neue Fragen als bekannte"). Anlass: Roses halbe Klausur vom
+    // 21.08. bestand zur Hälfte aus Wiederholungen (11/21, einzelne zum 3. Mal) —
+    // 85 % fühlten sich nach Klausurreife an, waren aber teils Wiedererkennen.
+    // Drei Stufen, über die VARIANTEN-GRUPPE gerechnet (der Vertreter aus rundenPool
+    // ist bevorzugt ein ungesehenes Mitglied, auch wenn Rose den Zwilling kennt):
+    //   ganz neue Gruppe (8)  > neue Form bekannter Substanz (3)
+    //   > bekannt & wacklig (1) > gemeistert (0.4).
+    // Bewusst Gewichtung, kein Filter: Bekanntes bleibt möglich, sonst würde die
+    // Simulation zum zweiten PK-Pfad und liefe nach ein paar Wochen leer.
+    const gruppeGesehen = new Set();
+    for (const q of POOL) {
+      const e = L[q.id];
+      if (e && e.seen) gruppeGesehen.add(q.sprachVarianteVon || q.variantenVon || q.id);
+    }
+    const gew = (q) => {
+      const e = L[q.id];
+      if (!e || !e.seen) return gruppeGesehen.has(q.sprachVarianteVon || q.variantenVon || q.id) ? 3 : 8;
+      return e.lvl >= 3 ? 0.4 : 1;
+    };
     const byTh = {};
     for (const q of reps) (byTh[q.oberthema] = byTh[q.oberthema] || []).push(q);
     const soll = Object.keys(byTh).map((t) => ({ t, exakt: (n * byTh[t].length) / reps.length }));
@@ -1205,8 +1225,8 @@ function waehleFragen(reps, n, strat) {
     let vergeben = soll.reduce((a, s) => a + s.base, 0);
     [...soll].sort((a, b) => b.rest - a.rest).forEach((s) => { if (vergeben < n) { s.base++; vergeben++; } });
     const out = [];
-    for (const s of soll) out.push(...shuffle(byTh[s.t]).slice(0, s.base));
-    if (out.length < n) out.push(...shuffle(reps.filter((q) => !out.includes(q))).slice(0, n - out.length));
+    for (const s of soll) out.push(...zieheGewichtet(byTh[s.t], s.base, gew));
+    if (out.length < n) out.push(...zieheGewichtet(reps.filter((q) => !out.includes(q)), n - out.length, gew));
     return out.slice(0, n);
   }
 

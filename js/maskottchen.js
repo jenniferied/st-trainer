@@ -28,25 +28,26 @@ import * as C from "./core.js";
 const REDUCE_MOTION = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- Herzen aus der echten Uebungshistorie ----------
-   Fuer vergangene Tage ist der damalige Tagesplan nicht gespeichert; wir
-   rechnen sie mit den heutigen Schwellen. Grosszuegig gerundet und bewusst so:
-   bei einer Belohnungswaehrung ist ein Herz zu viel harmlos, eines zu wenig
-   fuehlt sich wie Betrug an. */
+   Jeder Tag wird an den Schwellen SEINES Tages gemessen (C.schwellenFuerTag:
+   tzHist-Eintrag, sonst Rekonstruktion ueber den Fokus-Faktor). Bis zum 21.08.
+   rechnete hier das heutige Tagesziel die ganze Historie um — die halbierte
+   Fokus-Woche machte so rueckwirkend aus 10 Sternen 17, und die Sperrklinke
+   loggte den Sprung ein. Grosszuegig gerundet bleibt es trotzdem: bei einer
+   Belohnungswaehrung ist ein Herz zu viel harmlos, eines zu wenig fuehlt sich
+   wie Betrug an. */
 /* aktOverride ist NUR fuer die Testseite (playground/rose/maskottchen/viewer/):
    damit laesst sich ein statischer Abzug von Roses Historie einspeisen, ohne
    ihre echten Daten anzufassen. Die App ruft die Funktion immer ohne auf. */
 export function herzenStand(tz, aktOverride) {
-  const min = tz && tz.minimum ? tz.minimum : 15;
-  const ziel = tz && tz.ziel ? tz.ziel : 35;
-  const stretch = tz && tz.stretch ? tz.stretch : 55;
   const akt = aktOverride || C.aktivitaetProTag();
   let herzen = 0, sterne = 0, tage = 0;
   for (const key of Object.keys(akt)) {
     const n = akt[key].n || 0;
     if (!n) continue;
+    const z = tz ? C.schwellenFuerTag(+key, tz) : { minimum: 15, ziel: 35, stretch: 55 };
     tage++;
-    herzen += 1 + (n >= min ? 1 : 0) + (n >= ziel ? 1 : 0);
-    if (n >= stretch) sterne++;
+    herzen += 1 + (n >= z.minimum ? 1 : 0) + (n >= z.ziel ? 1 : 0);
+    if (n >= z.stretch) sterne++;
   }
   return { herzen, sterne, tage };
 }

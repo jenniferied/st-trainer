@@ -336,7 +336,7 @@ export function unterthemen(thema) {
 
 // ---------- Zustand (localStorage) ----------
 const KEY = "st-trainer-v1";
-const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, mkChat: [], mkChatGeloeschtBis: 0, frageChat: [], settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
+const defState = () => ({ leitner: {}, sessions: [], offen: [], antwortLog: [], pending: [], geloescht: [], mk: {}, mkChat: [], mkChatGeloeschtBis: 0, frageChat: [], tzHist: {}, settings: { name: "", nta: true, theme: "auto", scoring: window.ST_CONFIG.scoringVariante }, deviceId: "d-" + Math.random().toString(36).slice(2, 10) });
 let S = null;
 export function state() {
   if (!S) {
@@ -876,8 +876,11 @@ export function tagesStand() {
 // geklemmt. Vortag der Klausur fest locker (50). Plan friert 1x pro Tag ein
 // (settings.tzPlan, geraetelokal); v:2 verdraengt eingefrorene Alt-Plaene.
 /* ---------- Fokus-Woche GE (Jennifer, 20.08.2026) ----------
-   BEFRISTET BIS ZUM 26.08.2026 - danach ersatzlos loeschen, samt der drei
-   Zeilen unten in tagesPlan. Jennifer woertlich: "die kommende Woche ist GE
+   BEFRISTET BIS ZUM 26.08.2026 - der Faktor schaltet sich ueber das Datum
+   selbst ab. ACHTUNG, seit dem 21.08. NICHT mehr loeschen: schwellenFuerTag()
+   rekonstruiert daraus, welche Schwellen am 20.-26.08. galten (tzHist gibt es
+   erst seit dem 21.08., der 20.08. haengt fuer immer an diesen Konstanten).
+   Jennifer woertlich: "die kommende Woche ist GE
    der Fokus. Fuege 50% zu der dynamischen Tageskala hinzu und ziehe 50% bei ST
    ab, fuer 1 Woche." Das Gegenstueck steht in ge-trainer/app/js/stats.js
    (FOKUS_FAKTOR 1,5) - wer hier dreht, muss dort mitziehen, sonst wandert das
@@ -895,17 +898,65 @@ export function tagesStand() {
    ohnehin nicht (50 * 1,25 = 63). */
 const FOKUS_VON = "2026-08-20", FOKUS_BIS = "2026-08-26", FOKUS_FAKTOR = 0.5;
 
-function fokusFaktor(d) {
+function isoTagVon(d) {
   const m = d.getMonth() + 1, t = d.getDate();
-  const tag = d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (t < 10 ? "0" : "") + t;
+  return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (t < 10 ? "0" : "") + t;
+}
+function fokusFaktor(d) {
+  const tag = isoTagVon(d);
   return tag >= FOKUS_VON && tag <= FOKUS_BIS ? FOKUS_FAKTOR : 1;
+}
+
+/* ---------- Die Schwellen eines KALENDERTAGS (Jennifer, 21.08.2026) ----------
+   Kalender, Punkte-Plot, Zielband und Herzen bewerteten die ganze Historie mit
+   dem HEUTIGEN Plan. Solange der Plan nur langsam driftete, fiel das kaum auf;
+   die Fokus-Woche (Faktor 0,5) hat damit rueckwirkend jeden alten Tag zum
+   Streckziel-Tag gemacht. Jennifers Ansage: "always true to what was true on
+   the day."
+
+   Zwei Stufen:
+   1. tzHist (gesynct, ein Eintrag pro Tag, geschrieben beim Einfrieren des
+      Plans) — ab dem 21.08. die aufgezeichnete Wahrheit. Damit schreibt auch
+      eine KUENFTIGE Aenderung an Band oder Formel die Vergangenheit nie mehr um.
+   2. Rekonstruktion fuer Tage davor: heutiger Plan, vom heutigen Fokus-Faktor
+      befreit und mit dem Faktor DES TAGES neu skaliert (die Fokus-Konstanten
+      sind datumsgebunden, also fuer jeden Tag bekannt — auch fuer kuenftige,
+      das braucht das Zielband rechts von heute). Die Banddrift 60->100 aus dem
+      Restbedarf bleibt dabei unsichtbar, sie ist fuer die Vergangenheit nicht
+      mehr rekonstruierbar — genau deshalb gibt es ab jetzt Stufe 1. */
+export function schwellenFuerTag(ts, tz) {
+  const d = new Date(ts); d.setHours(0, 0, 0, 0);
+  const hist = (state().tzHist || {})[isoTagVon(d)];
+  if (hist && hist.ziel) return hist;
+  const fTag = fokusFaktor(d), fHeute = fokusFaktor(new Date());
+  if (fTag === fHeute) return tz;
+  const r10 = (x) => Math.round(x / 10) * 10;
+  const ziel = Math.max(10, r10((tz.ziel / fHeute) * fTag));
+  // Boden und Streckziel wie in tagesPlan hergeleitet, inklusive der 25er-Regel
+  const boden = fTag === 1 ? 25 : r10(25 * fTag);
+  return { ziel, minimum: Math.max(boden, r10(ziel * 0.35)), stretch: Math.min(140, r10(ziel * 1.25)) };
+}
+
+// Tagesplan-Archiv (gesynct): der erste eingefrorene Plan des Tages bleibt die
+// Wahrheit dieses Tages — schwellenFuerTag() liest ihn, statt die Historie mit
+// dem jeweils heutigen Ziel umzurechnen. Nie ueberschreiben. Haengt an BEIDEN
+// Pfaden von tagesPlan: auf einem Geraet, dessen Plan schon vor diesem Update
+// eingefroren war, entstuende der Eintrag sonst erst morgen.
+function merkeTzHist(st, heute, plan) {
+  st.tzHist = st.tzHist || {};
+  const iso = isoTagVon(heute);
+  if (!st.tzHist[iso]) {
+    st.tzHist[iso] = { ziel: plan.ziel, minimum: plan.minimum, stretch: plan.stretch, ts: Date.now() };
+    save();
+  }
+  return plan;
 }
 
 function tagesPlan(heute, tage) {
   const st = state();
   const key = heute.toDateString();
   const alt = st.settings.tzPlan;
-  if (alt && alt.tag === key && alt.v === 3) return alt;
+  if (alt && alt.tag === key && alt.v === 3) return merkeTzHist(st, heute, alt);
   let vollBedarf = 0;
   for (const q of POOL) {
     if (!(q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach")) continue;
@@ -933,7 +984,7 @@ function tagesPlan(heute, tage) {
   const plan = { v: 3, tag: key, ziel, minimum: Math.max(boden, r10(ziel * 0.35)),
     stretch: Math.min(140, r10(ziel * 1.25)), restBedarf };
   st.settings.tzPlan = plan; save();
-  return plan;
+  return merkeTzHist(st, heute, plan);
 }
 
 // Aktivitaet je Kalendertag (fuer Heatmap & Trend): alle Antworten ausser
@@ -1728,6 +1779,11 @@ function snapshot() {
     mkChat: chatNormieren(st.mkChat, st.mkChatGeloeschtBis),
     mkChatGeloeschtBis: st.mkChatGeloeschtBis || 0,
     frageChat: fqNormieren(st.frageChat, new Set(st.geloescht)),
+    // tzHist: das Tagesplan-Archiv. Anders als settings.tzPlan (geraetelokal)
+    // synct es mit, damit beide Geraete die Historie mit DENSELBEN Tages-
+    // schwellen bewerten — sonst zeigten Handy und Tablet verschiedene Farben
+    // fuer denselben Tag.
+    tzHist: st.tzHist || {},
     ...(heute ? { heute } : {}) };
 }
 
@@ -1780,6 +1836,17 @@ function signatur(d) {
     // Geraet, auf dem es getippt wurde. Die Ids reichen — Zeilen werden nie
     // geaendert, nur angehaengt oder mit ihrer Antwort getilgt.
     ids(d.frageChat, (m) => m.id),
+    // Das Tagesplan-Archiv MUSS hier stehen, sonst wird der Eintrag des Tages nie
+    // gepusht: er entsteht beim Einfrieren des Plans, also OHNE neue Antwort, und
+    // kann darum nicht huckepack reisen. Werte gehoeren mit in den Fingerabdruck
+    // (nicht nur die Tage): zwei Geraete koennen denselben Tag mit verschiedenen
+    // Plaenen anlegen, und erst der Merge (fruehester ts gewinnt) gleicht sie an —
+    // dieser Abgleich muss den Verlierer einmal zum Pushen bewegen. Leeres Objekt
+    // ergibt "", damit alte Server-Zeilen ohne tzHist nicht ewig als verschieden gelten.
+    Object.keys(d.tzHist || {}).sort().map((t) => {
+      const h = d.tzHist[t];
+      return t + ":" + (h.ziel || 0) + ":" + (h.minimum || 0) + ":" + (h.stretch || 0) + ":" + (h.ts || 0);
+    }).join(","),
   ].join("|");
 }
 
@@ -1863,6 +1930,26 @@ export function mergeLernstand(remote) {
   // damit der Wert stabil bleibt und nicht bei jedem Merge hin und her springt.
   const gs = [st.mk.geschluepft, rMk.geschluepft].filter(Boolean);
   if (gs.length) st.mk.geschluepft = Math.min(...gs);
+
+  // Tagesplan-Archiv: Vereinigung ueber die Tage; legen beide Geraete denselben
+  // Tag an, gewinnt der FRUEHESTE Eintrag — das ist der Plan, den Rose an dem
+  // Tag zuerst gezeigt bekam. Die Kaskade dahinter (ziel, minimum, stretch) ist
+  // nur ein deterministischer Gleichstands-Brecher, damit zwei Geraete in jeder
+  // Merge-Reihenfolge auf demselben Eintrag landen statt sich ewig gegenseitig
+  // zu pushen. Eintraege werden nie geaendert oder geloescht, nur angelegt.
+  st.tzHist = st.tzHist || {};
+  const rHist = remote.tzHist || {};
+  const histRang = (h) => [h.ts || 0, h.ziel || 0, h.minimum || 0, h.stretch || 0];
+  for (const tag of Object.keys(rHist)) {
+    const l = st.tzHist[tag];
+    if (!l) { st.tzHist[tag] = rHist[tag]; continue; }
+    const a = histRang(rHist[tag]), b = histRang(l);
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] === b[i]) continue;
+      if (a[i] < b[i]) st.tzHist[tag] = rHist[tag];
+      break;
+    }
+  }
 
   // Chatverlauf: Vereinigung ueber die Ids, sortiert nach Zeit, dann der Deckel.
   // Kein "der laengere Verlauf gewinnt" und erst recht kein Ersetzen — Rose tippt

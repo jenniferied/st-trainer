@@ -747,7 +747,13 @@ function heatmapHtml(tz) {
   // Tagesleiter raus: es stand neben dem Orange der untersten Stufe und sah
   // dort aus wie Orange — unten und oben fast dieselbe Farbe ist der
   // schlimmste Fall fuer eine Skala. 0 Karten = grau.
-  const stufe = (n) => !n ? 0 : n < tz.minimum ? 1 : n < tz.ziel ? 2 : n < tz.stretch ? 3 : n === tz.stretch ? 4 : 5;
+  // Jede Zelle wird an den Schwellen IHRES Tages gemessen (Jennifer, 21.08.:
+  // "true to what was true on the day") — tzHist-Eintrag des Tages, sonst
+  // Rekonstruktion ueber den datumsgebundenen Fokus-Faktor. Vorher bewertete
+  // das heutige Ziel die ganze Historie, und die halbierte Fokus-Woche machte
+  // rueckwirkend fast jeden alten Tag zum Regenbogen-Tag.
+  const schwellen = (ts) => C.schwellenFuerTag(ts, tz);
+  const stufe = (n, ts) => { const z = schwellen(ts); return !n ? 0 : n < z.minimum ? 1 : n < z.ziel ? 2 : n < z.stretch ? 3 : n === z.stretch ? 4 : 5; };
 
   const kopfzeile = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="hm-wtag">${w}</span>`).join("");
   const zellen = [];
@@ -765,7 +771,8 @@ function heatmapHtml(tz) {
     } else if (zukunft) {
       cls = "hm-fut"; inhalt = datum; tip = `${wtag} ${datum}`;
     } else {
-      const s = stufe(e.n);
+      const z = schwellen(ts);
+      const s = stufe(e.n, ts);
       cls = `hm-s${s}`;
       // Vergangene Tage: Anzahl geuebter Karten statt Datum; heute ohne Karten
       // zeigt noch das Datum (der Tag laeuft ja noch). Ruhetage kriegen einen
@@ -774,7 +781,7 @@ function heatmapHtml(tz) {
       inhalt = e.n ? (s >= 4 ? `${e.n}<b class="hm-stern">${s === 5 ? "🌈" : "⭐"}</b>` : String(e.n))
         : (istHeute ? datum : `<span class="hm-ruhe">😴</span>`);
       tip = e.n
-        ? `${wtag} ${datum}: ${e.n} Karten · ${Math.round((100 * e.voll) / e.n)} % voll richtig${s === 5 ? ` — ${e.n - tz.stretch} über dem Streckziel!` : s === 4 ? " — Streckziel geknackt!" : ""}`
+        ? `${wtag} ${datum}: ${e.n} Karten · ${Math.round((100 * e.voll) / e.n)} % voll richtig${s === 5 ? ` — ${e.n - z.stretch} über dem Streckziel!` : s === 4 ? " — Streckziel geknackt!" : ""}`
         : `${wtag} ${datum} — Ruhetag`;
     }
     zellen.push(`<span class="hm-zelle ${cls}${istHeute ? " hm-heute" : ""}" title="${tip}">${inhalt}</span>`);
@@ -817,25 +824,44 @@ function heatmapHtml(tz) {
   // Die Achse muss die ECHTEN Tageswerte fassen, nicht nur die geglaetteten:
   // seit die Punkte drin sind, wuerde ein starker Tag sonst oben aus dem Bild
   // ragen (Roses bester Tag liegt bei 160, Streckziel + 20 waeren 120).
-  const maxY = Math.max(tz.stretch + 20, ...g3, ...g7, ...tage.map((t) => t.n));
+  // Zielband tageweise statt als ein Balken (Jennifer 21.08.: "the green zone
+  // needs to move with what was true on that day"): Segmente gleicher Schwellen
+  // zusammenfassen — auch rechts von heute, dort enden z. B. am 26.08. sichtbar
+  // die Fokus-Wochen-Schwellen. Der Fokus-Faktor ist datumsgebunden, die Zukunft
+  // also genauso rekonstruierbar wie die Vergangenheit.
+  const segmente = [];
+  for (let d = new Date(tage[0].ts); d.getTime() <= ende.getTime(); d.setDate(d.getDate() + 1)) {
+    const z = schwellen(d.getTime());
+    const seg = segmente[segmente.length - 1];
+    if (seg && seg.ziel === z.ziel && seg.minimum === z.minimum && seg.stretch === z.stretch) seg.bis = d.getTime();
+    else segmente.push({ von: d.getTime(), bis: d.getTime(), ziel: z.ziel, minimum: z.minimum, stretch: z.stretch });
+  }
+  const maxY = Math.max(...segmente.map((s) => s.stretch + 20), ...g3, ...g7, ...tage.map((t) => t.n));
   const py = (v) => H1 - 20 - (v / maxY) * (H1 - 30);
   const pfad = (reihe) => tage.map((t, i) => `${px(t.ts).toFixed(1)},${py(reihe[i]).toFixed(1)}`).join(" ");
   // Prognose (Jennifer 22.07.): flach mit dem aktuellen 7-Tage-Schnitt weiter —
   // "wenn du so weitermachst". Die alte lineare Steigungs-Extrapolation vom 21.07.
   // hat "du musst immer mehr schaffen" erzaehlt; die Botschaft ist aber Konstanz.
   const nJetzt = g7[g7.length - 1];
-  // Zielband = Tagespensum bis Streckziel, dieselben Zonen wie die Tagesziel-Bar
-  const bandOben = py(Math.min(maxY, tz.stretch)), bandUnten = py(tz.ziel);
   // Zukunfts-Schleier rechts von heute: erklaert die leere Flaeche, ohne dort
   // etwas zu behaupten. Beide Charts benutzen ihn — gleiche Zeitachse, gleiche Optik.
   const zukunftFeld = (hoehe, y0 = 0) =>
     `<rect x="${hx}" y="${y0}" width="${Math.max(0, W - 8 - +hx).toFixed(1)}" height="${hoehe}" fill="var(--ink-soft)" opacity=".05"/>`;
+  // Zielband = Tagespensum bis Streckziel, dieselben Zonen wie die Tagesziel-Bar —
+  // aber je Segment mit den Schwellen, die an diesen Tagen galten (s. o.).
+  // Die Achsen-Zahlen links bleiben die HEUTIGEN Werte: sie beschriften die Bar
+  // von heute, die Stufen im Band erklaeren sich raeumlich selbst.
+  const bandTeile = segmente.map((seg) => {
+    const x1 = Math.max(xStart, px(seg.von));
+    const x2 = seg.bis >= ende.getTime() ? xEnd : px(seg.bis + 86400000);
+    const oben = py(Math.min(maxY, seg.stretch)), unten = py(seg.ziel);
+    return `<rect x="${x1.toFixed(1)}" y="${oben.toFixed(1)}" width="${Math.max(0, x2 - x1).toFixed(1)}" height="${(unten - oben).toFixed(1)}" fill="var(--ok)" opacity=".18"/>
+    <line x1="${x1.toFixed(1)}" y1="${oben.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${oben.toFixed(1)}" stroke="var(--ok)" stroke-width="1" opacity=".4"/>
+    <line x1="${x1.toFixed(1)}" y1="${unten.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${unten.toFixed(1)}" stroke="var(--ok)" stroke-width="1.2" opacity=".7"/>
+    <line x1="${x1.toFixed(1)}" y1="${py(seg.minimum).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${py(seg.minimum).toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>`;
+  }).join("");
   const raster = `${zukunftFeld(H1 - 18 - 6, 6)}
-    <rect x="26" y="${bandOben.toFixed(1)}" width="${W - 34}" height="${(bandUnten - bandOben).toFixed(1)}"
-      fill="var(--ok)" opacity=".18"/>
-    <line x1="26" y1="${bandOben.toFixed(1)}" x2="${W - 8}" y2="${bandOben.toFixed(1)}" stroke="var(--ok)" stroke-width="1" opacity=".4"/>
-    <line x1="26" y1="${py(tz.ziel).toFixed(1)}" x2="${W - 8}" y2="${py(tz.ziel).toFixed(1)}" stroke="var(--ok)" stroke-width="1.2" opacity=".7"/>
-    <line x1="26" y1="${py(tz.minimum).toFixed(1)}" x2="${W - 8}" y2="${py(tz.minimum).toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+    ${bandTeile}
     <text x="22" y="${(py(tz.ziel) + 3).toFixed(1)}" text-anchor="end" class="kt-tick" font-weight="700">${tz.ziel}</text>
     <text x="22" y="${(py(tz.minimum) + 3).toFixed(1)}" text-anchor="end" class="kt-tick">${tz.minimum}</text>`;
   // ---- Die echten Tageswerte als Punkte (Jennifer 12.08.: "bei dem, wie viel du
@@ -850,7 +876,7 @@ function heatmapHtml(tz) {
   const tagFarbe = ["", "var(--tag-1)", "var(--tag-2)", "var(--tag-3)", "var(--tag-4)", "var(--tag-5)"];
   const echteTage = tage.filter((t) => t.n > 0);
   const punkte = echteTage.map((t) => {
-    const s = stufe(t.n);
+    const s = stufe(t.n, t.ts);
     const d = new Date(t.ts);
     // ALLE Punkte sind gleich gross (Jennifer 12.08.: "der Regenbogenpunkt
     // sollte kleiner sein, so wie die anderen auch, und gleich bei beiden").
@@ -880,7 +906,7 @@ function heatmapHtml(tz) {
   }).join("");
   // Dieselben Stops wie drueben im GE-Trainer und wie --tag-regenbogen in
   // geteilt.css, damit Plot-Punkt und Legende denselben Regenbogen zeigen.
-  const rbDef = echteTage.some((t) => stufe(t.n) === 5)
+  const rbDef = echteTage.some((t) => stufe(t.n, t.ts) === 5)
     ? `<defs><linearGradient id="tagRegenbogen" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="#ff78be"/><stop offset="20%" stop-color="#ffa55a"/>
         <stop offset="38%" stop-color="#faeb78"/><stop offset="56%" stop-color="#96ffbe"/>

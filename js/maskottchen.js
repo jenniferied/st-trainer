@@ -229,9 +229,27 @@ export function herzenBisNaechste(herzen, stufeMax) {
    groesser, synct mit (core.js: snapshot, signatur UND eine eigene Max-Regel im
    Merge) und gilt geraeteuebergreifend — auch weil settings.tzPlan geraetelokal
    ist und zwei Geraete am selben Tag verschiedene Herzenzahlen ausrechnen. */
+/* ---------- Einmal-Korrektur nach der Fokus-Woche (Jennifer, 21.08.2026) ----
+   Am 21.08. hat herzenStand() (damals noch: ganze Historie am HEUTIGEN, in der
+   Fokus-Woche halbierten Ziel gemessen) die Sperrklinke mit aufgeblaehten
+   Werten gefuettert: gespeichert 56 ♥ / 16 ★ / Stufe 7 — der letzte ehrliche
+   Stand war 46 ♥ / 5 ★ / Stufe 6 (Supabase-Zeile 1140, Abend des 20.08.).
+   Jennifer: "ausnahmsweise auf OG resetten."
+
+   Die gespeicherten Maxima ABSENKEN geht nicht: die Merge-Regel ist bewusst
+   ein bedingungsloses Maximum, jede Absenkung kaeme beim naechsten Sync vom
+   anderen Geraet zurueck. Darum kappt die ANZEIGE die Sperrklinke auf den
+   letzten ehrlichen Stand: alles ueber der Kappung muss ehrlich neu verdient
+   werden (dann traegt ohnehin der frisch gerechnete Stand, nicht die Klinke).
+   Sobald Roses ehrlicher Stand ueber diesen Werten liegt, ist der Deckel
+   wirkungslos und der Block kann ersatzlos weg. Die Werte in mk bleiben
+   unangetastet — merge-sicher, kein Ping-Pong. */
+const OG_KAPPUNG = { herzen: 46, sterne: 5, stufe: 6 };
+
 export function stufeJetzt(herzen) {
   const mk = C.state().mk || (C.state().mk = {});
-  const stufe = Math.min(Math.max(stufeVon(herzen), mk.stufeMax || 0), STUFEN.length - 1);
+  const klinke = Math.min(mk.stufeMax || 0, OG_KAPPUNG.stufe);
+  const stufe = Math.min(Math.max(stufeVon(herzen), klinke), STUFEN.length - 1);
   // save() schreibt NUR nach localStorage — der Push haengt an syncLernstand(),
   // und das laeuft sonst erst beim naechsten Anlass (Sitzung, Tabwechsel, Neustart).
   // Eine neu erreichte Stufe soll aber sofort auf dem anderen Geraet stehen, so wie
@@ -273,8 +291,9 @@ export function stufeJetzt(herzen) {
 export function standJetzt(tz) {
   const st = herzenStand(tz);
   const mk = C.state().mk || (C.state().mk = {});
-  const herzen = Math.max(st.herzen, mk.herzenMax || 0);
-  const sterne = Math.max(st.sterne, mk.sterneMax || 0);
+  // Sperrklinke mit OG-Kappung (siehe Kommentar an OG_KAPPUNG).
+  const herzen = Math.max(st.herzen, Math.min(mk.herzenMax || 0, OG_KAPPUNG.herzen));
+  const sterne = Math.max(st.sterne, Math.min(mk.sterneMax || 0, OG_KAPPUNG.sterne));
   // Nur schreiben, wenn wirklich etwas dazugekommen ist — sonst loest jede
   // Neuzeichnung einen Sync aus (dieselbe Regel wie bei stufeJetzt).
   if (herzen > (mk.herzenMax || 0) || sterne > (mk.sterneMax || 0)) {

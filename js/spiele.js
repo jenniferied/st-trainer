@@ -17,6 +17,11 @@ import * as M from "./methoden.js";
    rose/geteilte-styles/spiel-zuordnen.js, verteilt per verteilen.sh.
    Die Engine loggt und feiert bewusst nicht, das bleibt hier. */
 import { baueZuordnen } from "./geteilt-zuordnen.js";
+/* Tages-Hub: Kachelreihe "Heute dran", der Vertrag "was ist heute offen" und der
+   Rueckweg aus einer Runde. Quelle: rose/geteilte-styles/tages-hub.js, verteilt
+   per verteilen.sh — nie die Kopie bearbeiten. Der Baustein loggt nicht, feiert
+   nicht und rechnet nicht nach, WELCHE Eintraege offen sind; das bleibt hier. */
+import * as Hub from "./geteilt-tages-hub.js";
 
 const app = () => document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -90,11 +95,10 @@ export function spieleHeute() {
 // versetzt; erledigt heisst gruene Kante plus einmaliges Aufleuchten beim
 // Uebergang. Kein Zaehler, kein Streak-Druck, kein Konfetti.
 //
-// Was beim letzten Aufbau schon erledigt war. Nur der ECHTE Uebergang leuchtet
-// auf — sonst blitzt beim Zurueckkommen auf die Startseite jedes Mal alles auf,
-// was heute frueher schon gelaufen ist. null = erster Aufbau dieser Sitzung,
-// da leuchtet nichts (beim Oeffnen der App gibt es keinen Uebergang).
-let zuletztFertig = null;
+// Der Zustand fuer das einmalige Aufleuchten (zuletztFertig) ist mit dem Hub in
+// den geteilten Baustein gewandert. Er haengt untrennbar an dessen Aufbau — ein
+// zweiter Zaehler hier laege beim ersten Seitenaufbau daneben. Die ausgeschriebene
+// Invariante steht im Kopf von geteilt-tages-hub.js.
 
 /* DIE Tagesliste dieser App — eine Quelle fuer beides: die Kacheln im Hub und
    die Zahl, die im Querlink des GE-Trainers steht.
@@ -111,7 +115,31 @@ let zuletztFertig = null;
    sagte kurz "Begriffe"). Die Namen wandern ueber offeneDailies() in den
    Snapshot und stehen drueben im Tooltip des Querlinks — wer sie aendert,
    aendert die Beschriftung in der anderen App mit. */
-export function dailies() {
+/* zurueck/extra sind der Einstieg in die Runden. Sie MUESSEN schon beim Bauen
+   der Kacheln dabei sein und nicht erst beim Verdrahten: der Baustein liest
+   typeof a.geh === "function" und entscheidet daran, ob die Kachel ein
+   div[role=button] mit tabindex wird oder nur Anzeige (.nur-anzeige). Wer die
+   Liste hier ohne Callbacks baut, bekommt eine Kachelreihe, die pixelgleich
+   aussieht, aber weder Tastatur noch Knopf-Rolle hat und im Tooltip "nichts
+   offen" behauptet. Genau so ist es beim ersten Umbau passiert und nur im
+   Vorher-/Nachher-Vergleich aufgefallen — sichtbar war es nicht.
+
+   Ohne zurueck (offeneDailies) traegt jeder Eintrag geh: null. Das ist dort
+   folgenlos: offeneNamen() liest nur erledigt und kurz.
+
+   Zweimal bauen ist unbedenklich — spieleHeute() liest nur, und baueHub() wird
+   trotzdem genau einmal je Seitenaufbau gerufen (siehe die Invariante im Kopf
+   des Bausteins). Beide Aufrufe kommen aus DIESER Funktion, damit die
+   Schluessel nicht auseinanderlaufen koennen: der Baustein findet die Kacheln
+   ueber data-daily wieder. */
+function bauDailies(zurueck, extra) {
+  const gehFuer = !zurueck ? null : (key) => {
+    if (key === "vp") return () => vpSpiel(zurueck);
+    if (key === "opu") return () => opUeben(zurueck);
+    if (key === "opz") return () => opZuordnen(zurueck);
+    if (key === "bg") return () => { extra?.begriffe?.(); };
+    return () => dtSpiel(zurueck);
+  };
   const heute = spieleHeute();
   return [
     { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },
@@ -119,89 +147,70 @@ export function dailies() {
     { key: "opz", icon: "↔️", name: "Zuordnen", m: "operatoren", n: heute.opz, aktiv: !!OPS },
     { key: "dt", icon: "🕵️", name: "Detektiv", m: "paraphrasieren", n: heute.detektiv, aktiv: true },
     { key: "bg", icon: "🃏", name: "Begriffe-Blitz", m: "retrieval", n: heute.begriffe, aktiv: C.begriffe().length > 0 },
-  ].filter((s) => s.aktiv);
+  ].filter((s) => s.aktiv).map((s) => ({
+    key: s.key,
+    icon: s.icon,
+    // titel und kurz sind hier dasselbe: die Namen sind ohnehin kurz. Getrennt
+    // sind die Felder wegen des GE-Trainers, dessen Wiederholen-Eintrag seine
+    // Anzahl im Titel traegt und auf der Kachel nur das kurze Wort zeigt.
+    titel: s.name,
+    kurz: s.name,
+    klein: "",          // eine Erklaerzeile je Kachel gibt es hier nicht
+    methode: s.m,
+    erledigt: !!s.n,
+    blase: 0,           // hier zaehlt der Haken, keine Blase (das ist GE-eigen)
+    n: s.n,
+    geh: gehFuer ? gehFuer(s.key) : null,
+  }));
+}
+
+export function dailies() {
+  return bauDailies(null, null);
 }
 
 /* Welche davon heute noch offen sind, als Liste ihrer Namen. Wandert ueber
    snapshot() in den Lernstand und von dort in den Querlink des GE-Trainers:
    die Laenge wird dort zur Zahl im Abzeichen, die Namen stehen im Tooltip.
    Die LEERE Liste ist ein gueltiges Ergebnis und heisst "heute alles
-   erledigt" — sie ist etwas anderes als gar keine Liste. */
+   erledigt" — sie ist etwas anderes als gar keine Liste.
+   >>> Der Exportname bleibt. <<< main.js reicht die FUNKTION SELBST an
+   C.setzeOffenZaehler weiter und mk-chat.js ruft sie auf; ein Umbenennen setzte
+   den Querlink des GE-Trainers still auf "nichts offen". */
 export function offeneDailies() {
-  return dailies().filter((s) => !s.n).map((s) => s.name);
+  return Hub.offeneNamen(dailies());
 }
 
-export function hubHtml() {
-  const spiele = dailies();
-  if (!spiele.length) return "";
-
-  const fertig = new Set(spiele.filter((s) => s.n).map((s) => s.key));
-  const frisch = zuletztFertig === null
-    ? new Set()
-    : new Set([...fertig].filter((k) => !zuletztFertig.has(k)));
-  zuletztFertig = fertig;
-
-  const karten = spiele.map((s) => {
-    const n = s.n;
-    // Exakt dasselbe Bauteil wie im Querlink oben rechts (Muster-Block im CSS):
-    // gleiches Wort, gleiche Punktgroesse, gleicher Takt. Nicht nachbauen.
-    // .dringend (rot, schneller Puls) seit 12.08. nachmittags: DAS hier sind die
-    // Dailies, die Jennifer gemeint hat ("auf jeden Fall Rot ... fuer offene
-    // Dailies"). Die Themenkarten im Stoebern bleiben ausdruecklich blau/still —
-    // Begruendung und Grenze stehen im CSS, Block 2b.
-    /* Das Statuslicht statt der Pille (Jennifer, 12.08. abends: dieselbe Form wie
-       die Probeklausur-Reihe). Fuenf rote Pillen nebeneinander waeren eine Wand
-       aus Alarm — dieselbe Ueberlegung, aus der die acht Themenkarten nicht
-       pulsieren. Der Punkt traegt dieselbe Farbe und denselben Takt, und das Wort
-       "offen" steht weiterhin vollstaendig im aria-label und im title.
-       Erledigt ist ein Haken und kein gruener Punkt: die zwei Zustaende sollen
-       sich nicht nur in der Farbe unterscheiden. */
-    const licht = n
-      ? `<span class="d-haken" aria-hidden="true">✓</span>`
-      : `<span class="d-licht offen puls dringend" aria-hidden="true"></span>`;
-    return `<div class="daily-kachel ${n ? "fertig" : "offen"}${frisch.has(s.key) ? " frisch-erledigt" : ""}" data-spiel="${s.key}" role="button" tabindex="0"
-         title="${n ? `heute schon ${n}× geübt` : "heute noch offen"}"
-         aria-label="${s.name}${n ? " — heute schon geübt" : " — heute noch offen"}">
-        <span class="info-btn d-info" data-methode="${s.m}" role="button" title="Warum das hilft">ⓘ</span>
-        <span class="d-icon" aria-hidden="true">${s.icon}</span>
-        <b>${s.name}</b>
-        ${licht}
-      </div>`;
+/* Der Kasten "Heute dran". Nimmt dieselben zwei Argumente wie bindHub() und
+   MUSS sie bekommen — siehe bauDailies(). Gebaut wird er im geteilten Baustein;
+   hier bleibt
+   nur, was diese App entscheidet: ihre Kastenklassen (.card gegen GEs .karte)
+   und ihre Legende zum roten Punkt. Der Text ist mit Absicht ein anderer als
+   drueben — GEs Wiederholen-Kachel pulst auch dann noch, wenn Rose heute schon
+   gespielt hat, und dort waere dieser Satz falsch. */
+export function hubHtml(zurueck, extra = {}) {
+  const aufgaben = bauDailies(zurueck, extra);
+  if (!aufgaben.length) return "";
+  return Hub.hubHtml(aufgaben, {
+    karteKlasse: "card mt glim",
+    hinweis: "Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Der rote Punkt heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.",
   });
-  /* EIN Kasten um die Reihe (Jennifer: "koennte man die fuenf Dinge auch in einem
-     eigenen Kasten machen, genauso wie die Klausuruebersichten"). Nebeneffekt,
-     der die alte Form ohnehin gestoert hat: das Raster brach bei fuenf Kacheln
-     auf 4+1 um und liess die letzte allein in einer zweiten Zeile stehen. */
-  /* Titel und Erklaerzeile sind seit dem 12.08. abends in beiden Trainern
-     gleich. "Heute dran" statt "Tägliches Training": die Ueberschrift benennt
-     damit dieselbe Regel, die der rote Punkt darunter meint (heute dran und
-     noch offen), und sie ist kuerzer. Die Erklaerzeile stand nur hier und
-     wandert mit hinueber — der rote Punkt braucht seine Legende. Das
-     Inline-style daran ist jetzt .karten-hinweis im geteilten Paket. */
-  return `<div class="card mt glim">
-      <h2>Heute dran</h2>
-      <p class="karten-hinweis">Kleine Runden, je ~2 Minuten — ein Tipp startet direkt. Der rote Punkt heißt: heute noch nicht dran gewesen. Alles zählt für dein Tagesziel.</p>
-      <div class="dailies-reihe">${karten.join("")}</div>
-    </div>`;
 }
-// extra.begriffe: Begriffe-Blitz lebt in main.js — der Hub bekommt den Einstieg gereicht
+
+// zurueck ist der Rueckweg, den die Kacheln in die Runde hinein durchreichen —
+// wer von der Startseite kommt, landet beim Zurueckgehen auch dort.
+// extra.begriffe: Begriffe-Blitz lebt in main.js, der Hub bekommt den Einstieg gereicht.
 export function bindHub(zurueck, extra = {}) {
-  app().querySelectorAll("[data-spiel]").forEach((b) => {
-    const oeffne = () => {
-      const k = b.dataset.spiel;
-      if (k === "vp") vpSpiel(zurueck);
-      else if (k === "opu") opUeben(zurueck);
-      else if (k === "opz") opZuordnen(zurueck);
-      else if (k === "bg") extra.begriffe?.();
-      else dtSpiel(zurueck);
-    };
-    b.onclick = (e) => { if (e.target.closest(".info-btn")) return; oeffne(); };
-    b.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); oeffne(); } };
-  });
+  Hub.binde(app(), bauDailies(zurueck, extra));
 }
 
 // ---------- Gemeinsames ----------
-const kopf = (titel, zurueckFn, extra = "") => `<div class="topbar"><button class="back" id="spielBack">‹</button><h1>${titel}</h1>${extra}</div>`;
+/* Der Kopf einer Spielrunde kommt aus dem geteilten Baustein. Der Gewinn steckt
+   in der Argumentliste: zurueck steht dort neben titel und wird SOFORT geprueft
+   — fehlt es, wirft der Baustein beim Aufbau des Screens statt still einen
+   Knopf ohne Wirkung zu bauen. Verdrahten kann ein String nichts, deshalb folgt
+   bei jedem Aufrufer Hub.bindeZurueck(app(), zurueckFn); auch das wirft, wenn
+   der Knopf fehlt. extra ist App-eigenes Markup (der Wendungen-Knopf). */
+const kopf = (titel, zurueckFn, extra = "") => Hub.kopfHtml({ titel, zurueck: zurueckFn, extra });
 const logSpiel = (modus, qid, punkte, max, voll, zeit) => {
   C.logAntwort({ qid, sid: "spiel", modus, punkte, max, voll, zeit });
   C.syncEvent({ frage_id: qid, gewaehlt: null, punkte, max_punkte: max, voll, modus, ts: new Date().toISOString() });
@@ -286,7 +295,7 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
       <div class="vp-chips">${chips}</div>
       <div id="vpFb"></div>
     </div>`;
-    document.getElementById("spielBack").onclick = zurueckFn;
+    Hub.bindeZurueck(app(), zurueckFn);
     const antworte = (key, richtungIdx = -1) => {
       const ok = key === it.richtig;
       if (ok) richtig++;
@@ -406,7 +415,7 @@ export function opUeben(zurueckFn) {
         <div class="answers">${u.optionen.map((o, i) => `<button class="ans op-opt" data-i="${i}"><span>${esc(o)}</span></button>`).join("")}</div>
         <div id="opFb"></div>
       </div></div>`;
-    document.getElementById("spielBack").onclick = zurueckFn;
+    Hub.bindeZurueck(app(), zurueckFn);
     bindWendungen();
     app().querySelectorAll(".op-opt").forEach((b) => b.onclick = () => {
       const i = +b.dataset.i, ok = i === u.richtig;
@@ -445,7 +454,7 @@ export function opZuordnen(zurueckFn) {
     <p class="muted" style="margin:0 0 10px">Links die Wendung antippen, rechts, was sie verlangt.</p>
     <div id="opzSpiel"></div>
     <div id="opzFazit"></div></div>`;
-  document.getElementById("spielBack").onclick = zurueckFn;
+  Hub.bindeZurueck(app(), zurueckFn);
   bindWendungen();
   document.getElementById("opzSpiel").appendChild(baueZuordnen({
     paare,
@@ -505,7 +514,7 @@ export function dtSpiel(zurueckFn) {
           <div class="dt-chips">${konzepte.map((k) => `<button class="vp-chip" data-konzept="${esc(k)}">${esc(k)}</button>`).join("")}</div></div>
         <div id="dtFb"></div>
       </div></div>`;
-    document.getElementById("spielBack").onclick = zurueckFn;
+    Hub.bindeZurueck(app(), zurueckFn);
     const fertigWennBeide = () => {
       if (wahlWill == null || wahlKonzept == null) return;
       const okWill = wahlWill === willRichtig, okKonzept = wahlKonzept === q.konzept;

@@ -14,6 +14,11 @@ import * as MkChat from "./mk-chat.js";
    rose/geteilte-styles/spiel-zuordnen.js — nie die Kopie bearbeiten, danach
    ./verteilen.sh. Die Engine loggt nicht und feiert nicht, beides bleibt hier. */
 import * as Z from "./geteilt-zuordnen.js";
+/* Tages-Hub: hier gebraucht fuer den KOPF einer Begriffe-Runde. kopfHtml() nimmt
+   den Rueckweg in dieselbe Argumentliste wie den Titel und wirft, wenn er fehlt
+   — verdrahtet wird danach mit bindeZurueck(). Quelle:
+   rose/geteilte-styles/tages-hub.js, nie die Kopie bearbeiten. */
+import * as Hub from "./geteilt-tages-hub.js";
 
 const app = document.getElementById("app");
 const h = (html) => { app.innerHTML = html; window.scrollTo(0, 0); };
@@ -1053,6 +1058,14 @@ function home() {
       <div style="margin:2px 0 10px 8px">${subs}</div></details>`;
   }).join("");
 
+  /* Der Einstieg in den Begriffe-Blitz, den der Hub gereicht bekommt. EIN Objekt
+     fuer hubHtml() und bindHub(), damit die Kachelreihe und ihre Handler
+     garantiert dieselben Eintraege meinen.
+     home explizit durchreichen statt begriffeHome nackt zu uebergeben: der
+     Default greift zwar zufaellig richtig, aber genau dieses "zufaellig richtig"
+     ist das Muster, das drueben im GE-Trainer den Rueckweg verloren hat. */
+  const hubExtra = { begriffe: () => begriffeHome(home) };
+
   const eintraege = histEintraege();
   // Kompakte Zuletzt-Liste (Jennifer 21.07.): mehr Eintraege sichtbar
   const letzte = eintraege.slice(0, 7).map((x) => x.html).join("");
@@ -1067,7 +1080,7 @@ function home() {
 
     ${klausurtrainingHtml()}
 
-    ${Spiele.hubHtml()}
+    ${Spiele.hubHtml(home, hubExtra)}
 
     ${offene.length ? `<h2 class="abschnitt-titel">Angefangen — du kannst weitermachen</h2>${offenCards}` : ""}
 
@@ -1117,7 +1130,7 @@ function home() {
   </div>`);
 
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => route(b.dataset.go));
-  Spiele.bindHub(home, { begriffe: begriffeHome });
+  Spiele.bindHub(home, hubExtra);
   app.querySelectorAll("[data-pk]").forEach((b) => b.onclick = () => pkScreen(+b.dataset.pk));
   app.querySelectorAll("[data-resume]").forEach((b) => b.onclick = () => resumeSession(b.dataset.resume));
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = async () => {
@@ -3195,9 +3208,18 @@ function statistik() {
 // normale antwortLog-Einträge (sid "begriffe"), syncen also über alle Geräte.
 // Lern-Logik: Runden abwechselnd in beide Abrufrichtungen (Begriff→Antwort und
 // Antwort→Begriff) — die Rückrichtung wird sonst nicht mitgelernt.
-function begriffeHome() {
+/* zurueck ist, WO ROSE HERKAM — von der Startseite ueber die Hub-Kachel, oder
+   ueber route("begriffe"). Es wird nicht nur fuer den eigenen Zurueck-Knopf
+   gebraucht, sondern UNVERAENDERT an begriffeRunde weitergereicht: wer von der
+   Startseite kommt, soll aus der Runde heraus auch dorthin zurueck und nicht auf
+   einer Kategorienliste landen, die sie nie geoeffnet hat. Dieselbe Regel gilt
+   drueben im GE-Trainer (bgHome/bgRunde, spiele.js).
+   Der Default steht hier beim AUFRUFER und nicht im Baustein — damit
+   route("begriffe") unveraendert funktioniert, ohne dass der geteilte Kopf einen
+   Fallback bekaeme, den er nie haben darf. */
+function begriffeHome(zurueck = home) {
   const alle = C.begriffe();
-  if (!alle.length) return home();
+  if (!alle.length) return zurueck();
   const stats = C.begriffStats();
   const sicher = (p) => (stats[p.id]?.ok || 0) >= Z.SICHER_AB;
   const kats = [...new Map(alle.map((p) => [p.kategorie, p])).values()].map((p) => {
@@ -3216,9 +3238,9 @@ function begriffeHome() {
     <button class="btn" id="schwach" style="width:100%;margin-bottom:10px">⚡ Schwächste Runde starten</button>
     ${rows}
   </div>`);
-  document.getElementById("back").onclick = home;
-  document.getElementById("schwach").onclick = () => begriffeRunde(kats[0].kat);
-  app.querySelectorAll("[data-kat]").forEach((b) => b.onclick = () => begriffeRunde(b.dataset.kat));
+  document.getElementById("back").onclick = zurueck;
+  document.getElementById("schwach").onclick = () => begriffeRunde(kats[0].kat, zurueck);
+  app.querySelectorAll("[data-kat]").forEach((b) => b.onclick = () => begriffeRunde(b.dataset.kat, zurueck));
 }
 
 // Die Mechanik (Spalten, Auswahl, Fehlgriff-Wackler, Zaehlung des ersten
@@ -3229,9 +3251,9 @@ function begriffeHome() {
 // Hier bleibt, was der Baustein bewusst nicht kennt: der Log-Eintrag mit
 // modus "begriffe" (daran haengen spieleHeute(), begriffStats() und ueber
 // offeneDailies() die Zahl im GE-Querlink) und das Fazit mit Konfetti.
-function begriffeRunde(kat) {
+function begriffeRunde(kat, zurueck) {
   const alle = C.begriffe().filter((p) => p.kategorie === kat);
-  if (!alle.length) return begriffeHome();
+  if (!alle.length) return begriffeHome(zurueck);
   const stats = C.begriffStats();
   // Gewichtete Auswahl: nie geübt und zuletzt gepatzt zuerst, Sicheres seltener
   // (die Zahlen kommen aus dem Baustein, drüben gelten dieselben)
@@ -3245,12 +3267,12 @@ function begriffeRunde(kat) {
   const t0 = Date.now();
   const lbl = C.begriffe()[0] ? (C.begriffe().find((p) => p.kategorie === kat)?.kategorieLabel || kat) : kat;
   h(`<div class="fade-in">
-    <div class="topbar"><button class="back" id="back">‹</button><h1>${esc(lbl)}</h1></div>
+    ${Hub.kopfHtml({ titel: lbl, zurueck })}
     <p class="muted" style="margin:0 0 10px">${drehen ? "Umgekehrte Richtung: links die Beschreibung, rechts der Begriff." : "Links Begriff antippen, rechts die passende Antwort."}</p>
     <div id="bgSpiel"></div>
     <div id="bgFazit"></div>
   </div>`);
-  document.getElementById("back").onclick = begriffeHome;
+  Hub.bindeZurueck(app, zurueck);
   document.getElementById("bgSpiel").appendChild(Z.baueZuordnen({
     paare,
     linksText: (p) => (drehen ? p.antwort : p.begriff),
@@ -3260,11 +3282,11 @@ function begriffeRunde(kat) {
       C.logAntwort({ qid: id, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: Math.round((Date.now() - t0) / 1000) });
       C.syncEvent({ frage_id: id, gewaehlt: null, punkte: voll ? 1 : 0, max_punkte: 1, voll, modus: "begriffe", ts: new Date().toISOString() });
     },
-    onFertig: (erg) => begriffeFazit(kat, paare, erg),
+    onFertig: (erg) => begriffeFazit(kat, paare, erg, zurueck),
   }));
 }
 
-function begriffeFazit(kat, paare, erg) {
+function begriffeFazit(kat, paare, erg, zurueck) {
   const n = erg.n, ok = erg.ok;
   const cls = ok === n ? "good" : ok >= n - 1 ? "part" : "bad";
   const erkl = paare.filter((p) => erg.fehler.includes(p.id)).map((p) => `<div class="review-q" style="padding:10px 0">
@@ -3277,8 +3299,12 @@ function begriffeFazit(kat, paare, erg) {
       <button class="btn" id="bgNochmal">Nächste Runde ›</button>
       <button class="btn secondary" id="bgZurueck">Kategorien</button>
     </div>`;
-  document.getElementById("bgNochmal").onclick = () => begriffeRunde(kat);
-  document.getElementById("bgZurueck").onclick = begriffeHome;
+  // Die naechste Runde behaelt denselben Rueckweg wie die, aus der sie kommt.
+  document.getElementById("bgNochmal").onclick = () => begriffeRunde(kat, zurueck);
+  // Der Sekundaerknopf heisst "Kategorien" und fuehrt deshalb dorthin — mit dem
+  // Rueckweg im Gepaeck, damit von dort aus ein weiteres Zurueck wieder da
+  // landet, wo Rose hergekommen ist.
+  document.getElementById("bgZurueck").onclick = () => begriffeHome(zurueck);
   if (ok === n) konfetti({ n: 40, ms: 2200 });
 }
 

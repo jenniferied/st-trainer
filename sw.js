@@ -2,6 +2,8 @@
 // Strategie: network-first mit Cache-Fallback — Rose bekommt immer die neueste
 // Version, wenn sie online ist, und kann offline weiterüben (z.B. unterwegs).
 const CACHE = "st-trainer-v2";
+// geteilt-tages-hub.js baut seit dem 22.08. den Kasten "Heute dran" und den Kopf
+// jeder Spielrunde; ohne ihn steht die Startseite offline ohne Tageskacheln da.
 // geteilt.css und geteilt-tagesstand.js gehoeren seit dem 12.08. abends in die
 // Huelle: das geteilte Paket traegt jetzt Kasten, Ueberschriften, Kopfzeile und
 // Seitenrahmen. Ohne es faellt die App auf nackte Browser-Voreinstellungen
@@ -15,6 +17,7 @@ const SHELL = [
   "css/geteilt.css",
   "css/style.css",
   "js/config.js",
+  "js/geteilt-tages-hub.js",
   "js/geteilt-tagesstand.js",
   "js/geteilt-zuordnen.js",
   "js/main.js",

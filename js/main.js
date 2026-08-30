@@ -2041,6 +2041,15 @@ function faerbeAntworten(q, r, mitErklaerungen, auswahl) {
       anker.insertAdjacentHTML("afterend", `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>`);
     }
   });
+  // Ganz-einfach-Erklaertext unter allen Optionen (Jennifer, 30.08.2026, nach
+  // Roses Parsons-Streitgespraech): eine Frage darf einen merksatz tragen, der
+  // die Falle in einfacher Sprache aufloest. Erscheint ueberall dort, wo auch
+  // die kuratierten Erklaerungen erscheinen.
+  const answersBox = document.getElementById("answers");
+  if (mitErklaerungen && q.merksatz && answersBox && !answersBox.querySelector(".merksatz")) {
+    answersBox.insertAdjacentHTML("beforeend",
+      `<div class="explain merksatz">🧭 <b>Ganz einfach:</b> ${Beleg.render(q.merksatz, q.oberthema)}</div>`);
+  }
 }
 function zeigeFeedback(q, r, auswahl) {
   // Bewertet wird IMMER der erste Versuch; auswahl steuert nur die Faerbung.

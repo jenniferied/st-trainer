@@ -644,6 +644,17 @@ function bankZeit() {
 // ein erreichbarer Endpunkt statt endlosem Grind.
 function tageszielHtml(tz, sich) {
   if (tz.tage != null && tz.tage < 0) return "";
+  /* Der GE-Klausurtag (10.09.). Nicht Roses ST-Termin, aber ihr Tag: an dem
+     Morgen schreibt sie die andere Klausur, und ST hat hier nichts zu fordern.
+     Kein Balken, keine Zahl, kein Rueckstand - der Tag zaehlt einfach nicht
+     mit. Das Flag kommt aus core.js (tagesPlan), damit das Datum an EINER
+     Stelle steht. */
+  if (tz.pause === "ge") {
+    return `<div class="card tagesziel klausurtag glim">
+      <b style="font-size:1.15rem">🍀 Heute ist deine GE-Klausur.</b>
+      <p style="margin:6px 0 0">Schultheorie macht heute Pause — hier wird nichts erwartet und nichts nachgeholt. Ab morgen ist ST wieder dran, und dann ist es das Einzige. Viel Erfolg. 💛</p>
+    </div>`;
+  }
   if (tz.tage === 0) {
     const sicher = sich.filter((t) => t.stars >= 2).length;
     return `<div class="card tagesziel klausurtag glim">

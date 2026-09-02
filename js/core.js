@@ -924,8 +924,50 @@ function fokusFaktor(d) {
       das braucht das Zielband rechts von heute). Die Banddrift 60->100 aus dem
       Restbedarf bleibt dabei unsichtbar, sie ist fuer die Vergangenheit nicht
       mehr rekonstruierbar — genau deshalb gibt es ab jetzt Stufe 1. */
+/* ---------- Der gesenkte Balken bis zur GE-Klausur (Jennifer, 02.09.2026) ----------
+   Die Fokus-Woche oben ist am 26.08. ausgelaufen, und damit ist Roses
+   ST-Pensum von 50 auf 100 zurueckgesprungen (nachgesehen in ihrem tzHist).
+   Am 30.08. hat sie 48 Karten geuebt: unter dem alten Band waeren das ein
+   Streckziel-Tag gewesen, unter dem neuen bleibt es Gelb. Genau das hat sie
+   gemerkt - "das eine Mal nicht den Regenbogen gekriegt, weil sich das Limit
+   ja wieder nach oben gesetzt hat".
+
+   Jennifer senkt den Balken deshalb bis zur GE-Klausur (10.09.) auf 30/10/40 -
+   ausdruecklich AUCH RUECKWIRKEND fuer die letzten Uebungstage, und
+   ausdruecklich gegen ihren eigenen Grundsatz ("ich bin ja eigentlich gegen in
+   der Retrospektive Werte runtersetzen"). Der Zweck ist benannt und eng: Rose
+   soll den einen Tag doch noch bekommen und bis zur GE-Klausur nicht mehr
+   gegen ein volles ST-Pensum anlaufen, waehrend GE der Fokus ist. Ab dem
+   11.09. gilt wieder die normale Rechnung - dann sind auch nur noch acht Tage
+   bis zum 18.09., und ST ist wieder das einzige Thema.
+
+   NACHGERECHNET an Roses echtem Stand, bevor die Zahl hier stand: 29.08. (134)
+   und 31.08. (131) waren Regenbogen und bleiben Regenbogen, 30.08. (48) steigt
+   von Gelb auf Regenbogen. GENAU EIN TAG aendert sich, und zwar nach oben -
+   kein Tag wird abgewertet. Die 40 kommen aus dieser Rechnung: das
+   Fokus-Wochen-Band (Faktor 0,5) haette ein Streckziel von 60 ergeben und die
+   48 wieder nicht erreicht.
+
+   WARUM DAS HIER STEHT UND NICHT IN tzHist: tzHist wird nie ueberschrieben,
+   das ist die Regel, an der die ganze "true to what was true on the day"-Logik
+   haengt. Roses gespeicherte Eintraege fuer den 29.08.-02.09. bleiben also
+   unangetastet - gesenkt wird beim LESEN, an dieser einen Stelle, mit Datum
+   und Grund daneben. Das ist die einzige Ausnahme, und sie laeuft von selbst
+   aus. Wer eine zweite baut, hat die Regel verloren.
+
+   Der 10.09. ist im Fenster, damit auch an dem Tag nichts hart bewertet wird -
+   das PENSUM setzt an dem Tag ohnehin aus, siehe tagesPlan. */
+const GE_KLAUSUR = "2026-09-10";
+const SENKUNG_VON = "2026-08-29", SENKUNG_BIS = GE_KLAUSUR;
+const SENKUNG = { ziel: 30, minimum: 10, stretch: 40 };
+function senkungFuer(iso) {
+  return iso >= SENKUNG_VON && iso <= SENKUNG_BIS ? SENKUNG : null;
+}
+
 export function schwellenFuerTag(ts, tz) {
   const d = new Date(ts); d.setHours(0, 0, 0, 0);
+  const gesenkt = senkungFuer(isoTagVon(d));
+  if (gesenkt) return gesenkt;
   const hist = (state().tzHist || {})[isoTagVon(d)];
   if (hist && hist.ziel) return hist;
   const fTag = fokusFaktor(d), fHeute = fokusFaktor(new Date());
@@ -955,8 +997,12 @@ function merkeTzHist(st, heute, plan) {
 function tagesPlan(heute, tage) {
   const st = state();
   const key = heute.toDateString();
+  // v:4 verdraengt die eingefrorenen v:3-Plaene. Ohne den Sprung haette Rose
+  // den heutigen Balken noch bei 100 stehen, waehrend der Kalender daneben
+  // schon 30 zeigt (die Senkung greift ab dem 29.08.) - zwei Wahrheiten auf
+  // einem Schirm. Gleiche Mechanik wie beim Sprung v:2 -> v:3.
   const alt = st.settings.tzPlan;
-  if (alt && alt.tag === key && alt.v === 3) return merkeTzHist(st, heute, alt);
+  if (alt && alt.tag === key && alt.v === 4) return merkeTzHist(st, heute, alt);
   let vollBedarf = 0;
   for (const q of POOL) {
     if (!(q.quizbar && q.relevanz !== "laut-rose-nicht-relevant" && (q.sprache || "schwer") !== "einfach")) continue;
@@ -981,8 +1027,27 @@ function tagesPlan(heute, tage) {
   // Faktor mehr sichtbar ist. Genau die Sorte Rest, die eine befristete Aenderung
   // hinterlaesst, wenn man sie nur halb zurueckdreht.
   const boden = fokus === 1 ? 25 : r10(25 * fokus);
-  const plan = { v: 3, tag: key, ziel, minimum: Math.max(boden, r10(ziel * 0.35)),
+  const plan = { v: 4, tag: key, ziel, minimum: Math.max(boden, r10(ziel * 0.35)),
     stretch: Math.min(140, r10(ziel * 1.25)), restBedarf };
+
+  /* Die Senkung bis zur GE-Klausur (Begruendung oben bei SENKUNG). Sie sitzt
+     HINTER der Rechnung und nicht davor: restBedarf bleibt damit die ehrliche
+     Zahl, die in der Notiz unter der Bar steht ("noch ~N Antworten"). Gesenkt
+     werden nur die drei Schwellen - dieselben, die schwellenFuerTag() im
+     Kalender zeigt, damit Bar und Kalender nicht auseinanderlaufen. */
+  const iso = isoTagVon(heute);
+  const gesenkt = senkungFuer(iso);
+  if (gesenkt) Object.assign(plan, gesenkt);
+
+  /* Der GE-Klausurtag: bei beiden aussetzen (Jennifer, 02.09.2026 - "an dem Tag
+     von GE halt bei beiden aussetzen"). Der GE-Trainer kann das laengst, es ist
+     ja sein eigener Klausurtag; ST wuesste von dem Termin sonst nichts und
+     stellte Rose am Klausurmorgen ein Pensum hin. Das Flag traegt die Ansage
+     bis in tageszielHtml (main.js), wo statt der Bar ein Satz steht. Die drei
+     Schwellen bleiben trotzdem gesetzt, damit der Kalender fuer den Tag nicht
+     ohne Massstab dasteht, falls Rose abends doch eine Runde spielt. */
+  if (iso === GE_KLAUSUR) plan.pause = "ge";
+
   st.settings.tzPlan = plan; save();
   return merkeTzHist(st, heute, plan);
 }

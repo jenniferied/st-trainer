@@ -680,6 +680,11 @@ function tageszielHtml(tz, sich) {
     : `Warmlaufen — erstes Etappenziel: ${tz.minimum}. Jede Karte zählt, Begriffe-Blitz auch.`;
   const note = tz.tage == null ? ""
     : tz.tage === 1 ? `<p class="muted tz-note">Morgen früh ist es so weit. Heute reichen lockere ${tz.ziel} zum Festigen — und dann Feierabend und früh schlafen. 💛</p>`
+    // Solange der Balken gesenkt ist, stammen die drei Zahlen NICHT aus dem
+    // Reststoff — der Satz muss das sagen, sonst erklaert er eine Herleitung,
+    // die gerade nicht laeuft. Der Reststoff steht trotzdem da: er ist die
+    // ehrliche Zahl und wird von der Senkung nicht angefasst.
+    : tz.gesenkt ? `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — bis zur GE-Klausur am 10.09. bewusst niedriger gesetzt, damit hier nicht auch noch volles Pensum steht. Danach rechnet es wieder aus deinem Reststoff (aktuell ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`
     : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`;
   const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
   return `<div class="card tagesziel glim">

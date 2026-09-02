@@ -1037,7 +1037,11 @@ function tagesPlan(heute, tage) {
      Kalender zeigt, damit Bar und Kalender nicht auseinanderlaufen. */
   const iso = isoTagVon(heute);
   const gesenkt = senkungFuer(iso);
-  if (gesenkt) Object.assign(plan, gesenkt);
+  // Das Flag geht mit: die Notiz unter der Bar sagt sonst weiter "taeglich neu
+  // aus deinem echten Reststoff gerechnet" und meint damit eine Herleitung, die
+  // fuer diese drei Zahlen gerade nicht stattfindet. Genau dieselbe Sorte
+  // Halbwahrheit wie der Halbzeit-Satz drueben im GE-Begriffe-Blitz.
+  if (gesenkt) { Object.assign(plan, gesenkt); plan.gesenkt = true; }
 
   /* Der GE-Klausurtag: bei beiden aussetzen (Jennifer, 02.09.2026 - "an dem Tag
      von GE halt bei beiden aussetzen"). Der GE-Trainer kann das laengst, es ist

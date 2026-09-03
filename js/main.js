@@ -672,6 +672,14 @@ function tageszielHtml(tz, sich) {
   // leuchtendes Gruen) -> darueber hinaus (Regenbogen). Beide oberen Stufen
   // seit 12.08.; Gold ist raus, weil es neben dem Orange unten wie Orange las.
   const zone = tz.n > tz.stretch ? "rb" : tz.n >= tz.stretch ? "st" : tz.n >= tz.ziel ? "g" : tz.n >= tz.minimum ? "y" : "o";
+  // Der Regenbogen liegt seit dem 03.09.2026 schon AUF dem Streckziel und nicht
+  // erst darueber (Jennifer: "st when full und streckziel auch regenbogen").
+  // Genau so macht es der GE-Trainer seit jeher — dort legt zonenBalken() ihn
+  // ab tz.n >= tz.stretch ueber die ganze Leiste. Ein voller Balken sah hier
+  // bisher nur an EINEM von zwei guten Tagen nach Fest aus.
+  // Die BOTSCHAFT bleibt getrennt: "Streckziel" und "ueber dem Streckziel" sind
+  // zwei verschiedene Tage, nur die Leiste sieht bei beiden gleich aus.
+  const fuell = zone === "st" ? "rb" : zone;
   const msg = zone === "rb" ? `Über dem Streckziel! 🌈 ${tz.n - tz.stretch} Karten mehr als geplant — das ist ein richtig starker Tag.`
     : zone === "st" ? "Streckziel! ⭐ Du bist dem Plan voraus — Pause ist mehr als verdient."
     : zone === "g" ? "Tagespensum geschafft 🎉 Alles ab hier ist Vorsprung für morgen."
@@ -691,7 +699,7 @@ function tageszielHtml(tz, sich) {
     ${Mk.html(tz)}
     <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
     <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
-      <i class="fill ${zone}" style="width:${pct}%"></i>
+      <i class="fill ${fuell}" style="width:${pct}%"></i>
       <span class="mark" style="left:${minP}%"></span><span class="mark" style="left:${zielP}%"></span>
     </div>
     ${Mk.markenHtml(tz, minP, zielP)}
@@ -1080,7 +1088,18 @@ function home() {
      home explizit durchreichen statt begriffeHome nackt zu uebergeben: der
      Default greift zwar zufaellig richtig, aber genau dieses "zufaellig richtig"
      ist das Muster, das drueben im GE-Trainer den Rueckweg verloren hat. */
-  const hubExtra = { begriffe: () => begriffeHome(home) };
+  /* warmhalten startet den vorhandenen spaced-Modus mit 15 Fragen - dieselbe
+     cfg-Form wie die Schnellstart-Kacheln, damit die Runde ganz normal im
+     Verlauf, im Tagesziel und im Leitner landet. Kein eigener Modus, kein
+     neues Feld: es ist "Schlaues Wiederholen", nur endlich sichtbar. */
+  const hubExtra = {
+    begriffe: () => begriffeHome(home),
+    warmhalten: () => starte({
+      modus: "spaced", anzahl: 15, auswahl: "smart", spaced: true,
+      timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+      sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
+    }),
+  };
 
   const eintraege = histEintraege();
   // Kompakte Zuletzt-Liste (Jennifer 21.07.): mehr Eintraege sichtbar
@@ -3283,8 +3302,13 @@ function begriffeRunde(kat, zurueck) {
   // Gewichtete Auswahl: nie geübt und zuletzt gepatzt zuerst, Sicheres seltener
   // (die Zahlen kommen aus dem Baustein, drüben gelten dieselben)
   const gew = (p) => Z.paarGewicht(stats[p.id]);
+  /* Rundengroesse nach der Beherrschung der KATEGORIE (Jennifer, 04.09.2026):
+     wer die Paare einer Kategorie dreimal hintereinander getroffen hat, bekommt
+     sieben statt fuenf. Die Zuordnen-Engine skaliert von selbst mit. */
+  const bgStufe = Spiele.stufeFuerIds(alle.map((p) => p.id));
+  const bgN = bgStufe >= 3 ? 7 : bgStufe >= 2 ? 6 : 5;
   const paare = alle.map((p) => ({ p, s: gew(p) * (0.4 + Math.random()) }))
-    .sort((a, b) => b.s - a.s).slice(0, Math.min(5, alle.length)).map((x) => x.p);
+    .sort((a, b) => b.s - a.s).slice(0, Math.min(bgN, alle.length)).map((x) => x.p);
   // Abrufrichtung pro Runde wechseln (Begriff→Antwort / Antwort→Begriff)
   const st = C.state();
   st.bgRichtung = !st.bgRichtung; C.save();

@@ -1,0 +1,340 @@
+/* ==========================================================================
+   DER LADEN — Aussehen. Geteilt zwischen beiden Trainern.
+   ==========================================================================
+   Verteilt per ../geteilte-styles/verteilen.sh nach app/css/shop.css.
+   NICHT die Kopie bearbeiten, immer diese Quelle.
+
+   EIGENE DATEI, UND ZWAR MIT ABSICHT. style.css ist in beiden Trainern rund
+   2200 Zeilen und wird von mehreren Sessions gleichzeitig bearbeitet; der Shop
+   entstand parallel zum Umbau des Themen-Lernens. Zwei Sessions in einer Datei
+   heisst: Konflikte an Stellen, die nichts miteinander zu tun haben. Der Laden
+   haengt an genau einem Ort (dem Maskottchen) und kann sauber fuer sich stehen.
+
+   GETEILT SEIT DEM 03.09.2026, als der ST-Trainer den Laden bekam. Die
+   Oberflaeche ist in beiden dieselbe (geteilt-laden.js baut sie), also darf sie
+   nicht zweimal gestylt werden.
+
+   ZWEI DINGE MUSSTEN DAFUER SELBSTTRAGEND WERDEN, weil die Trainer sie
+   verschieden loesen:
+     - DIE KNOEPFE. Der GE-Trainer hat eine .knopf-Familie, der ST-Trainer eine
+       .btn-Familie. Der Laden bringt darum seine eigene mit, unter
+       ".mk-shop-ov .knopf" — zwei Klassen schlagen die eine des Trainers, ohne
+       dass irgendwo !important stehen muss.
+     - DER REGENBOGEN. Er heisst im GE-Trainer --regenbogen und existiert im
+       ST-Trainer gar nicht. Hier steht er als --laden-regen, EINMAL und fuer
+       beide. Ihn an --regenbogen zu haengen waere die naheliegende Loesung und
+       die falsche: diese Datei wird nach style.css geladen, eine Neudefinition
+       von --regenbogen wuerde drueben still die Balken-Fuellung mitaendern.
+
+   WAS HIER NICHT HINEINGEHOERT: alles, was nicht mit ".mk-shop-ov", ".shop-"
+   oder ".mk-pet" anfaengt. Der Rest der .mk-*-Familie wohnt in style.css.
+
+   Am 03.09.2026 sind drei weitere .mk-*-Klassen dazugekommen, und zwar nach
+   derselben Regel, nach der .mk-pet hier steht: sie EXISTIEREN nur, weil es
+   den Laden gibt, und verschwaenden mit ihm.
+     .mk-hintergrund   die Ebene hinter der Figur in der Tageskarte
+     .mk-verlauf       ein Zeichen, das statt einer Farbe einen Verlauf traegt
+     .mk-schimmer      der Glitzer, der leise pulsiert
+   Die beiden letzten werden von geteilt-laden.js an einzelne Spans gehaengt.
+   Wer sie umbenennt, muss dort suchen, nicht in maskottchen.js.
+
+   Sie wird als LETZTE Stylesheet-Zeile in index.html geladen, nach style.css —
+   nicht wegen Spezifitaet (jede Regel hier ist ohnehin eigen benannt), sondern
+   damit die Reihenfolge dem entspricht, was sie ist: eine Ergaenzung.
+
+   Zwei Bloecke werden aus geteilt.css MITBENUTZT statt nachgebaut: .chat-grip
+   (der Griff oben am Sheet) und die .knopf-Familie aus style.css. Ein zweiter
+   Griff mit eigenem Namen waere ein zweiter Griff, der irgendwann anders
+   aussieht als der im Chat direkt daneben.
+
+   360 px ist die Messbreite. Rose uebt am Handy.
+   ========================================================================== */
+
+/* Der Regenbogen des Ladens. Dieselben Stops wie --regenbogen im GE-Trainer,
+   aber unter eigenem Namen (siehe Kopf). geteilt-laden.js gibt ihn als Farbe
+   eines Farbtopfs aus. */
+:root { --laden-regen: linear-gradient(115deg, #ff6b7a, #ffb46b, #ffe873, #4ade80, #5ad7ff, #b98cff, #ff6b7a); }
+
+/* ---------- Die Huelle ----------
+   Gleiche Bauart wie .mk-chat-ov in geteilt.css: fest ueber allem, unten
+   angedockt, auf breiten Schirmen mittig. Bewusst NICHT dieselbe Klasse — die
+   gehoert dem geteilten Chat-Baustein und wird von verteilen.sh in beide Apps
+   geschrieben; hier hineinzuschreiben hiesse, in ein fremdes Repo zu greifen.
+
+   z-index 100, also EINS UEBER dem Chat-Sheet (99). Beide gleichzeitig offen
+   zu haben ist kein vorgesehener Zustand — aber wenn es doch passiert, soll
+   das zuletzt geoeffnete oben liegen und nicht halb verdeckt sein. */
+.mk-shop-ov {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(12, 10, 18, .55);
+}
+.mk-shop-ov .shop-blatt {
+  width: 100%; max-width: 560px;
+  max-height: 86dvh; overflow-y: auto;
+  background: var(--card); color: var(--ink);
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .28);
+}
+@media (min-width: 700px) {
+  .mk-shop-ov { align-items: center; }
+  .mk-shop-ov .shop-blatt { border-radius: 18px; border-top: 0; }
+}
+
+/* ---------- Kopf und Konto ---------- */
+.shop-kopf {
+  font-family: var(--font-titel, inherit);
+  font-weight: 700; font-size: 1.15rem;
+  text-align: center; margin-bottom: 2px;
+}
+/* Das Guthaben ist die wichtigste Zahl im ganzen Sheet: sie entscheidet, was
+   ueberhaupt geht. Darum groesser als der Fliesstext und mittig unter dem
+   Namen, nicht als Zeile am Rand. */
+.shop-konto {
+  margin: 0 0 8px; text-align: center;
+  font-size: 1.02rem; color: var(--ink);
+}
+.shop-konto b { font-weight: 700; }
+.shop-hinweis {
+  margin: 0 auto 16px; max-width: 44ch;
+  text-align: center; font-size: .8rem; color: var(--ink-soft);
+}
+
+/* ---------- Ein Regal ---------- */
+.shop-regal-kopf {
+  margin: 0 0 2px; font-size: .95rem; font-weight: 700;
+}
+.shop-regal-text {
+  margin: 0 0 10px; font-size: .8rem; color: var(--ink-soft);
+}
+
+/* auto-fit statt einer festen Spaltenzahl: bei 360 px passen zwei Kacheln
+   nebeneinander, auf einem Tablet drei bis vier, ohne Media Query. minmax mit
+   150px, weil eine Pet-Grafik 7 Zellen breit ist und der Preis-Knopf darunter
+   nicht umbrechen soll. */
+.shop-regal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.shop-stueck {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+  padding: 10px 8px 12px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--paper-2, transparent);
+  text-align: center;
+}
+/* Was gerade dabei ist, bekommt einen Rand in der Akzentfarbe — dieselbe, die
+   auch der Riss im Ei traegt. Kein Haken, kein Badge: das Pet steht ohnehin
+   sichtbar neben der Figur, die Kachel muss es nur bestaetigen. */
+.shop-stueck.an {
+  border-color: var(--mk-riss);
+  box-shadow: 0 0 0 1px var(--mk-riss) inset;
+}
+/* Wie .mk-ei in style.css, nur kleiner: die Pets sind Beiwerk, nicht die
+   Hauptfigur. white-space: pre ist Pflicht — die Blockgrafik lebt davon, dass
+   jede Zelle steht, wo sie steht. */
+.shop-bild {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1; white-space: pre;
+  margin: 0; flex-shrink: 0;
+}
+.shop-name { font-weight: 700; font-size: .9rem; }
+.shop-text {
+  margin: 0; font-size: .74rem; color: var(--ink-soft);
+  /* Zwei Kacheln nebeneinander sollen gleich hoch aussehen, auch wenn ein
+     Hinweis eine Zeile laenger ist. flex: 1 schiebt den Knopf nach unten. */
+  flex: 1;
+}
+
+/* ---------- Die Knoepfe des Ladens ----------
+   Vollstaendig hier und nicht aus dem Trainer geerbt: der GE-Trainer hat eine
+   .knopf-Familie, der ST-Trainer eine .btn-Familie, und der Laden benutzt in
+   beiden dieselben Klassennamen. Zwei Klassen im Selektor schlagen die eine
+   des Trainers — ohne !important und ohne Rangelei mit der Ladereihenfolge.
+
+   Der Kauf-Knopf traegt nur die Zahl. Der Name steht darueber, und ein
+   "Kaufen fuer 4 ♥" waere auf 150 px die dritte Zeile Text auf einer Kachel,
+   die schon zwei hat. */
+.mk-shop-ov .knopf {
+  font: inherit; font-weight: 600; cursor: pointer;
+  border: 1.5px solid transparent; border-radius: 999px;
+  padding: 7px 16px; box-shadow: none;
+  background: var(--mk-riss); color: var(--card);
+}
+.mk-shop-ov .knopf.sekundaer {
+  background: transparent; color: var(--ink); border-color: var(--line);
+}
+.mk-shop-ov .knopf.klein {
+  padding: 5px 14px; font-size: .84rem; box-shadow: none;
+}
+.mk-shop-ov .knopf:active { transform: scale(.97); }
+/* .mk-link gibt es in beiden Trainern und sieht dort gleich aus — der wird
+   bewusst NICHT nachgebaut, sondern geerbt. */
+.mk-shop-ov .mk-link { cursor: pointer; }
+/* Nicht bezahlbar: sichtbar, aber ohne Aufforderung. NICHT ausgeblendet — Rose
+   soll sehen, was es gibt, und der title/aria-label sagt, wie viel noch fehlt.
+   Das ist der Unterschied zwischen "spaeter" und "verpasst". */
+.mk-shop-ov .shop-kauf:disabled {
+  opacity: .4; cursor: default; transform: none;
+}
+.mk-shop-ov .shop-an { margin-top: 2px; }
+
+/* .shop-spaeter ist am 03.09.2026 ersatzlos raus. Sie trug den Satz
+   "Kleiderschrank, andere Farben und andere Tierformen sind ausgedacht, aber
+   noch nicht gebaut" — den gibt es nicht mehr, weil es die Regale jetzt gibt.
+   Geloescht statt stehengelassen: eine Regel ohne Element laedt dazu ein, sie
+   spaeter versehentlich wieder anzuklemmen. */
+.mk-shop-ov .shop-zu { display: block; margin: 0 auto; }
+
+/* ---------- Das Pet neben der Figur ----------
+   Der Hof haelt Kreatur und Pet als EIN Flex-Element in .mk-zeile zusammen.
+   Ohne ihn waere das Pet ein drittes Kind der Zeile, und weil die (style.css)
+   flex-wrap traegt, bricht es bei 360 px um und sitzt allein unter dem Text.
+   align-items: flex-end stellt beide auf dieselbe Standlinie — die Figur ist
+   sechs Zellen hoch, das Pet vier, oben ausgerichtet schwebte es.
+
+   Der Hof existiert nur, wenn Rose wirklich ein Pet traegt (maskottchen.js
+   baut ihn sonst gar nicht), er kann also an keiner anderen Stelle etwas
+   verschieben.
+
+   Der Abstand ist 10 px und nicht 2: der Chat-Knopf traegt seine
+   Sprechblasen-Marke als ::after bei right: -7px (style.css), sie ragt also
+   ueber die Figur hinaus. Bei 2 px sass der Kaefer darunter. */
+.mk-figur-hof {
+  display: flex; align-items: flex-end; gap: 10px;
+  flex-shrink: 0;
+}
+/* Kleiner als die Figur (11px gegen 15px): im Bild muss klar bleiben, wer hier
+   das Haustier ist. */
+.mk-pet {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; line-height: 1; white-space: pre;
+  margin: 0; flex-shrink: 0;
+}
+/* mk-atmet kommt aus style.css und laeuft dort schon fuer die Figur. Das Pet
+   bekommt dieselbe Animation, aber verzoegert — zwei Wesen, die synchron
+   atmen, sehen aus wie ein Bild, das flackert. */
+.mk-pet.mk-atmet { animation-delay: .9s; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-pet.mk-atmet { animation: none; }
+}
+
+
+/* ==========================================================================
+   DIE BUEHNE — 03.09.2026
+   ==========================================================================
+   Ganz oben im Sheet, unter dem Guthaben: die Figur, wie sie GERADE aussieht.
+   Sie steht dort und nicht unten, weil jeder Kauf und jedes Umfaerben hier
+   landet — wer eine Farbe antippt, will die Wirkung sehen, ohne zu scrollen.
+   Nach jedem Kauf springt blatt.scrollTop auf 0 und damit genau hierher.
+
+   min-height statt fester Hoehe: mit Hut und Fluegeln ist die Figur zwei
+   Zeilen hoeher als nackt, und eine feste Hoehe haette entweder abgeschnitten
+   oder unten immer ein Loch gelassen. */
+.shop-buehne {
+  display: flex; align-items: flex-end; justify-content: center; gap: 12px;
+  min-height: 104px; padding: 12px;
+  margin: 0 0 6px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background-color: var(--paper-2, transparent);
+  background-size: cover; background-position: center;
+  overflow: hidden;
+}
+.shop-buehne-bild, .shop-buehne-pet {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1; white-space: pre; margin: 0; flex-shrink: 0;
+}
+.shop-buehne-bild { font-size: 15px; }
+/* Kleiner als die Figur, aus demselben Grund wie .mk-pet: im Bild muss klar
+   bleiben, wer hier das Haustier ist. */
+.shop-buehne-pet { font-size: 11px; }
+.shop-buehne-text {
+  margin: 0 auto 16px; max-width: 44ch;
+  text-align: center; font-size: .78rem; color: var(--ink-soft);
+}
+
+/* ---------- Die Figur als Vorschau in einer Kachel ----------
+   Kleiner als auf der Buehne: neun Kleidungskacheln nebeneinander sind neun
+   Figuren, und bei 15px waere jede Kachel doppelt so hoch wie ihr Text. */
+.shop-bild-figur { font-size: 9px; }
+
+/* ---------- Eine Flaeche statt eines Bildes ----------
+   Farbtoepfe und Hintergruende haben keine Blockgrafik — sie SIND die Farbe.
+   Ein Rechteck in der Sache selbst sagt mehr als jedes Symbol davor. */
+.shop-flaeche {
+  width: 100%; height: 46px; border-radius: 10px;
+  background-size: cover; background-position: center;
+  border: 1px solid var(--line);
+}
+
+/* ---------- Der Farbstreifen an einem getragenen Stueck ----------
+   Sitzt IN der Kachel des Stuecks, nicht in einem eigenen Regal: so ist der
+   Weg "Stueck ansehen, Farbe antippen, fertig" statt "Farbe suchen, Stueck
+   suchen, zuordnen".
+
+   28 px Zielflaeche in beide Richtungen, obwohl der Punkt nur 18 px misst —
+   darunter liegt die Trefferquote am Daumen unter dem, was man Rose zumuten
+   will. Der Rand macht den Unterschied unsichtbar. */
+.shop-farben {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;
+  margin-top: 4px;
+}
+.shop-farbe {
+  width: 18px; height: 18px; padding: 0; margin: 5px;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--paper-2); cursor: pointer;
+  position: relative; flex-shrink: 0;
+}
+.shop-farbe::after {
+  content: ""; position: absolute; inset: -5px;   /* die unsichtbare Zielflaeche */
+}
+.shop-farbe.an {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--ink);
+}
+.shop-farbe.verlauf { background-size: 300% 300%; }
+
+/* ---------- Der Hintergrund in der Tageskarte ----------
+   Liegt hinter Figur und Pet und ist genau so gross wie die beiden zusammen,
+   nicht so breit wie die Karte. inline-flex, damit er sich an den Inhalt
+   legt statt die Zeile zu sprengen. */
+.mk-hintergrund {
+  display: inline-flex; align-items: flex-end;
+  padding: 6px 8px; border-radius: 12px;
+  background-size: cover; background-position: center;
+  flex-shrink: 0;
+}
+
+/* ---------- Ein Zeichen mit Verlauf statt Farbe ----------
+   Der Regenbogen-Farbtopf. Der Verlauf wird als Hintergrund gemalt und auf die
+   Glyphe beschnitten. -webkit- zuerst, weil Safari auf dem iPhone die
+   ungepraefixte Form bis heute nicht kennt — und Rose uebt am Handy.
+
+   color: transparent steht ABSICHTLICH nur hier und nicht im Inline-Stil: ein
+   Browser ohne background-clip:text ignoriert diesen ganzen Block und zeigt
+   dann die geerbte Textfarbe statt einer leeren Zelle. Ein Loch im Tier waere
+   schlimmer als ein einfarbiger Hut. */
+.mk-verlauf {
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  background-size: 200% 200%;
+}
+
+/* ---------- Glitzer ----------
+   Sehr langsam und sehr flach: 3,2 Sekunden und nur zwischen 0,55 und 1. Ein
+   schnelles Blinken neben dem Auge einer Figur, die man beim Lernen ansieht,
+   ist kein Schmuck, sondern eine Ablenkung. */
+@keyframes mk-schimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+.mk-schimmer { animation: mk-schimmer 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-schimmer { animation: none; }
+  .shop-farbe.verlauf, .mk-verlauf { background-position: 0 0; }
+}

@@ -11,12 +11,20 @@ const CACHE = "st-trainer-v2";
 // CACHE bleibt bewusst auf v2: der geaenderte sw.js loest die Installation
 // ohnehin aus, und ein neuer Name wuerde die zur Laufzeit gecachten Fragen und
 // Folien wegwerfen.
+// shop.css und geteilt-laden.js gehoeren seit dem 03.09. dazu: ohne sie stuende
+// der Laden offline ohne Regale da (die Kacheln bauen sich aus dem Katalog in
+// geteilt-laden.js) und die Figur verloere ihre Kleidung. maskottchen.js stand
+// hier bis dahin nicht — es wird von main.js importiert und lag deshalb nur im
+// Laufzeit-Cache, was fuer die Huelle zu spaet ist.
 const SHELL = [
   ".",
   "index.html",
   "css/geteilt.css",
   "css/style.css",
+  "css/shop.css",
   "js/config.js",
+  "js/geteilt-laden.js",
+  "js/maskottchen.js",
   "js/geteilt-tages-hub.js",
   "js/geteilt-tagesstand.js",
   "js/geteilt-zuordnen.js",

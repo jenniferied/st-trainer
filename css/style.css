@@ -364,6 +364,75 @@ button { font: inherit; cursor: pointer; }
 .mode-card span { font-size: .84rem; color: var(--ink-soft); }
 .mode-card.wide { grid-column: 1 / -1; }
 
+/* ---------- Warmhalten als breite Zeile in der Tagesliste ----------
+   Jennifer, 04.09.2026: "wie bei themen lernen bei ge ... und dann breit ueber
+   den spielen". Bauform woertlich aus dem GE-Trainer (dort traegt sie das
+   Themen-Lernen); die Sonderform steht HIER und nicht im geteilten Baustein,
+   weil "diese App hat eine laengere Runde" kein geteilter Gedanke ist.
+   .dailies-reihe ist ein Grid mit --dailies-spalten Spalten, 1 / -1 spannt also
+   ueber die ganze Reihe. Die uebrigen fuenf Kacheln fuellen die Reihe darunter
+   danach genau aus. min-height 81px ist der Wert aus .daily-kachel im geteilten
+   Paket - hier bewusst wiederholt, weil die Regel darueber ihn sonst kippt. */
+.dailies-reihe .daily-kachel.daily-breit {
+  grid-column: 1 / -1;
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: 10px; text-align: left;
+  min-height: 81px;
+  padding: 10px 14px;
+}
+.daily-kachel.daily-breit .d-icon { font-size: 1.5rem; }
+.daily-kachel.daily-breit .d-klein {
+  font-size: .8rem; color: var(--ink-soft); line-height: 1.35;
+  flex: 1; min-width: 0;
+}
+/* Auf sehr schmalen Schirmen wandert der Untertitel unter den Namen, statt ihn
+   auf zwei Buchstaben zusammenzuquetschen. */
+@media (max-width: 420px) {
+  .dailies-reihe .daily-kachel.daily-breit { flex-wrap: wrap; }
+  .daily-kachel.daily-breit .d-klein { flex-basis: 100%; }
+}
+
+/* ---------- Final-Boss-Abzeichen im Rundenkopf ----------
+   Jennifer, 04.09.2026: "dann ihr eben jetzt die final boss version
+   praesentieren". Es ist eine AUSZEICHNUNG, kein Warnschild - deshalb warm
+   statt rot, und deshalb steht es nur da, wenn die Stufe erreicht ist; eine
+   normale Runde soll nicht aussehen, als fehle ihr etwas. */
+.boss-chip {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .02em;
+  white-space: nowrap;
+  color: #7a4a00;
+  background: linear-gradient(135deg, #ffe6a3, #ffc861);
+  border: 1px solid color-mix(in srgb, #d99a1f 60%, transparent);
+}
+.boss-chip.sitzt {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ---------- Kontrast-Aufloesung am Rundenende (Verwechslungspaare) ----------
+   Die Zeilen sind ein zweispaltiges Raster, damit die Label-Spalte untereinander
+   steht und man die Gegenueberstellung ueberfliegen kann. Auf schmalen Schirmen
+   kippt es in eine Spalte - dort ist Lesbarkeit wichtiger als die Optik. */
+.kontrast { margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
+.kontrast-zeile {
+  display: grid; grid-template-columns: minmax(0, 10.5rem) 1fr; gap: 4px 12px;
+  align-items: start;
+  font-size: .88rem; line-height: 1.45;
+}
+/* Die Label-Spalte muss umbrechen duerfen: "Entwicklungspsychologisch" ist
+   laenger als jede vertretbare Spaltenbreite und lief sonst in den Text. */
+.kontrast-zeile b {
+  color: var(--accent);
+  overflow-wrap: break-word; hyphens: auto;
+}
+@media (max-width: 460px) {
+  .kontrast-zeile { grid-template-columns: 1fr; gap: 2px; }
+}
+
 /* ---------- Formulare / Builder ---------- */
 .opt-list { display: flex; flex-direction: column; gap: 9px; margin: 8px 0; }
 label.check {
@@ -1110,13 +1179,14 @@ button.tag-hebel:active { transform: scale(.96); }
   --zone-y: color-mix(in srgb, #d9b93a 26%, var(--paper-2));
   --zone-g: color-mix(in srgb, var(--ok) 24%, var(--paper-2));
 }
-/* Streckziel (12.08.): tiefes, leuchtendes Gruen statt Gold — Gold sass in
-   derselben Leiste direkt neben dem Orange der untersten Zone. */
-.zonen-bar .fill.st {
-  background: linear-gradient(90deg, var(--ok), #0b6f3c 60%, #064a27);
-  box-shadow: 0 0 8px color-mix(in srgb, #19d073 50%, transparent);
-}
-/* Ueber dem Streckziel (12.08.): derselbe Regenbogen wie die 🌈-Tage im
+/* Das Streckziel hatte vom 12.08. bis zum 03.09.2026 eine eigene Stufe:
+   .fill.st, tiefes leuchtendes Gruen (Gold war raus, weil es in derselben
+   Leiste direkt neben dem Orange der untersten Zone sass). Seit dem 03.09.
+   bekommt der Streckziel-Tag denselben Regenbogen wie der Tag darueber —
+   die Regel steht in main.js (const fuell). Die Klasse ist deshalb ersatzlos
+   raus und nicht nur unbenutzt: eine tote Regel im Blatt laedt dazu ein, sie
+   spaeter versehentlich wieder anzuklemmen.
+   Ab dem Streckziel (12.08.): derselbe Regenbogen wie die 🌈-Tage im
    Kalender, damit Leiste und Datumsuebersicht dieselbe Sprache sprechen. */
 .zonen-bar .fill.rb {
   /* Auf der Leiste steht keine Schrift, hier darf der Regenbogen voll gesaettigt

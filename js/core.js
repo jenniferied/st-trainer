@@ -1878,6 +1878,36 @@ function snapshot() {
 
 // Kompakte Signatur eines Stands — jsonb aus Postgres kommt mit anderer Schluessel-
 // reihenfolge zurueck, ein JSON-Textvergleich waere darum immer ungleich.
+/* ---------- Der Laden: Feldliste und Signatur-Bausteine ---------- (03.09.2026)
+   MK_WAHL_FELDER steht HIER und nicht in maskottchen.js, obwohl es dort benutzt
+   wird: die Merge-Regel, die die Liste durchlaeuft, liegt in dieser Datei, und
+   maskottchen.js importiert ohnehin schon aus ihr. Zwei Listen nebeneinander
+   waeren die Sorte Dopplung, die genau einmal auseinanderlaeuft und danach
+   still eine Wahl verschluckt.
+
+   ANHAENGEN IST SICHER, ENTFERNEN NICHT. Ein neues Feld kostet nichts — der
+   Merge findet auf der Gegenseite eben nichts. Ein ENTFERNTES Feld wird
+   stillschweigend nicht mehr gemerged und faellt beim naechsten Push des
+   anderen Geraets weg. */
+export const MK_WAHL_FELDER = ["pet", "getragen", "look", "hintergrund", "tier"];
+
+/* Die Kauf-Ids eines mk-Objekts, sortiert und entdoppelt. Reine Funktion —
+   signatur() wird auch auf die SERVER-Antwort angewandt, und eine dort doppelt
+   liegende Zeile darf nicht dauerhaft als verschieden gelten. */
+function mkKaufIds(mk) {
+  const ids = ((mk && mk.kaeufe) || []).map((k) => (k && k.id ? String(k.id) : "")).filter(Boolean);
+  return ids.filter((id, i) => ids.indexOf(id) === i).sort();
+}
+
+/* Die Wahl-Zeitstempel in fester Reihenfolge — so viele, wie die Liste lang
+   ist. Bewusst keine Zahl im Kommentar: sie waere beim naechsten Feld falsch. */
+function mkWahlStempel(mk) {
+  return MK_WAHL_FELDER.map((f) => {
+    const w = mk && mk[f];
+    return (w && typeof w === "object" && w.ts) || 0;
+  });
+}
+
 function signatur(d) {
   const ids = (arr, f) => (arr || []).map(f).sort().join(",");
   return [
@@ -1905,9 +1935,16 @@ function signatur(d) {
     // dazukommt (das Tagesziel kann sich auch ueber Nacht verschoben haben).
     // Auf 0 normiert, damit eine Server-Zeile aus der Zeit davor nicht dauerhaft
     // als verschieden gilt und jeden Start einen Push ausloest.
+    // Der Laden steht aus demselben Grund hier wie geschluepft: ein Kauf und ein
+    // Wechsel des Outfits passieren durch einen KNOPFDRUCK, ohne dass eine neue
+    // Antwort dazukommt. Sie koennen also nicht huckepack auf antwortLog reisen.
+    // Stuenden sie nur im Snapshot, wuerde nie gepusht — und Rose haette den Hut
+    // auf dem Handy und auf dem Tablet die alten Herzen.
     ((d.mk && d.mk.ei) || "") + ":" + ((d.mk && d.mk.ts) || 0) + ":" + ((d.mk && d.mk.stufeMax) || 0) +
       ":" + ((d.mk && d.mk.geschluepft) || 0) +
-      ":" + ((d.mk && d.mk.herzenMax) || 0) + ":" + ((d.mk && d.mk.sterneMax) || 0),
+      ":" + ((d.mk && d.mk.herzenMax) || 0) + ":" + ((d.mk && d.mk.sterneMax) || 0) +
+      ":" + mkKaufIds(d.mk).join(",") +
+      ":" + mkWahlStempel(d.mk).join(","),
     // Der Chatverlauf. Er MUSS hier stehen, sonst passiert bei einer neuen
     // Nachricht gar nichts: der Push-Waechter unten vergleicht nur Signaturen, und
     // ein Feld, das nur im Snapshot steht, geht nie hoch. Genau daran haengt
@@ -2012,6 +2049,80 @@ export function mergeLernstand(remote) {
   // ist harmlos, eines zu wenig fuehlt sich wie Betrug an.
   st.mk.herzenMax = Math.max(st.mk.herzenMax || 0, rMk.herzenMax || 0);
   st.mk.sterneMax = Math.max(st.mk.sterneMax || 0, rMk.sterneMax || 0);
+
+  /* ---------- Der Laden: das Kauf-Register ---------- (03.09.2026)
+     Bis dahin wurden Herzen und Sterne gezaehlt, angezeigt und NIE ausgegeben —
+     sie hatten keine Senke. Der Laden ist die Senke, und damit braucht es ein
+     Konto. Die naheliegende Bauart waere eine Zahl, die beim Kauf sinkt. Genau
+     die ist hier verboten, aus zwei unabhaengigen Gruenden:
+
+       1. DIE REGEL (Archiv, 19.08.): "Sinken zu sehen, ohne etwas falsch
+          gemacht zu haben, liest sich als Strafe — genau das darf eine
+          Belohnungswaehrung nie."
+       2. DIESE ZEILEN HIER: herzenMax und sterneMax werden direkt darueber mit
+          bedingungslosem Math.max vereinigt. Wer sie als Waehrung benutzt und
+          beim Kauf abzieht, bekommt beim naechsten Sync alles zurueckerstattet
+          — und kann auf zwei Geraeten denselben Kauf zweimal machen.
+
+     Also LOG = WAHRHEIT, STAND = ABGELEITET. mk.kaeufe waechst nur; das
+     Guthaben ist die Differenz und wird nie gespeichert (maskottchen.js
+     guthaben()).
+
+     Die Vereinigung laeuft ueber die Id, wie bei mkChat. Drei Eigenschaften,
+     an denen es haengt:
+       - Ein Snapshot OHNE kaeufe (jede Zeile, die vor dem 03.09. hochging)
+         entwertet nichts: die Vereinigung mit nichts laesst den lokalen
+         Bestand stehen.
+       - KEINE Grabsteine, anders als bei mkChat: ein Kauf wird nie geloescht.
+         Es gibt in der App keinen Weg dorthin, und es soll auch keinen geben.
+       - Die Id ist ABGELEITET ("kf:pet:kaefer", siehe maskottchen.js kaufId).
+         Kaufen zwei Geraete offline dasselbe Stueck, kollabiert das hier auf
+         EINE Zeile — mit einer Zufalls-Id waeren es zwei und Rose haette
+         doppelt bezahlt, ohne dass irgendwo etwas auffiele. Bei gleicher Id
+         gewinnt der FRUEHESTE Zeitstempel, damit der Merge unabhaengig von der
+         Reihenfolge konvergiert (dieselbe Regel wie bei geschluepft).
+
+     WAS DIESE REGEL BEWUSST NICHT TUT: sie prueft NICHT, ob die Summe der
+     Kaeufe herzenMax uebersteigt. Zwei Geraete koennen offline verschiedene
+     Dinge vom selben Guthaben kaufen. Ein Kauf wird trotzdem nicht
+     zurueckgenommen — das abgeleitete Guthaben klemmt bei 0, Rose besitzt
+     beides und kann nur nichts Neues kaufen, bis herzenMax nachgewachsen ist.
+     Ein eingezogenes Pet waere schlimmer als eine Weile ohne Guthaben. */
+  const kaufMap = {};
+  [(rMk.kaeufe || []), (st.mk.kaeufe || [])].forEach((quelle) => {
+    (Array.isArray(quelle) ? quelle : []).forEach((k) => {
+      if (!k || !k.id) return;
+      const alt = kaufMap[k.id];
+      if (!alt || (k.ts || 0) < (alt.ts || 0)) kaufMap[k.id] = k;
+    });
+  });
+  // Nach Id sortiert und nicht nach ts: die Reihenfolge muss auf beiden
+  // Geraeten dieselbe sein, sonst unterscheiden sich die Snapshots als Text und
+  // die beiden schieben sich gegenseitig ewig Pushes zu. ts kann bei zwei
+  // Geraeten fuer dasselbe Stueck verschieden sein, die Id nie.
+  st.mk.kaeufe = Object.keys(kaufMap).sort().map((id) => kaufMap[id]);
+
+  /* ---------- Der Laden: die getragenen Wahlen ----------
+     Die ZULETZT getroffene gilt, wie bei mk.ei. Altbestand ohne ts zaehlt als 0
+     und verliert gegen jede bewusst getroffene Wahl; bei Gleichstand bleibt der
+     lokale Wert stehen. Ein Feld, das der andere gar nicht kennt, wird NICHT
+     angefasst — sonst loeschte ein alter Client die Wahl eines neuen.
+
+     WARUM WAHL UND NICHT VEREINIGUNG, obwohl "Datenerhalt geht vor allem
+     anderen" die Hausregel ist: ein Einzelwert laesst sich nicht vereinigen,
+     man muss sich entscheiden. Bei mk.getragen (dem ganzen Outfit) ist das eine
+     bewusste Haerte — zieht Rose auf dem Handy einen Hut an und auf dem Laptop
+     einen Schal, gewinnt das spaetere Outfit KOMPLETT. Die Vereinigung waere
+     hier falsch: sie koennte nichts mehr ausziehen, weil jedes Ablegen beim
+     naechsten Sync zurueckkaeme. Der BESITZ (oben) geht dabei nie verloren,
+     nur das Angezogene — und das sind zwei Antipper. */
+  MK_WAHL_FELDER.forEach((f) => {
+    const rW = rMk[f];
+    if (!rW || typeof rW !== "object") return;
+    const eigen = st.mk[f];
+    const eigenTs = (eigen && typeof eigen === "object" && eigen.ts) || 0;
+    if ((rW.ts || 0) > eigenTs) st.mk[f] = { wert: rW.wert, ts: rW.ts || 0 };
+  });
   // geschluepft ist ein Ereignis-Protokoll, kein Messwert: "hat Rose die
   // Animation gesehen" laesst sich aus der Historie nicht ausrechnen (anders als
   // "ist Stufe 3 erreicht"). Die Regel ist ein ODER — hat es IRGENDEIN Geraet

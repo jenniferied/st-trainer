@@ -72,7 +72,7 @@ export const hatOperatoren = () => !!OPS;
 // ---------- Tages-Status je Game (Karte farbig = heute noch nicht gemacht) ----------
 export function spieleHeute() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
-  const s = { vp: 0, opu: 0, opz: 0, detektiv: 0, begriffe: 0 };
+  const s = { vp: 0, opu: 0, opz: 0, detektiv: 0, begriffe: 0, spaced: 0 };
   for (const a of C.state().antwortLog) {
     if (a.ts < heute.getTime()) continue;
     if (a.modus === "op") s[String(a.qid).startsWith("opz-") ? "opz" : "opu"]++;
@@ -132,8 +132,25 @@ export function spieleHeute() {
    des Bausteins). Beide Aufrufe kommen aus DIESER Funktion, damit die
    Schluessel nicht auseinanderlaufen koennen: der Baustein findet die Kacheln
    ueber data-daily wieder. */
+/* Die Warmhalte-Runde: EIN laengeres Ding vor den kurzen Spielen, genau wie
+   das Themen-Lernen drueben im GE-Trainer (Jennifer, 04.09.2026: "wie bei
+   themen lernen bei ge darauf verlinken und daraus 1x 15 fragen zum spiel
+   machen ... und dann breit ueber den spielen").
+
+   Sie startet keinen neuen Modus, sondern den vorhandenen "Schlaues
+   Wiederholen" (spaced) mit 15 Fragen. Der Modus ist seit dem 21.07. gebaut und
+   wurde in 2647 Antworten 30-mal benutzt - er war nie schlecht, er war nur
+   nicht zu finden. Diese Kachel IST die Reparatur.
+
+   erledigt erst bei einer VOLLEN Runde und nicht bei der ersten Antwort: der
+   GE-Trainer hat dieselbe Lektion als ABSCHLUSS_MIN gelernt, nachdem Rose einen
+   Modus einmal angetippt hatte, um ihn anzusehen, und er danach als durch
+   dastand. */
+const WH_RUNDE = 15;
+
 function bauDailies(zurueck, extra) {
   const gehFuer = !zurueck ? null : (key) => {
+    if (key === "wh") return () => { extra?.warmhalten?.(); };
     if (key === "vp") return () => vpSpiel(zurueck);
     if (key === "opu") return () => opUeben(zurueck);
     if (key === "opz") return () => opZuordnen(zurueck);
@@ -141,7 +158,17 @@ function bauDailies(zurueck, extra) {
     return () => dtSpiel(zurueck);
   };
   const heute = spieleHeute();
+  const whFertig = heute.spaced >= WH_RUNDE;
   return [
+    {
+      key: "wh", icon: "🧠", name: "Warmhalten", m: "relearning", n: heute.spaced, aktiv: true,
+      klein: whFertig
+        ? "heute durch — noch eine Runde geht immer"
+        : heute.spaced
+          ? `${heute.spaced} von ${WH_RUNDE} Fragen heute · Fälliges und Wackliges zuerst`
+          : `${WH_RUNDE} Fragen · nur Fälliges und Wackliges — hält Schultheorie warm, ohne den Tag zu füllen`,
+      erledigt: whFertig,
+    },
     { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },
     { key: "opu", icon: "🎯", name: "Signalwörter", m: "operatoren", n: heute.opu, aktiv: !!OPS?.uebungen?.length },
     { key: "opz", icon: "↔️", name: "Zuordnen", m: "operatoren", n: heute.opz, aktiv: !!OPS },
@@ -155,9 +182,11 @@ function bauDailies(zurueck, extra) {
     // Anzahl im Titel traegt und auf der Kachel nur das kurze Wort zeigt.
     titel: s.name,
     kurz: s.name,
-    klein: "",          // eine Erklaerzeile je Kachel gibt es hier nicht
+    // Nur die breite Warmhalte-Zeile traegt eine Erklaerzeile; die kurzen
+    // Kacheln haben keinen Platz dafuer und behalten den leeren String.
+    klein: s.klein || "",
     methode: s.m,
-    erledigt: !!s.n,
+    erledigt: s.erledigt !== undefined ? s.erledigt : !!s.n,
     blase: 0,           // hier zaehlt der Haken, keine Blase (das ist GE-eigen)
     n: s.n,
     geh: gehFuer ? gehFuer(s.key) : null,
@@ -200,7 +229,31 @@ export function hubHtml(zurueck, extra = {}) {
 // wer von der Startseite kommt, landet beim Zurueckgehen auch dort.
 // extra.begriffe: Begriffe-Blitz lebt in main.js, der Hub bekommt den Einstieg gereicht.
 export function bindHub(zurueck, extra = {}) {
-  Hub.binde(app(), bauDailies(zurueck, extra));
+  const aufgaben = bauDailies(zurueck, extra);
+  Hub.binde(app(), aufgaben);
+  breiteZeile(aufgaben);
+}
+
+/* Die Warmhalte-Kachel spannt ueber die ganze Reihe und traegt ihren Untertitel
+   sichtbar - Bauform woertlich vom GE-Trainer uebernommen (main.js, daily-breit).
+
+   Warum hier und nicht im geteilten Baustein: dass eine App eine laengere Runde
+   vor den kurzen Spielen hat, ist kein geteilter Gedanke - drueben steht dort
+   das Themen-Lernen, hier das Warmhalten, und geteilt-tages-hub.js gehoert
+   beiden. Und warum nach dem Rendern statt beim Bauen: hubHtml() gibt ST nur
+   outerHTML zurueck, die Knoten des Aufbaus landen nie im Dokument. Der
+   Baustein zeichnet klein ausserdem ausschliesslich in den title-Tooltip, und
+   ein Tooltip ist auf 360 px unsichtbar. */
+function breiteZeile(aufgaben) {
+  const kachel = app().querySelector('.dailies-reihe [data-daily="wh"]');
+  const eintrag = aufgaben.find((a) => a.key === "wh");
+  if (!kachel || !eintrag || !eintrag.klein) return;
+  if (kachel.querySelector(".d-klein")) return;   // zweimal binden waere doppelt
+  kachel.classList.add("daily-breit");
+  const z = document.createElement("span");
+  z.className = "d-klein";
+  z.textContent = eintrag.klein;
+  kachel.appendChild(z);
 }
 
 // ---------- Gemeinsames ----------
@@ -237,6 +290,65 @@ function themenGewichte() {
 const zieh = (arr, n, gewFn) => arr.map((x) => ({ x, s: (gewFn ? gewFn(x) : 1) * (0.4 + Math.random()) }))
   .sort((a, b) => b.s - a.s).slice(0, n).map((y) => y.x);
 
+/* ---------- Beherrschung je Item: die Grundlage der Final-Boss-Stufen ----------
+   Jennifer, 04.09.2026: "vllt sollte man es wieder an die beherrschung der
+   einzelnen fragen/bereiche knuepfen ... und dann ihr eben jetzt die final boss
+   version praesentieren."
+
+   Gezaehlt wird AUSSCHLIESSLICH aus dem antwortLog, nie ueber C.lvl().
+   Der Grund ist eine Asymmetrie, die man sonst erst im Schadensfall sieht:
+   logSpiel() schreibt KEINE Leitner-Stufe (es ruft nur C.logAntwort), aber
+   C.rebuildLeitner() spielt beim Loeschen einer Session das GANZE Log ein und
+   vergibt dabei nachtraeglich Stufen an genau diese Spiel-qids. Wer hier den
+   Leitner liest, laesst Roses Schwierigkeitsgrad also von einem voellig
+   unabhaengigen Loeschvorgang abhaengen. Das Log ist die eine ehrliche Quelle,
+   es synct vollstaendig und braucht kein neues Feld in snapshot()/signatur().
+
+   Die qids sind ueber Runden hinweg stabil und je Spiel geprueft:
+   vp -> it.id (vpi-*), op -> u.id (opu-*), opz -> "opz-" + Operator-Id,
+   dt -> "dt-" + Frage-Id, bg -> Paar-Id. */
+const BOSS_SERIE = 3;   // dreimal hintereinander voll richtig = Final Boss
+const SITZT_SERIE = 2;  // zweimal hintereinander = sitzt (erste Verschaerfung)
+
+/* EIN Durchlauf durchs Log je Runde, nicht einer je Item. Chronologisch
+   sortiert, weil der Merge die Reihenfolge nicht garantiert (Vereinigung per
+   aid) und die Serie sonst von der Zufallsreihenfolge abhinge. */
+export function beherrschungAlle() {
+  const m = new Map();
+  for (const a of [...C.state().antwortLog].sort((x, y) => x.ts - y.ts)) {
+    const e = m.get(a.qid) || { n: 0, ok: 0, serie: 0 };
+    e.n++;
+    if (a.voll) { e.ok++; e.serie++; } else e.serie = 0;
+    m.set(a.qid, e);
+  }
+  return m;
+}
+// 0 = nie gesehen, 1 = geuebt, 2 = sitzt, 3 = Final Boss
+export const stufeVon = (e) => !e || !e.n ? 0 : e.serie >= BOSS_SERIE ? 3 : e.serie >= SITZT_SERIE ? 2 : 1;
+
+/* Die Stufe eines BEREICHS (Paar-Gruppe, Begriffs-Kategorie, Wendungs-Satz):
+   Mehrheit der schon gesehenen Items entscheidet. MIN_GESEHEN verhindert, dass
+   zwei gluecklich getroffene Karten eine ganze Gruppe auf Boss heben. */
+const MIN_GESEHEN = 4;
+export function stufeFuerIds(ids, bk) {
+  const k = bk || beherrschungAlle();
+  const gesehen = ids.filter((id) => (k.get(id) || {}).n);
+  if (gesehen.length < MIN_GESEHEN) return 0;
+  const anteil = (min) => gesehen.filter((id) => stufeVon(k.get(id)) >= min).length / gesehen.length;
+  if (anteil(3) >= 0.6) return 3;
+  if (anteil(2) >= 0.6) return 2;
+  return 1;
+}
+
+/* Das Abzeichen im Rundenkopf. Es steht NUR bei Stufe 2 und 3 da - eine
+   normale Runde soll nicht so aussehen, als fehle ihr etwas. Ton: Auszeichnung,
+   nie Warnung (das ist die Belohnung dafuer, dass es sitzt). */
+function stufenAbzeichen(stufe) {
+  if (stufe >= 3) return `<span class="boss-chip" title="Du hattest das dreimal hintereinander richtig - jetzt ohne Stuetzraeder">&#128081; Final Boss</span>`;
+  if (stufe >= 2) return `<span class="boss-chip sitzt" title="Sitzt bei dir - eine Stufe schwerer">&#11088; Schwerer</span>`;
+  return "";
+}
+
 // Fazit-Screen aller drei Spiele: Stand, Feier bei fehlerfrei, Nochmal/Zurueck
 function fazit(el, ok, n, nochmal, zurueckFn, extraHtml = "") {
   const cls = ok === n ? "good" : ok >= n * 0.6 ? "part" : "bad";
@@ -249,11 +361,36 @@ function fazit(el, ok, n, nochmal, zurueckFn, extraHtml = "") {
   if (ok === n) miniKonfetti();
 }
 
+/* Die Aufloesung NACH der Runde (Jennifer, 03.09.2026: "erlaeuterungen warum.
+   was die unterschiede und gemeinsamkeiten sind jeweils. bevor es weitergeht.
+   also nach der uebung als aufloesung").
+
+   Optional: Gruppen ohne kontrast-Feld verhalten sich unveraendert. gemeinsam
+   darf fehlen - es gibt Paare, die wirklich nichts teilen, und dann soll dort
+   nichts Erfundenes stehen. */
+function kontrastHtml(gruppe) {
+  const k = gruppe.kontrast;
+  if (!k) return "";
+  const zeile = (titel, text) => text
+    ? `<div class="kontrast-zeile"><b>${esc(titel)}</b><span>${Beleg.render(text, gruppe.oberthema)}</span></div>` : "";
+  return `<div class="card mt"><b>&#128270;&nbsp; Wo der Unterschied wirklich liegt</b>
+    <div class="kontrast">
+      ${zeile("Gemeinsam", k.gemeinsam)}
+      ${(k.unterschiede || []).map((u) => zeile(u.label, u.text)).join("")}
+      ${zeile("Woran du es erkennst", k.signal)}
+    </div></div>`;
+}
+
 // ============ GAME 1: Verwechslungspaare ============
-const VP_RUNDE = 8;
+/* 8 -> 10 am 04.09.2026 (Jennifer: "ganz subtil die Zahl der Antworten
+   erhoehen"). Die Verschaerfung sitzt bewusst HIER und nicht am Tagesziel:
+   schwellenFuerTag() und die FOKUS_*-Konstanten in core.js rekonstruieren die
+   Schwellen vom 20.-26.08. und duerfen nicht angefasst werden. */
+const VP_RUNDE = 10, VP_RUNDE_BOSS = 12;
 export function vpSpiel(zurueckFn, gruppeId = null) {
   if (!VIG) return zurueckFn();
   const gew = themenGewichte();
+  const bk = beherrschungAlle();
   // Fehler in frueheren vp-Runden je Item: falsch beantwortete kommen eher wieder
   const itemFehler = {};
   for (const a of C.state().antwortLog) if (a.modus === "vp" && !a.voll) itemFehler[a.qid] = (itemFehler[a.qid] || 0) + 1;
@@ -267,22 +404,38 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
     ? VIG.gruppen.find((g) => g.id === gruppeId)
     : zieh(VIG.gruppen, 1, (g) => malus(g) * (gew[g.oberthema + "/" + g.unterthema] || 1) * (1 + Math.min(2, g.items.reduce((s, i) => s + (itemFehler[i.id] || 0), 0) / 3)))[0];
   if (!gruppe) return zurueckFn();
-  const items = zieh(gruppe.items, Math.min(VP_RUNDE, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
+  /* Die Stufe der GRUPPE, nicht des einzelnen Items: ein Verwechslungspaar ist
+     beherrscht, wenn seine Karten es sind - und die Runde zieht ohnehin genau
+     eine Gruppe. Das ist die Bereiche-Haelfte von Jennifers "fragen/bereiche". */
+  const stufe = stufeFuerIds(gruppe.items.map((i) => i.id), bk);
+  const rundenLaenge = stufe >= 3 ? VP_RUNDE_BOSS : VP_RUNDE;
+  const items = zieh(gruppe.items, Math.min(rundenLaenge, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
   const t = C.THEMEN[gruppe.oberthema] || {};
   let idx = 0, richtig = 0, t0 = Date.now();
 
   // Swipe in bis zu 4 Richtungen (Jennifer 21.07.): links/rechts/oben/unten,
   // je nachdem wie viele Konzepte die Gruppe hat. Chips bleiben als Tap-Weg.
-  const K = Math.min(4, gruppe.konzepte.length);
+  /* Seit dem 04.09.2026 einmal je Runde GEMISCHT. Vorher stand bei jedem
+     Zwei-Konzept-Paar dasselbe Konzept immer links - bei zehn Karten am Stueck
+     lernt man die Richtung und nicht den Inhalt. Die Beschriftung wandert mit,
+     es ist also kein Gedaechtnistrick, sondern nur das Ende des Positionslernens.
+     Bewusst je RUNDE und nicht je Karte: mitten in der Runde die Seiten zu
+     tauschen fuehlt sich am Handy wie ein Fehler an. */
+  const konz = zieh(gruppe.konzepte, gruppe.konzepte.length);
+  /* Ab Stufe 2 fallen die kurzen Stichworte an den Chips weg ("Leistung",
+     "Entscheidung"). Sie sind die eigentliche Kruecke des Spiels: wer sie liest,
+     muss das Konzept nicht mehr kennen. */
+  const zeigKurz = stufe < 2;
+  const K = Math.min(4, konz.length);
   const RICHTUNG_PFEIL = ["←", "→", "↑", "↓"];
 
   const mal = () => {
     const it = items[idx];
-    const chips = gruppe.konzepte.map((k, i) => `<button class="vp-chip" data-k="${k.key}" style="--tc:${t.color}">${i < K ? `<small class="vp-pfeil">${RICHTUNG_PFEIL[i]}</small>` : ""}${esc(k.label)}${k.kurz ? `<small>${esc(k.kurz)}</small>` : ""}</button>`).join("");
+    const chips = konz.map((k, i) => `<button class="vp-chip" data-k="${k.key}" style="--tc:${t.color}">${i < K ? `<small class="vp-pfeil">${RICHTUNG_PFEIL[i]}</small>` : ""}${esc(k.label)}${zeigKurz && k.kurz ? `<small>${esc(k.kurz)}</small>` : ""}</button>`).join("");
     const seite = (i, cls, pfeilVor) => i < K
-      ? `<div class="vp-seite ${cls}" id="vpS${i}">${pfeilVor ? `<span>${RICHTUNG_PFEIL[i]}</span>` : ""}${esc(gruppe.konzepte[i].label)}${pfeilVor ? "" : `<span>${RICHTUNG_PFEIL[i]}</span>`}</div>` : "";
+      ? `<div class="vp-seite ${cls}" id="vpS${i}">${pfeilVor ? `<span>${RICHTUNG_PFEIL[i]}</span>` : ""}${esc(konz[i].label)}${pfeilVor ? "" : `<span>${RICHTUNG_PFEIL[i]}</span>`}</div>` : "";
     app().innerHTML = `<div class="fade-in">
-      ${kopf("🔀 Verwechslungspaare", zurueckFn)}
+      ${kopf("🔀 Verwechslungspaare", zurueckFn, stufenAbzeichen(stufe))}
       <div class="vp-titel"><span class="chip" style="--tc:${t.color}">${t.kurz || ""}</span> <b>${esc(gruppe.titel)}</b> ${M.infoBtn("interleaving")}</div>
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / items.length}%"></i></span><span>${idx + 1}/${items.length}</span></div>
       ${seite(2, "oben", true)}
@@ -301,7 +454,7 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
       if (ok) richtig++;
       const zeit = Math.round((Date.now() - t0) / 1000);
       logSpiel("vp", it.id, ok ? 1 : 0, 1, ok, zeit);
-      const richtigLbl = (gruppe.konzepte.find((k) => k.key === it.richtig) || {}).label || it.richtig;
+      const richtigLbl = (konz.find((k) => k.key === it.richtig) || {}).label || it.richtig;
       const card = document.getElementById("vpCard");
       // Richtig: Karte fliegt in die gewischte Richtung raus. Falsch: Karte
       // schnappt zurueck und schuettelt kurz den Kopf.
@@ -326,12 +479,12 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
         if (idx < items.length) { t0 = Date.now(); mal(); }
         else fazit(document.getElementById("vpFb"), richtig, items.length,
           () => vpSpiel(zurueckFn), zurueckFn,
-          `<div class="card mt"><b>Merksatz</b><div class="explain good" style="margin-top:6px">${Beleg.render(gruppe.merksatz, gruppe.oberthema)}</div></div>`);
+          `<div class="card mt"><b>Merksatz</b><div class="explain good" style="margin-top:6px">${Beleg.render(gruppe.merksatz, gruppe.oberthema)}</div></div>${kontrastHtml(gruppe)}`);
       };
     };
     app().querySelectorAll(".vp-chip").forEach((c) => c.onclick = () => {
       if (c.disabled) return;
-      antworte(c.dataset.k, gruppe.konzepte.findIndex((k) => k.key === c.dataset.k));
+      antworte(c.dataset.k, konz.findIndex((k) => k.key === c.dataset.k));
     });
 
     // Swipe: Karte folgt dem Finger in x UND y, Schwelle 80px auf der
@@ -354,7 +507,7 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
       else if (hx && dx > 80) ri = 1;
       else if (!hx && dy < -80 && K > 2) ri = 2;
       else if (!hx && dy > 80 && K > 3) ri = 3;
-      if (ri >= 0) { beantwortet = true; antworte(gruppe.konzepte[ri].key, ri); }
+      if (ri >= 0) { beantwortet = true; antworte(konz[ri].key, ri); }
       else { card.style.transition = "transform .18s ease"; card.style.transform = ""; setTimeout(() => { card.style.transition = ""; }, 200); }
       sx = sy = null; dx = dy = 0;
       if (!beantwortet) app().querySelectorAll(".vp-seite").forEach((s) => s.classList.remove("an"));
@@ -367,7 +520,7 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
       if (!document.getElementById("vpCard")) { document.removeEventListener("keydown", tast); return; }
       if (beantwortet) return;
       const ri = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].indexOf(e.key);
-      if (ri >= 0 && ri < K) { e.preventDefault(); beantwortet = true; antworte(gruppe.konzepte[ri].key, ri); }
+      if (ri >= 0 && ri < K) { e.preventDefault(); beantwortet = true; antworte(konz[ri].key, ri); }
     });
   };
   mal();
@@ -398,32 +551,58 @@ function wendungenSheet() {
 const wendungenBtn = `<button class="btn ghost small" id="opWendungen" title="Alle Wendungen nachschlagen" style="margin-left:auto">📖</button>`;
 const bindWendungen = () => { const b = document.getElementById("opWendungen"); if (b) b.onclick = wendungenSheet; };
 
-const OP_RUNDE = 6;
+const OP_RUNDE = 8;          // 6 -> 8 am 04.09.2026
+const OP_OPTIONEN_BOSS = 6;  // statt der 3-4 aus den Daten
+
+/* Ab Stufe 2 wird die Aufgabe mit echten Ablenkern aufgefuellt: die uebrigen
+   Wendungen aus OPS.operatoren. Das ist der ehrliche Weg, eine 1-aus-3-Frage
+   schwerer zu machen, ohne neue Daten zu erfinden - die Distraktoren sind alle
+   real und alle pruefungsrelevant.
+   Fuer "operator"-Fragen sind es andere Wendungen, fuer "was_will"-Fragen andere
+   Anforderungen; das Feld entscheidet, welche Spalte gezogen wird. */
+function opAufgabe(u, stufe) {
+  if (stufe < 2 || !OPS) return { optionen: u.optionen, richtig: u.richtig };
+  const feld = u.frage === "operator" ? "wendung" : "verlangt";
+  const da = new Set(u.optionen.map((x) => String(x).toLowerCase()));
+  const extra = [...new Set(OPS.operatoren.map((o) => o[feld]).filter((x) => x && !da.has(String(x).toLowerCase())))];
+  const dazu = zieh(extra, Math.max(0, OP_OPTIONEN_BOSS - u.optionen.length));
+  const richtigText = u.optionen[u.richtig];
+  const alle = zieh([...u.optionen, ...dazu], u.optionen.length + dazu.length);
+  // Fangnetz: findet sich der richtige Text nicht wieder, bleibt alles beim Alten.
+  const ri = alle.indexOf(richtigText);
+  return ri < 0 ? { optionen: u.optionen, richtig: u.richtig } : { optionen: alle, richtig: ri };
+}
+
 export function opUeben(zurueckFn) {
   if (!OPS?.uebungen?.length) return zurueckFn();
   const fehler = {};
   for (const a of C.state().antwortLog) if (a.modus === "op" && !a.voll) fehler[a.qid] = (fehler[a.qid] || 0) + 1;
+  const bk = beherrschungAlle();
   const aufgaben = zieh(OPS.uebungen, Math.min(OP_RUNDE, OPS.uebungen.length), (u) => 1 + Math.min(3, fehler[u.id] || 0));
+  // Kopf-Abzeichen nach der RUNDE, Optionen nach dem EINZELNEN Item: der Kopf
+  // steht ueber allen acht Aufgaben, die Schwierigkeit gehoert an die Aufgabe.
+  const rundenStufe = stufeFuerIds(aufgaben.map((u) => u.id), bk);
   let idx = 0, richtig = 0, t0 = Date.now();
   const mal = () => {
     const u = aufgaben[idx];
-    app().innerHTML = `<div class="fade-in">${kopf("🎯 Signalwörter", zurueckFn, wendungenBtn)}
+    const aufg = opAufgabe(u, stufeVon(bk.get(u.id)));
+    app().innerHTML = `<div class="fade-in">${kopf("🎯 Signalwörter", zurueckFn, stufenAbzeichen(rundenStufe) + wendungenBtn)}
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / aufgaben.length}%"></i></span><span>${idx + 1}/${aufgaben.length}</span></div>
       <div class="card">
         <div class="q-fall" style="font-style:italic">„${esc(u.stamm)}"</div>
         <div class="q-text" style="font-size:1rem">${u.frage === "operator" ? "Welches Signalwort steuert hier die Aufgabe?" : "Was verlangt diese Frage von dir?"} ${M.infoBtn("operatoren")}</div>
-        <div class="answers">${u.optionen.map((o, i) => `<button class="ans op-opt" data-i="${i}"><span>${esc(o)}</span></button>`).join("")}</div>
+        <div class="answers">${aufg.optionen.map((o, i) => `<button class="ans op-opt" data-i="${i}"><span>${esc(o)}</span></button>`).join("")}</div>
         <div id="opFb"></div>
       </div></div>`;
     Hub.bindeZurueck(app(), zurueckFn);
     bindWendungen();
     app().querySelectorAll(".op-opt").forEach((b) => b.onclick = () => {
-      const i = +b.dataset.i, ok = i === u.richtig;
+      const i = +b.dataset.i, ok = i === aufg.richtig;
       if (ok) richtig++;
       logSpiel("op", u.id, ok ? 1 : 0, 1, ok, Math.round((Date.now() - t0) / 1000));
       app().querySelectorAll(".op-opt").forEach((x) => {
         x.disabled = true;
-        if (+x.dataset.i === u.richtig) x.classList.add("correct");
+        if (+x.dataset.i === aufg.richtig) x.classList.add("correct");
         else if (x === b) x.classList.add("wrong");
       });
       document.getElementById("opFb").innerHTML = `<div class="fb-banner ${ok ? "good" : "part"}">${sticker(ok ? "good" : "sanft")}<span>${ok ? "Erkannt! 🎯" : "Knapp daneben — genau dafür ist das Training da."}</span></div>
@@ -447,10 +626,16 @@ export function opUeben(zurueckFn) {
    von Signalwoerter) und das Fazit mit den Wendungen zum Nachlesen.
    Gedreht wird hier nicht — eine Wendung rueckwaerts aus ihrer Anforderung zu
    erraten waere ein anderes Spiel. */
+const OPZ_PAARE = 5, OPZ_PAARE_BOSS = 7;
 export function opZuordnen(zurueckFn) {
-  const paare = zieh(OPS.operatoren.filter((o) => o.verlangt), 5);
+  const moeglich = OPS.operatoren.filter((o) => o.verlangt);
+  /* Rundenstufe ueber die opz-qids - der Zuordnen-Log traegt das Praefix opz-,
+     und genau daran (und nur daran) unterscheidet spieleHeute() dieses Spiel
+     von den Signalwoertern. Wer das Praefix aendert, muss hier mitziehen. */
+  const stufe = stufeFuerIds(moeglich.map((o) => "opz-" + o.id));
+  const paare = zieh(moeglich, Math.min(stufe >= 2 ? OPZ_PAARE_BOSS : OPZ_PAARE, moeglich.length));
   const t0 = Date.now();
-  app().innerHTML = `<div class="fade-in">${kopf("↔️ Zuordnen", zurueckFn, wendungenBtn)}
+  app().innerHTML = `<div class="fade-in">${kopf("↔️ Zuordnen", zurueckFn, stufenAbzeichen(stufe) + wendungenBtn)}
     <p class="muted" style="margin:0 0 10px">Links die Wendung antippen, rechts, was sie verlangt.</p>
     <div id="opzSpiel"></div>
     <div id="opzFazit"></div></div>`;
@@ -470,7 +655,8 @@ export function opZuordnen(zurueckFn) {
 }
 
 // ============ GAME 3: Fragen-Detektiv ============
-const DT_RUNDE = 6;
+const DT_RUNDE = 8;              // 6 -> 8 am 04.09.2026
+const DT_CHIPS = 4, DT_CHIPS_BOSS = 6;
 const DT_WILL = [
   ["nicht", "Die NICHT-zutreffenden finden", (q) => q.fragetyp === "negation"],
   ["richtig", "Die zutreffenden Aussagen finden", (q) => q.fragetyp !== "negation" && q.fragetyp !== "anwendung"],
@@ -493,17 +679,30 @@ export function dtSpiel(zurueckFn) {
   const gew = themenGewichte();
   // Negationen bewusst haeufiger (Roses teuerster Fragetyp) + schwache Unterthemen
   const fragen = zieh(basis, DT_RUNDE, (q) => (q.fragetyp === "negation" ? 2.5 : q.fragetyp === "anwendung" ? 1.5 : 1) * (gew[q.oberthema + "/" + q.unterthema] || 1));
+  const bk = beherrschungAlle();
+  const rundenStufe = stufeFuerIds(fragen.map((q) => "dt-" + q.id), bk);
   let idx = 0, punkte = 0, t0 = Date.now();
   const mal = () => {
     const q = fragen[idx];
+    const stufe = stufeVon(bk.get("dt-" + q.id));
     const willRichtig = DT_WILL.find(([, , test]) => test(q))[0];
-    // Konzept-Chips: das echte + 3 Decoys aus demselben Oberthema (andere Unterthemen zuerst)
+    /* Konzept-Chips: das echte plus Decoys aus demselben Oberthema.
+       Bis zum 04.09.2026 kamen die Decoys bevorzugt aus ANDEREN Unterthemen -
+       also aus gut unterscheidbarer Entfernung. Ab Stufe 2 dreht sich die
+       Sortierung um: die Ablenker stehen dann im SELBEN Unterthema, und genau
+       das ist die Verwechslung, die in der Klausur Punkte kostet. Ab Stufe 3
+       kommen zwei Chips dazu. Eine Zeile, kein neuer Datensatz. */
+    const nah = stufe >= 2;
+    const chips = stufe >= 3 ? DT_CHIPS_BOSS : DT_CHIPS;
     const andere = [...new Set(pool.filter((x) => x.oberthema === q.oberthema && x.konzept !== q.konzept)
-      .sort((a, b) => (a.unterthema === q.unterthema ? 1 : 0) - (b.unterthema === q.unterthema ? 1 : 0))
+      .sort((a, b) => {
+        const na = a.unterthema === q.unterthema ? 1 : 0, nb = b.unterthema === q.unterthema ? 1 : 0;
+        return nah ? nb - na : na - nb;
+      })
       .map((x) => x.konzept))].slice(0, 8);
-    const konzepte = zieh([q.konzept, ...zieh(andere, 3)], 4);
+    const konzepte = zieh([q.konzept, ...zieh(andere, chips - 1)], chips);
     let wahlWill = null, wahlKonzept = null;
-    app().innerHTML = `<div class="fade-in">${kopf("🕵️ Fragen-Detektiv", zurueckFn)}
+    app().innerHTML = `<div class="fade-in">${kopf("🕵️ Fragen-Detektiv", zurueckFn, stufenAbzeichen(rundenStufe))}
       <div class="q-progress" style="margin:8px 0"><span class="bar thin"><i style="width:${(100 * idx) / fragen.length}%"></i></span><span>${idx + 1}/${fragen.length}</span></div>
       <div class="card">
         <p class="muted" style="margin:0 0 6px;font-size:.82rem">Nur der Fragen-Stamm — noch keine Antworten. Lies wie ein Detektiv: ${M.infoBtn("paraphrasieren")}</p>

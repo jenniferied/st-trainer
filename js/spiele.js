@@ -145,8 +145,42 @@ export function spieleHeute() {
    erledigt erst bei einer VOLLEN Runde und nicht bei der ersten Antwort: der
    GE-Trainer hat dieselbe Lektion als ABSCHLUSS_MIN gelernt, nachdem Rose einen
    Modus einmal angetippt hatte, um ihn anzusehen, und er danach als durch
-   dastand. */
-const WH_RUNDE = 15;
+   dastand.
+
+   ---- Warum die Laenge am Datum haengt (Jennifer, 04.09.2026) ----
+   Bis zur GE-Klausur zwoelf Fragen, danach vierundzwanzig. Nicht wegen der Zeit:
+   der Unterschied macht bei ihren rund 65 s je Frage wenige Minuten am Tag aus,
+   und die entscheiden nichts. Es geht um die EINSTIEGSHUERDE - in der GE-Woche
+   soll ST das Kleinste sein, was man anfangen kann (12 x 65 s sind rund 13
+   Minuten), danach darf es wieder eine richtige Runde sein (24 sind rund 25).
+
+   Nach dem 10.09. dreht sich das Argument um, und zwar belegt: Roses Quote nach
+   Position in der Runde liegt bei Frage 1-5 auf 64,6 %, bei 6-10 auf 62,2 %,
+   bei 11-15 auf 66,7 %, bei 16-21 auf 67,6 % und ab 22 noch auf 65,6 % - sie
+   wird hinten BESSER, und mit 71 auf 63 s je Frage auch schneller. Eine kurze
+   Runde besteht damit zu grossen Teilen aus Aufwaermen; ab Frage 11 uebt sie in
+   ihrer guten Zone. Gemessen am 04.09.2026 ueber alle Runden ab zehn Fragen
+   (n=265/265/169/114/146).
+
+   Die 24 nach der GE-Klausur sind kein Sprung ins Blaue: Rose hat 12 Runden mit
+   21 Fragen und 6 volle 42er-Klausuren zu Ende gebracht, und keine Runde liegt
+   halbfertig herum. Ab dem 11.09. laeuft ausserdem die Senkung des Tagesziels
+   aus (core.js SENKUNG_BIS) - das Pensum geht von 30 zurueck auf 60-100, 24
+   Fragen sind dann gut ein Drittel des Tages statt fast der ganze.
+
+   Dieselbe Bauform wie die Senkung des Tagesziels in core.js (SENKUNG_VON/BIS):
+   ein Datumsfenster, das von selbst auslaeuft. Die Konstante bleibt danach
+   stehen, damit man spaeter noch nachlesen kann, was wann galt. */
+const WH_GE_KLAUSUR = "2026-09-10";
+const WH_VOR_GE = 12, WH_NACH_GE = 24;
+const isoHeute = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+/* EINE Quelle fuer beides: die Rundengroesse in main.js und die Schwelle, ab der
+   die Kachel abgehakt ist. Liefen die auseinander, waere die Runde bestellt und
+   der Haken kaeme nie - oder umgekehrt. */
+export const whRunde = () => (isoHeute() <= WH_GE_KLAUSUR ? WH_VOR_GE : WH_NACH_GE);
 
 function bauDailies(zurueck, extra) {
   const gehFuer = !zurueck ? null : (key) => {
@@ -158,15 +192,16 @@ function bauDailies(zurueck, extra) {
     return () => dtSpiel(zurueck);
   };
   const heute = spieleHeute();
-  const whFertig = heute.spaced >= WH_RUNDE;
+  const whN = whRunde();
+  const whFertig = heute.spaced >= whN;
   return [
     {
       key: "wh", icon: "🧠", name: "Warmhalten", m: "relearning", n: heute.spaced, aktiv: true,
       klein: whFertig
         ? "heute durch — noch eine Runde geht immer"
         : heute.spaced
-          ? `${heute.spaced} von ${WH_RUNDE} Fragen heute · Fälliges und Wackliges zuerst`
-          : `${WH_RUNDE} Fragen · nur Fälliges und Wackliges — hält Schultheorie warm, ohne den Tag zu füllen`,
+          ? `${heute.spaced} von ${whN} Fragen heute · Fälliges und Wackliges zuerst`
+          : `${whN} Fragen · nur Fälliges und Wackliges — hält Schultheorie warm, ohne den Tag zu füllen`,
       erledigt: whFertig,
     },
     { key: "vp", icon: "🔀", name: "Paare", m: "interleaving", n: heute.vp, aktiv: !!VIG },

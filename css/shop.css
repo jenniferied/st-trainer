@@ -242,7 +242,7 @@
      größer sein, damit man mehr sieht — z. B. sieht man die wolken ja gar
      nicht"). Ein Verlauf, der nur die Figur umrandet, zeigt von einer Wolke
      einen Streifen. */
-  min-height: 148px; padding: 26px 22px 18px;
+  min-height: 178px; padding: 34px 30px 24px;
   position: relative;
   margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 14px;
@@ -272,7 +272,7 @@
    Farbtoepfe und Hintergruende haben keine Blockgrafik — sie SIND die Farbe.
    Ein Rechteck in der Sache selbst sagt mehr als jedes Symbol davor. */
 .shop-flaeche {
-  width: 100%; height: 62px; border-radius: 10px;
+  width: 100%; height: 78px; border-radius: 10px;
   position: relative; overflow: hidden;
   background-size: cover; background-position: center;
   border: 1px solid var(--line);
@@ -315,7 +315,11 @@
      wie bei der Buehne: bei einem Rand von sechs Pixeln ist vom Himmel nichts
      zu sehen ausser einer Kontur um das Tier. Oben mehr als unten — dort
      stehen Sonne, Wolken und Sterne. */
-  padding: 22px 16px 10px; border-radius: 12px;
+  /* Rechts mehr als links, und zwar mit Grund: dort sitzt das Mini-Pet neben
+     der Figur (mk-figur-hof). Mit gleichem Rand ringsum steht es fast auf der
+     Kante, und der Himmel hoert genau dort auf, wo das zweite Wesen anfaengt.
+     Oben am meisten — dort haengen Sonne, Wolken und Sterne. */
+  padding: 26px 30px 14px 20px; border-radius: 14px;
   background-size: cover; background-position: center;
   flex-shrink: 0;
   position: relative; overflow: hidden;
@@ -379,84 +383,259 @@
 
 
 /* ==========================================================================
-   DIE BEWEGTEN HINTERGRUND-EBENEN — 04.09.2026
+   DIE HINTERGRUND-EBENEN — 04.09.2026, zweite Runde
    ==========================================================================
-   Sterne und Schnee waren vorher radial-gradients IM Verlauf. Das ergab runde
-   Punkte, die auf 60 px Hoehe wie Murmeln aussahen, und bewegen konnte sich
-   davon gar nichts. Jennifer: "sterne sollten bei allen nachtversionen drinne
-   sein, und sternförmig und feiner sein und twinkeln" — dazu "schnee sollte
-   animiert sein".
+   Der Hintergrund besteht aus DREI leeren Elementen, die geteilt-laden.js
+   (hintergrundHtml) in den Kasten legt. Warum drei und nicht eines mit
+   Pseudoelementen: gebraucht werden bis zu fuenf Ebenen, ein Element hat zwei
+   — und vor allem darf die AUSBLENDUNG NACH AUSSEN die Figur nicht erwischen.
+   Eine Maske auf dem Kasten wuerde auch das Tier darin wegradieren. Der
+   Verlauf braucht deshalb ein eigenes Element, in dem die Figur nicht steckt.
 
-   Also eigene Ebenen als ::before und ::after auf dem Hintergrund. Die Sterne
-   sind ein SVG mit vierzackigen Funkeln (konkave Taille, deshalb spitz statt
-   rund), als data-URI im background-image. WELCHE Ebene ein Hintergrund
-   bekommt, entscheidet geteilt-laden.js (hintergrundKlassen) — hier steht nur,
-   wie sie aussieht.
+     .mk-hg-bild    der Verlauf, nach aussen ausgeblendet
+     .mk-hg-flor    ::before und ::after = zwei versetzt funkelnde Sterngruppen
+     .mk-hg-extra   ::before = Wolken | Schnee | Gras
+                    ::after  = Sonnenstrahlen | Sternschnuppe
+   Die Paare schliessen sich je Hintergrund gegenseitig aus, deshalb reichen
+   zwei Plaetze fuer fuenf Deko-Arten.
 
-   ZWEI STERNGRUPPEN mit verschiedenen Positionen, Groessen und Laufzeiten.
-   Eine einzige Ebene kann nur als Ganzes auf- und abblenden, und das liest
-   sich als Pulsieren des ganzen Himmels statt als Funkeln einzelner Sterne.
-   Zwei versetzte Gruppen ergeben den unregelmaessigen Eindruck, um den es
-   geht — mit zwei Ebenen ist das die billigste ehrliche Naeherung.
-
-   Der Schnee belegt ::after und verdraengt dort die zweite Sterngruppe: er
-   steht in der Datei spaeter und gewinnt. Auf dem Schnee-Hintergrund funkelt
-   nachts also EINE Gruppe statt zwei. Das ist Absicht und kein Rest — fallende
-   Flocken und funkelnde Sterne auf derselben Flaeche waeren zu viel Bewegung
-   fuer eine Karte, die beim Lernen im Blick steht.
-
-   pointer-events: none, weil beide Ebenen ueber der Figur liegen und der
-   Chat-Knopf darunter anklickbar bleiben muss.
-
-   DIE %20 IN DEN URIs SIND ABSICHT und kein Ueberbleibsel eines Werkzeugs. In
-   einer url("…") mit Anfuehrungszeichen waeren rohe Leerzeichen zwar erlaubt,
-   aber die Toleranz dafuer ist von Browser zu Browser verschieden und faellt
-   still aus: ein data-URI, den der Parser abbricht, wirft keinen Fehler, er
-   malt nur nichts. Bei einer Sternenebene sieht man den Unterschied zu "es ist
-   gerade Nacht" nicht. Also lieber kodiert. */
-.mk-hg-sterne::before,
-.mk-hg-sterne::after,
-.mk-hg-schnee::after {
-  content: ""; position: absolute; inset: 0;
+   Alle Ebenen liegen absolut im Kasten und sind pointer-events: none — die
+   Figur darunter traegt den Chat-Knopf, und der muss anklickbar bleiben. */
+.mk-hintergrund, .shop-buehne, .buehne {
+  position: relative; overflow: hidden;
+}
+/* Die Figur (und alles andere, was kein Hintergrund ist) liegt DARUEBER. */
+.mk-hintergrund > *:not([class^="mk-hg-"]),
+.shop-buehne > *:not([class^="mk-hg-"]),
+.buehne > *:not([class^="mk-hg-"]) {
+  position: relative; z-index: 1;
+}
+.mk-hg-bild, .mk-hg-flor, .mk-hg-extra {
+  position: absolute; inset: 0; z-index: 0;
   pointer-events: none;
   background-repeat: repeat;
 }
 
-/* Gruppe A: die groesseren Sterne, langsamer. */
-.mk-hg-sterne::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20d='M14%207.5L15.17%2010.83L18.5%2012L15.17%2013.17L14%2016.5L12.83%2013.17L9.5%2012L12.83%2010.83Z'%20fill='%23fff'/%3E%3Cpath%20d='M58%2022.8L58.832%2025.168L61.2%2026L58.832%2026.832L58%2029.2L57.168%2026.832L54.8%2026L57.168%2025.168Z'%20fill='%23fff'/%3E%3Cpath%20d='M86%205.2L86.988%208.012L89.8%209L86.988%209.988L86%2012.8L85.012%209.988L82.2%209L85.012%208.012Z'%20fill='%23fff'/%3E%3Cpath%20d='M34%2059.2L34.728%2061.272L36.8%2062L34.728%2062.728L34%2064.8L33.272%2062.728L31.2%2062L33.272%2061.272Z'%20fill='%23fff'/%3E%3Cpath%20d='M74%2070.6L74.884%2073.116L77.4%2074L74.884%2074.884L74%2077.4L73.116%2074.884L70.6%2074L73.116%2073.116Z'%20fill='%23fff'/%3E%3C/svg%3E");
-  background-size: 128px 128px;
-  animation: mk-funkeln-a 5.2s ease-in-out infinite;
+/* ---------- Der Verlauf, nach aussen ausgeblendet ----------
+   Jennifer: "die hgs sollten nach außen faden". Eine Ellipse, die in der Mitte
+   voll deckt und zum Rand hin durchsichtig wird — der Hintergrund endet damit
+   nicht als Rechteck mit Kante, sondern franst aus.
+
+   -webkit-mask zuerst: Safari auf dem iPhone kennt die ungepraefixte Form
+   bis heute nicht, und Rose uebt am Handy. Ohne die Maske sieht man ein
+   Rechteck; das ist haesslich, aber nichts geht kaputt. */
+.mk-hg-bild {
+  background-size: cover; background-position: center;
+  -webkit-mask-image: radial-gradient(ellipse 78% 82% at 50% 46%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+  mask-image: radial-gradient(ellipse 78% 82% at 50% 46%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
 }
-/* Gruppe B: kleiner, dichter, schneller und versetzt gestartet. */
-.mk-hg-sterne::after {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20d='M40%205.0L40.78%207.22L43.0%208L40.78%208.78L40%2011.0L39.22%208.78L37.0%208L39.22%207.22Z'%20fill='%23fff'/%3E%3Cpath%20d='M8%2040.4L8.936%2043.064L11.6%2044L8.936%2044.936L8%2047.6L7.064%2044.936L4.4%2044L7.064%2043.064Z'%20fill='%23fff'/%3E%3Cpath%20d='M66%2045.4L66.676%2047.324L68.6%2048L66.676%2048.676L66%2050.6L65.324%2048.676L63.4%2048L65.324%2047.324Z'%20fill='%23fff'/%3E%3Cpath%20d='M92%2062.8L92.832%2065.168L95.2%2066L92.832%2066.832L92%2069.2L91.168%2066.832L88.8%2066L91.168%2065.168Z'%20fill='%23fff'/%3E%3Cpath%20d='M22%2081.2L22.728%2083.272L24.8%2084L22.728%2084.728L22%2086.8L21.272%2084.728L19.2%2084L21.272%2083.272Z'%20fill='%23fff'/%3E%3C/svg%3E");
-  background-size: 92px 92px;
-  animation: mk-funkeln-b 3.7s ease-in-out infinite;
-  animation-delay: -1.4s;
-}
-/* Nie ganz weg und nie ganz da: zwischen 0,35 und 0,95. Sterne, die vollstaendig
-   ausgehen, lesen sich als Fehler; Sterne bei voller Deckkraft ueberstrahlen
-   die Figur davor. */
-@keyframes mk-funkeln-a {
-  0%, 100% { opacity: .9; }
-  50% { opacity: .4; }
-}
-@keyframes mk-funkeln-b {
-  0%, 100% { opacity: .45; }
-  50% { opacity: .95; }
+/* Die Deko wird MIT ausgeblendet — sonst schwebten Sterne und Flocken noch
+   dort, wo der Himmel laengst aufgehoert hat. */
+.mk-hg-flor, .mk-hg-extra {
+  -webkit-mask-image: radial-gradient(ellipse 76% 80% at 50% 46%, #000 40%, rgba(0,0,0,.5) 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 76% 80% at 50% 46%, #000 40%, rgba(0,0,0,.5) 70%, transparent 100%);
 }
 
-/* Der Schnee faellt, indem die Kachel nach unten wandert. background-position
-   statt transform: eine wiederholte Kachel laeuft dadurch endlos, ohne dass am
-   Ende ein Sprung sichtbar wird — der Weg ist genau eine Kachelhoehe. */
-.mk-hg-schnee::after {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ccircle%20cx='16'%20cy='12'%20r='2.4'%20fill='%23fff'/%3E%3Ccircle%20cx='52'%20cy='30'%20r='1.8'%20fill='%23fff'/%3E%3Ccircle%20cx='82'%20cy='16'%20r='2.1'%20fill='%23fff'/%3E%3Ccircle%20cx='34'%20cy='58'%20r='1.6'%20fill='%23fff'/%3E%3Ccircle%20cx='70'%20cy='72'%20r='2.3'%20fill='%23fff'/%3E%3Ccircle%20cx='94'%20cy='46'%20r='1.7'%20fill='%23fff'/%3E%3C/svg%3E");
+/* ---------- Sterne ----------
+   Vierzackige Funkeln als SVG (konkave Taille, deshalb spitz statt rund).
+   ZWEI GRUPPEN mit verschiedenen Positionen, Groessen und Laufzeiten: eine
+   einzige Ebene kann nur als Ganzes auf- und abblenden, und das liest sich
+   als Pulsieren des ganzen Himmels statt als Funkeln einzelner Sterne.
+
+   Die %20 in den URIs sind Absicht: in einer url("…") waeren rohe Leerzeichen
+   zwar erlaubt, aber die Toleranz dafuer ist von Browser zu Browser
+   verschieden und faellt still aus — ein abgebrochener data-URI wirft keinen
+   Fehler, er malt nur nichts. Bei einer Sternenebene sieht man den Unterschied
+   zu "es ist gerade Nacht" nicht. */
+.mk-hg-sterne .mk-hg-flor::before,
+.mk-hg-sterne .mk-hg-flor::after {
+  content: ""; position: absolute; inset: 0;
+  background-repeat: repeat;
+}
+.mk-hg-sterne .mk-hg-flor::before {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20d='M14%207.4L15.196%2010.804L18.6%2012L15.196%2013.196L14%2016.6L12.804%2013.196L9.4%2012L12.804%2010.804Z'%20fill='%23fff'/%3E%3Cpath%20d='M58%2022.8L58.832%2025.168L61.2%2026L58.832%2026.832L58%2029.2L57.168%2026.832L54.8%2026L57.168%2025.168Z'%20fill='%23fff'/%3E%3Cpath%20d='M86%205.1L87.014%207.986L89.9%209L87.014%2010.014L86%2012.9L84.986%2010.014L82.1%209L84.986%207.986Z'%20fill='%23fff'/%3E%3Cpath%20d='M34%2059.1L34.754%2061.246L36.9%2062L34.754%2062.754L34%2064.9L33.246%2062.754L31.1%2062L33.246%2061.246Z'%20fill='%23fff'/%3E%3Cpath%20d='M74%2070.5L74.91%2073.09L77.5%2074L74.91%2074.91L74%2077.5L73.09%2074.91L70.5%2074L73.09%2073.09Z'%20fill='%23fff'/%3E%3Cpath%20d='M46%2041.6L46.624%2043.376L48.4%2044L46.624%2044.624L46%2046.4L45.376%2044.624L43.6%2044L45.376%2043.376Z'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 118px 118px;
+  animation: mk-funkeln-a 4.6s ease-in-out infinite;
+}
+.mk-hg-sterne .mk-hg-flor::after {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20d='M40%204.9L40.806%207.194L43.1%208L40.806%208.806000000000001L40%2011.1L39.194%208.806000000000001L36.9%208L39.194%207.194Z'%20fill='%23fff'/%3E%3Cpath%20d='M8%2040.3L8.962%2043.038L11.7%2044L8.962%2044.962L8%2047.7L7.038%2044.962L4.3%2044L7.038%2043.038Z'%20fill='%23fff'/%3E%3Cpath%20d='M66%2045.3L66.702%2047.298L68.7%2048L66.702%2048.702L66%2050.7L65.298%2048.702L63.3%2048L65.298%2047.298Z'%20fill='%23fff'/%3E%3Cpath%20d='M92%2062.7L92.858%2065.142L95.3%2066L92.858%2066.858L92%2069.3L91.142%2066.858L88.7%2066L91.142%2065.142Z'%20fill='%23fff'/%3E%3Cpath%20d='M22%2081.1L22.754%2083.246L24.9%2084L22.754%2084.754L22%2086.9L21.246%2084.754L19.1%2084L21.246%2083.246Z'%20fill='%23fff'/%3E%3Cpath%20d='M56%2089.5L56.65%2091.35L58.5%2092L56.65%2092.65L56%2094.5L55.35%2092.65L53.5%2092L55.35%2091.35Z'%20fill='%23fff'/%3E%3Cpath%20d='M78%2029.8L78.572%2031.428L80.2%2032L78.572%2032.572L78%2034.2L77.428%2032.572L75.8%2032L77.428%2031.428Z'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 84px 84px;
+  animation: mk-funkeln-b 3.1s ease-in-out infinite;
+  animation-delay: -1.2s;
+}
+/* Weiter Bereich, damit es wirklich funkelt und nicht nur atmet. Nie ganz
+   aus (Sterne, die verschwinden, lesen sich als Fehler) und nie ganz an
+   (sonst ueberstrahlen sie die Figur davor). */
+@keyframes mk-funkeln-a { 0%, 100% { opacity: .95; } 50% { opacity: .25; } }
+@keyframes mk-funkeln-b { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+/* ---------- Wolken ----------
+   Uebereinanderliegende Kreise auf einem Balken — das ist der ganze
+   Unterschied zwischen "fluffig" und "Fleck". Sie ziehen langsam nach rechts;
+   der Weg ist genau eine Kacheldrehung, damit nichts springt. */
+.mk-hg-wolken .mk-hg-extra::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20300%20110'%3E%3Ccircle%20cx='46.0'%20cy='34.0'%20r='11.0'%20fill='%23fff'/%3E%3Ccircle%20cx='33.0'%20cy='38.0'%20r='8.0'%20fill='%23fff'/%3E%3Ccircle%20cx='59.0'%20cy='37.0'%20r='9.0'%20fill='%23fff'/%3E%3Ccircle%20cx='40.0'%20cy='28.0'%20r='8.0'%20fill='%23fff'/%3E%3Ccircle%20cx='53.0'%20cy='29.0'%20r='7.0'%20fill='%23fff'/%3E%3Crect%20x='26.0'%20y='34'%20width='40.0'%20height='9.0'%20fill='%23fff'/%3E%3Ccircle%20cx='150.0'%20cy='72.0'%20r='7.92'%20fill='%23fff'/%3E%3Ccircle%20cx='140.64'%20cy='74.88'%20r='5.76'%20fill='%23fff'/%3E%3Ccircle%20cx='159.36'%20cy='74.16'%20r='6.4799999999999995'%20fill='%23fff'/%3E%3Ccircle%20cx='145.68'%20cy='67.68'%20r='5.76'%20fill='%23fff'/%3E%3Ccircle%20cx='155.04'%20cy='68.4'%20r='5.04'%20fill='%23fff'/%3E%3Crect%20x='135.6'%20y='72'%20width='28.799999999999997'%20height='6.4799999999999995'%20fill='%23fff'/%3E%3Ccircle%20cx='250.0'%20cy='28.0'%20r='9.68'%20fill='%23fff'/%3E%3Ccircle%20cx='238.56'%20cy='31.52'%20r='7.04'%20fill='%23fff'/%3E%3Ccircle%20cx='261.44'%20cy='30.64'%20r='7.92'%20fill='%23fff'/%3E%3Ccircle%20cx='244.72'%20cy='22.72'%20r='7.04'%20fill='%23fff'/%3E%3Ccircle%20cx='256.16'%20cy='23.6'%20r='6.16'%20fill='%23fff'/%3E%3Crect%20x='232.4'%20y='28'%20width='35.2'%20height='7.92'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 300px 110px; background-repeat: repeat-x;
+  background-position-y: 12%;
+  opacity: .9;
+  animation: mk-zieht 46s linear infinite;
+}
+@keyframes mk-zieht {
+  from { background-position-x: 0; }
+  to { background-position-x: 300px; }
+}
+
+/* ---------- Schnee ----------
+   Faellt, indem die Kachel nach unten wandert. background-position statt
+   transform: eine wiederholte Kachel laeuft dadurch endlos, ohne dass am Ende
+   ein Sprung sichtbar wird — der Weg ist genau eine Kachelhoehe. */
+.mk-hg-schnee .mk-hg-extra::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ccircle%20cx='16'%20cy='12'%20r='2.5'%20fill='%23fff'/%3E%3Ccircle%20cx='52'%20cy='30'%20r='1.9'%20fill='%23fff'/%3E%3Ccircle%20cx='82'%20cy='16'%20r='2.2'%20fill='%23fff'/%3E%3Ccircle%20cx='34'%20cy='58'%20r='1.7'%20fill='%23fff'/%3E%3Ccircle%20cx='70'%20cy='72'%20r='2.4'%20fill='%23fff'/%3E%3Ccircle%20cx='94'%20cy='46'%20r='1.8'%20fill='%23fff'/%3E%3Ccircle%20cx='8'%20cy='76'%20r='2.1'%20fill='%23fff'/%3E%3Ccircle%20cx='60'%20cy='88'%20r='1.6'%20fill='%23fff'/%3E%3Ccircle%20cx='28'%20cy='34'%20r='1.5'%20fill='%23fff'/%3E%3Ccircle%20cx='44'%20cy='68'%20r='2.0'%20fill='%23fff'/%3E%3C/svg%3E");
   background-size: 104px 104px;
-  opacity: .85;
+  opacity: .9;
   animation: mk-schneit 9s linear infinite;
 }
 @keyframes mk-schneit {
   from { background-position: 0 0; }
   to { background-position: 14px 104px; }
+}
+
+/* ---------- Gras ----------
+   Sitzt unten und wiederholt sich nur waagerecht. Es bewegt sich NICHT: ein
+   Grashalm, der wackelt, waere die dritte Bewegung in einer Karte, die beim
+   Lernen im Blick steht. */
+.mk-hg-gras .mk-hg-extra::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2060%2030'%3E%3Cpath%20d='M2%2030%20L4.2%208%20L6.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M9%2030%20L10.8%2015%20L12.6%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M15%2030%20L17.4%204%20L19.8%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M23%2030%20L25.0%2012%20L27.0%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M30%2030%20L32.2%207%20L34.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M37%2030%20L38.7%2017%20L40.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M43%2030%20L45.5%202%20L48.0%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M51%2030%20L53.0%2011%20L55.0%2030%20Z'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 60px 30px; background-repeat: repeat-x;
+  background-position: bottom;
+  opacity: .5;
+}
+
+/* ---------- Sonnenstrahlen ----------
+   Ein Faecher aus der Sonne oben rechts, dazu ein Hof, der ganz langsam
+   atmet. Beides sehr schwach: "leicht radiant" (Jennifer), nicht grell. */
+.mk-hg-strahlen .mk-hg-extra::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-conic-gradient(from 0deg at 80% 24%,
+    rgba(255,255,255,.16) 0deg 3deg, transparent 3deg 13deg);
+  opacity: .75;
+}
+.mk-hg-strahlen .mk-hg-extra::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% 24%, rgba(255,240,180,.55) 0%, transparent 34%);
+  animation: mk-strahlt 7s ease-in-out infinite;
+}
+@keyframes mk-strahlt { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+/* ---------- Sternschnuppe ----------
+   Sie faellt SELTEN. 14 Sekunden Umlauf, davon knapp eine sichtbar — der Rest
+   der Zeit steht sie auf opacity 0 ausserhalb des Bildes. Genau das macht sie
+   zu einem kleinen Ereignis statt zu einer Animation. */
+.mk-hg-schnuppe .mk-hg-extra::after {
+  content: ""; position: absolute;
+  top: 6%; left: 4%; width: 34px; height: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2034%2034'%3E%3Cpath%20d='M2%2030%20L30%202'%20stroke='%23fff'%20stroke-width='2.2'%20stroke-linecap='round'%20opacity='.75'/%3E%3Ccircle%20cx='30'%20cy='2'%20r='2.6'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: contain; background-repeat: no-repeat;
+  opacity: 0;
+  animation: mk-schnuppe 14s linear infinite;
+}
+@keyframes mk-schnuppe {
+  0%, 82% { opacity: 0; transform: translate(0, 0) scale(.8); }
+  84% { opacity: .9; }
+  95% { opacity: 0; transform: translate(150px, 96px) scale(1); }
+  100% { opacity: 0; transform: translate(150px, 96px) scale(1); }
+}
+
+/* ---------- Halb durchscheinende Marken ----------
+   Sommersprossen und Rouge (Jennifer: "halbtransparent"). Die Deckkraft sitzt
+   auf dem INNEREN Span; der Fellgrund liegt aussen und bleibt voll — sonst
+   waere es keine zarte Marke, sondern ein halbes Loch. Siehe malen(). */
+.mk-zart { opacity: .55; }
+
+/* ---------- Blinzeln ----------
+   Jennifer: "wimpern sind cute, kann man blinzeln einbauen, selten?"
+
+   9 Sekunden Umlauf, davon zwei Zehntel Lid. Das ist selten genug, um nicht
+   abzulenken, und oft genug, um es zu bemerken, wenn man hinsieht — ungefaehr
+   die Frequenz, mit der ein Mensch blinzelt, ohne dass es auffaellt.
+
+   scaleY auf einem inline-block: die Zelle behaelt ihre Breite (Monospace),
+   nur die Hoehe faellt zusammen. transform-origin unten, damit das Lid von
+   oben herunterkommt statt sich in der Mitte zu treffen.
+
+   Augen UND Wimpern tragen dieselbe Klasse und damit dieselbe Animation. Weil
+   beide zum selben Zeitpunkt starten (kein delay), schliessen sie zusammen —
+   ein Auge, das ohne seine Wimper blinzelt, saehe kaputt aus. */
+@keyframes mk-blinzeln {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%, 96% { transform: scaleY(.12); }
+}
+.mk-blinzelt {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: mk-blinzeln 9s ease-in-out infinite;
+}
+
+/* ---------- Fluegel ----------
+   "flügel sollen sich dann bewegen slightly und dahinter gerendert werden."
+
+   Bewegen: ein sehr flaches Auf und Ab, keine zwei Pixel. Mehr waere Flattern,
+   und ein flatterndes Tier neben einem Lerntext ist eine Ablenkung.
+
+   Dahinter: die Fluegel sitzen in eigenen Spalten neben der Figur und koennen
+   sie gar nicht ueberdecken. Was fehlte, war der EINDRUCK von Tiefe — den
+   traegt jetzt die leicht zurueckgenommene Deckkraft. Etwas Blasseres liest
+   das Auge als weiter hinten, ohne dass irgendwo eine Ebene noetig waere. */
+@keyframes mk-schwingen {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+.mk-fluegel {
+  display: inline-block;
+  opacity: .82;
+  animation: mk-schwingen 3.4s ease-in-out infinite;
+}
+
+/* ---------- Musiknoten aus den Kopfhoerern ----------
+   "bei kopfhörern sone animation mit musiknoten die rauskommen auch als blöcke."
+
+   Sie steigen auf und verlassen dabei die Figur — das kann keine Zelle mehr
+   sein, das ist eine Ebene ueber dem <pre>. geteilt-laden.js setzt dafuer die
+   Klasse mk-noten an die Figur (figurKlassen).
+
+   Als BLOCKGRAFIK gezeichnet und nicht als ♪: das Zeichen wuerde in einem
+   Ersatzfont landen und daneben stehen. Ein Notenkopf aus zwei Rechtecken
+   passt ausserdem zur Figur, die selbst aus Rechtecken besteht.
+
+   Zwei Noten, versetzt, mit langen Pausen dazwischen. */
+.mk-noten { position: relative; }
+.mk-noten::before, .mk-noten::after {
+  content: ""; position: absolute;
+  width: 13px; height: 15px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2024'%3E%3Crect%20x='2'%20y='16'%20width='9'%20height='7'%20fill='%23fff'/%3E%3Crect%20x='9'%20y='2'%20width='3'%20height='16'%20fill='%23fff'/%3E%3Crect%20x='12'%20y='2'%20width='6'%20height='3'%20fill='%23fff'/%3E%3Crect%20x='15'%20y='5'%20width='3'%20height='4'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: contain; background-repeat: no-repeat;
+  opacity: 0; pointer-events: none;
+}
+.mk-noten::before { left: -6px; top: 12%; animation: mk-note 4.2s ease-out infinite; }
+.mk-noten::after { right: -6px; top: 20%; animation: mk-note 4.2s ease-out infinite; animation-delay: 2.1s; }
+@keyframes mk-note {
+  0% { opacity: 0; transform: translate(0, 0) rotate(-6deg); }
+  15% { opacity: .95; }
+  70% { opacity: .5; }
+  100% { opacity: 0; transform: translate(-6px, -26px) rotate(10deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Alles Bewegte steht still, bleibt aber SICHTBAR. Ein Hintergrund, den Rose
+     gekauft hat, soll nicht verschwinden, nur weil sie weniger Bewegung
+     eingestellt hat — und ein Auge, das nie wieder aufgeht, waere ein Fehler,
+     kein Entgegenkommen. */
+  .mk-hg-sterne .mk-hg-flor::before, .mk-hg-sterne .mk-hg-flor::after,
+  .mk-hg-schnee .mk-hg-extra::before, .mk-hg-wolken .mk-hg-extra::before,
+  .mk-hg-strahlen .mk-hg-extra::after, .mk-fluegel { animation: none; }
+  .mk-blinzelt { animation: none; transform: none; }
+  .mk-hg-schnuppe .mk-hg-extra::after, .mk-noten::before, .mk-noten::after { display: none; }
 }

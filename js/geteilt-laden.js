@@ -109,9 +109,28 @@ var SLOTS = {
   ruecken: { zeichen: "R", name: "Rücken",   regal: "kleidung" },
   wange:   { zeichen: "W", name: "Wangen",   regal: "makeup", aufFell: true },
   lid:     { zeichen: "L", name: "Lider",    regal: "makeup", aufFell: true },
+  /* WIMPERN HABEN SEIT DEM 04.09.2026 EINEN EIGENEN PLATZ. Vorher teilten sie
+     sich den Slot "lid" mit dem Lidschatten, und ein Slot traegt genau ein
+     Stueck — man musste sich also entscheiden. Jennifer: "lidschatten und
+     wimpern etc. kann man ja hoffentlich kombinieren."
+
+     Sie belegen dieselbe ZELLE (die ueber dem Auge), und eine Zelle hat genau
+     ein Zeichen. Aufgeloest wird das ueber die zwei Ebenen, die der Maler
+     ohnehin kennt: der Lidschatten wird zum HINTERGRUND der Zelle, die Wimper
+     zum Zeichen darin. Das ist nicht nur der Ausweg, es ist auch genau die
+     Reihenfolge, in der man Make-up auftraegt. */
+  wimpern: { zeichen: "Y", name: "Wimpern",  regal: "makeup", aufFell: true },
   mund:    { zeichen: "P", name: "Mund",     regal: "makeup", aufFell: true },
+  nase:    { zeichen: "N", name: "Nase",     regal: "makeup", aufFell: true, still: true },
   glanz:   { zeichen: "X", name: "Glanz",    regal: "makeup", aufFell: true },
 };
+
+/* Der Schluessel fuer "Wimper AUF Lidschatten". Er steht nicht in SLOTS, weil
+   er kein Platz ist, den man belegen kann — er entsteht erst, wenn zwei
+   belegte Plaetze auf dieselbe Zelle fallen. farbTabelle() baut ihn dann aus
+   beiden Farben, malen() nimmt die eine als Zeichen- und die andere als
+   Zellfarbe. */
+var WIMPER_AUF_LID = "Q";
 
 /* Schluessel -> Slotname, fuer den Maler. Einmal gebaut statt bei jeder Zelle
    durch das Objekt gesucht. */
@@ -124,7 +143,7 @@ var SLOT_VON_ZEICHEN = (function () {
 /* Die Schluessel, die einen Fellhintergrund brauchen (siehe oben). "A" ist
    der alte Akzent aus der Figur selbst und gehoert mit in dieselbe Menge. */
 var AUF_FELL = (function () {
-  var s = "A";
+  var s = "A" + WIMPER_AUF_LID;
   Object.keys(SLOTS).forEach(function (k) { if (SLOTS[k].aufFell) s += SLOTS[k].zeichen; });
   return s;
 })();
@@ -238,23 +257,23 @@ var KLEIDUNG = [
    reinen Umfaerbungen, die keine einzige Zelle dazuzeichnen. */
 var MAKEUP = [
   { key: "sommersprossen", name: "Sommersprossen", slot: "wange", preis: preis(2, 1),
-    standard: "#b5714a",
-    hinweis: "Vier kleine Punkte unter den Augen. Das Günstigste im Regal und das, was man am ehesten dauerhaft anlässt." },
+    standard: "#b5714a", zart: true,
+    hinweis: "Vier kleine Punkte unter den Augen, halb durchscheinend. Das Günstigste im Regal und das, was man am ehesten dauerhaft anlässt." },
   { key: "rouge", name: "Rouge", slot: "wange", preis: preis(3, 1),
-    standard: "#e08a9a",
-    hinweis: "Zwei weiche Flecken auf den Wangen. Färbt nur, setzt kein Zeichen — deshalb sieht es auch bei Nacht noch weich aus." },
+    standard: "#e08a9a", zart: true,
+    hinweis: "Zwei weiche Flecken auf den Wangen. Halb durchscheinend, damit das Fell darunter noch zu sehen ist." },
   { key: "lidschatten", name: "Lidschatten", slot: "lid", preis: preis(0, 2),
     standard: "#9a6fc4",
-    hinweis: "Die Zeile direkt über den Augen bekommt Farbe. Kostet nur Sterne, weil kein einziges Zeichen dazukommt." },
-  { key: "wimpern", name: "Wimpern", slot: "lid", preis: preis(3, 2),
+    hinweis: "Ein dünner Streifen direkt über den Augen. Lässt sich mit Wimpern kombinieren — die liegen dann darauf." },
+  { key: "wimpern", name: "Wimpern", slot: "wimpern", preis: preis(3, 2),
     standard: "#2a2430",
-    hinweis: "Ein dünner Strich, der direkt auf den Augen aufliegt. Ersetzt den Lidschatten — beide zusammen wären ein schwarzer Balken." },
+    hinweis: "Einzelne Striche statt eines Lidstrichs. Blinzelt hin und wieder — selten genug, dass es nicht ablenkt." },
   { key: "lippenstift", name: "Lippenstift", slot: "mund", preis: preis(0, 2),
     standard: "#c8324f",
-    hinweis: "Färbt das Maul. Eine einzige Zelle, und trotzdem der größte Unterschied im ganzen Gesicht." },
+    hinweis: "Färbt die Schnauze links und rechts der Nase. Die Nase selbst bleibt dunkel — sie trägt das halbe Gesicht." },
   { key: "glitzer", name: "Glitzer", slot: "glanz", preis: preis(4, 3),
     standard: "#ffd966", schimmert: true,
-    hinweis: "Zwei Funkelzeichen neben den Augen, die leise pulsieren. Steht still, wenn im Betriebssystem weniger Bewegung eingestellt ist." },
+    hinweis: "Zwei Funkelzeichen neben den Augen, die bis auf die Fellfarbe durchblinken und zurück." },
 ];
 
 /* ==========================================================================
@@ -319,16 +338,22 @@ var FARBTOEPFE = [
 var LOOKS = [
   { key: "natur", name: "Natur", preis: preis(0), pal: null,
     hinweis: "Die Farben aus deinem eigenen Ei. Kostenlos, immer da, und immer der Weg zurück." },
-  { key: "pixel", name: "Pixel", preis: preis(0, 5),
+  { key: "sand", name: "Sand", preis: preis(0, 4), deckung: .6,
+    pal: { fell: "#d8c3a5", muster: "#a8906f", akzent: "#f2e8d8", tinte: "#5b4a38" },
+    hinweis: "Warme Neutraltöne, kaum aufgetragen. Der leiseste Look im Regal — man sieht ihn erst auf den zweiten Blick." },
+  { key: "nebel", name: "Nebel", preis: preis(0, 4), deckung: .6,
+    pal: { fell: "#b9c4cf", muster: "#8996a6", akzent: "#e8eef4", tinte: "#404b58" },
+    hinweis: "Kühles Grau mit einem Stich Blau. Passt zu jeder Kleidungsfarbe, weil er selbst keine hat." },
+  { key: "pixel", name: "Pixel", preis: preis(0, 5), deckung: .65,
     pal: { fell: "#9db87a", muster: "#5d7a4a", akzent: "#dde7c6", tinte: "#37452c" },
-    hinweis: "Vier Grüntöne wie auf einem alten Handheld, nur eine Spur weicher. Der billigste Look, weil er am wenigsten mit dem Rest streitet." },
-  { key: "dreamy", name: "Dreamy", preis: preis(0, 6),
+    hinweis: "Grüntöne wie auf einem alten Handheld, nur halb aufgetragen. Das Muster deines Eis scheint durch." },
+  { key: "dreamy", name: "Dreamy", preis: preis(0, 6), deckung: .8, glanz: true,
     pal: { fell: "#e4d9f0", muster: "#bfa9d8", akzent: "#fbf6fd", tinte: "#7c6792" },
-    hinweis: "Pastell, alles ein bisschen verträumt. Sehr hell — mit dunklem Hintergrund am schönsten." },
-  { key: "cyber", name: "Cyber", preis: preis(0, 7), glanz: true,
+    hinweis: "Pastell, alles ein bisschen verträumt, mit einem leisen Schein. Sehr hell — mit dunklem Hintergrund am schönsten." },
+  { key: "cyber", name: "Cyber", preis: preis(0, 7), deckung: .85, glanz: true,
     pal: { fell: "#2c3550", muster: "#79c8d2", akzent: "#bde4ea", tinte: "#d98cae" },
-    hinweis: "Nachtblau mit einem kühlen Schimmer statt Neon. Leuchtet leise, auch bei Tag." },
-  { key: "regen", name: "Regenbogen", preis: preis(0, 10), glanz: true,
+    hinweis: "Nachtblau mit kühlem Schimmer statt Neon. Der kräftigste Look — und der einzige, der dein Tier wirklich umbaut." },
+  { key: "regen", name: "Regenbogen", preis: preis(0, 10), deckung: .7, glanz: true,
     pal: { fell: "#e6a3a3", muster: "#94ccc4", akzent: "#f7e6c2", tinte: "#6f6191" },
     hinweis: "Jede Rolle eine andere Farbe, alle gedämpft. Laut ist hier nur der Preis — und ein leiser Schein obendrauf." },
 ];
@@ -350,53 +375,47 @@ var LOOKS = [
    `nacht` fehlt, taugt derselbe Verlauf fuer beides. Ein Hintergrund, der nur
    in einem Modus funktioniert, ist ein Hintergrund, den Rose abends nicht
    anmachen kann. */
+/* PREISE AM 04.09.2026 NEU GEWICHTET (Jennifer: "abendrot ist eig cheap,
+   sternenhimmel und regenbogen sollten eigentlich hoch wiegen"). Vorher lagen
+   sie zwischen 6 und 15 ♥ und richteten sich danach, wie viele Farbstops ein
+   Verlauf hat — was niemanden interessiert. Jetzt richten sie sich danach, wie
+   sehr ein Hintergrund nach etwas aussieht.
+
+   `deko` benennt die BEWEGTE Ebene, die dazugehoert. Sie liegt in shop.css als
+   eigenes Element ueber dem Verlauf; ein Farbverlauf kann nicht driften,
+   fallen oder wachsen. Der Verlauf selbst traegt nur noch den Himmel. */
 var HINTERGRUENDE = [
   { key: "keiner", name: "Keiner", preis: preis(0), stil: null,
     hinweis: "Die Karte, wie sie ist. Kostet nichts und ist immer da." },
-  { key: "wolken", name: "Wolken", preis: preis(6, 1),
-    /* Groessere Baeusche als im ersten Entwurf (9–12 % auf 17–22 %). Jennifer:
-       "z. B. sieht man die wolken ja gar nicht" — bei einem Kreis von 9 %
-       Radius auf einer Flaeche, die knapp ueber die Figur hinausgeht, bleiben
-       ein paar Pixel Rand uebrig, und die liest niemand als Wolke. */
-    stil: "radial-gradient(circle at 20% 74%, #ffffff 0 20%, transparent 20.5%)," +
-          "radial-gradient(circle at 36% 80%, #ffffff 0 22%, transparent 22.5%)," +
-          "radial-gradient(circle at 78% 66%, #f2f8ff 0 18%, transparent 18.5%)," +
-          "linear-gradient(180deg, #b6dcf4 0%, #e6f2fb 100%)",
-    nacht: "radial-gradient(circle at 20% 74%, #3a4570 0 20%, transparent 20.5%)," +
-           "radial-gradient(circle at 36% 80%, #3a4570 0 22%, transparent 22.5%)," +
-           "radial-gradient(circle at 78% 66%, #323c66 0 18%, transparent 18.5%)," +
-           "linear-gradient(180deg, #182142 0%, #2a3460 100%)",
-    hinweis: "Heller Tageshimmel mit drei Wolkenbäuschen. Der günstigste Hintergrund und der, der der Figur am wenigsten in die Farben redet." },
-  { key: "sonne", name: "Sonne", preis: preis(8, 2),
-    stil: "radial-gradient(circle at 80% 26%, #fff4b5 0 13%, #ffd76b 13% 17%, transparent 17.5%)," +
-          "linear-gradient(180deg, #ffe9b8 0%, #ffd39a 55%, #ffc98c 100%)",
-    nacht: "radial-gradient(circle at 80% 26%, #ffe089 0 13%, #eaae45 13% 17%, transparent 17.5%)," +
-           "linear-gradient(180deg, #40301d 0%, #63451f 55%, #7a5424 100%)",
-    hinweis: "Warmer Himmel mit einer Sonne oben rechts. Genau das, was du dir gewünscht hast — und der einzige Hintergrund mit einem runden Ding drin." },
-  { key: "wiese", name: "Wiese", preis: preis(8, 2),
+  { key: "wolken", name: "Wolken", preis: preis(5, 1), deko: "wolken",
+    stil: "linear-gradient(180deg, #a8d6f2 0%, #d8ecfa 70%, #eef6fc 100%)",
+    nacht: "linear-gradient(180deg, #16203f 0%, #263257 70%, #333f68 100%)",
+    hinweis: "Drei dicke Wolken, die langsam nach rechts ziehen. Der günstigste Hintergrund und der, der dir am wenigsten in die Farben redet." },
+  { key: "abendrot", name: "Abendrot", preis: preis(6, 1),
+    stil: "linear-gradient(180deg, #4a3a76 0%, #a45a8a 34%, #e8815e 66%, #ffc06a 100%)",
+    nacht: "linear-gradient(180deg, #2b2350 0%, #6e3c5e 34%, #9b573f 66%, #b8834a 100%)",
+    hinweis: "Der Verlauf, den ein Abend über der Havel macht. Günstig, weil er nur eine Farbe ist — dafür färbt er die ganze Karte." },
+  { key: "wiese", name: "Wiese", preis: preis(8, 2), deko: "gras",
     stil: "linear-gradient(180deg, #cfeaf8 0%, #cfeaf8 56%, #8fc96a 56%, #6fae52 100%)",
     nacht: "linear-gradient(180deg, #1b2745 0%, #1b2745 56%, #2b482b 56%, #1e361e 100%)",
-    hinweis: "Horizont auf halber Höhe: Himmel oben, Gras unten. Die Figur steht dadurch auf etwas statt zu schweben." },
-  { key: "schnee", name: "Schnee", preis: preis(10, 3),
-    /* Die Flocken sind KEINE Farbverlaeufe mehr, sondern eine eigene Ebene in
-       shop.css, die faellt (Jennifer: "schnee sollte animiert sein"). Hier
-       steht nur noch der Grund, auf den sie fallen. */
+    hinweis: "Horizont auf halber Höhe, davor Grashalme. Die Figur steht dadurch auf etwas, statt zu schweben." },
+  { key: "sonne", name: "Sonne", preis: preis(9, 2), deko: "strahlen",
+    stil: "radial-gradient(circle at 80% 24%, #fff6c4 0 12%, #ffd76b 12% 16%, transparent 16.5%)," +
+          "linear-gradient(180deg, #ffe9b8 0%, #ffd39a 55%, #ffc98c 100%)",
+    nacht: "radial-gradient(circle at 80% 24%, #ffe089 0 12%, #eaae45 12% 16%, transparent 16.5%)," +
+           "linear-gradient(180deg, #40301d 0%, #63451f 55%, #7a5424 100%)",
+    hinweis: "Warmer Himmel, oben rechts eine Sonne, die leise strahlt. Genau das, was du dir gewünscht hast." },
+  { key: "schnee", name: "Schnee", preis: preis(12, 4), deko: "schnee",
     stil: "linear-gradient(180deg, #bcd5ea 0%, #e8f2fa 62%, #ffffff 100%)",
     nacht: "linear-gradient(180deg, #16223a 0%, #22334c 62%, #33475f 100%)",
     hinweis: "Flocken, die wirklich fallen. Steht auch im Sommer da, wenn du willst." },
-  { key: "sterne", name: "Sternenhimmel", preis: preis(10, 3),
-    /* Auch hier keine gemalten Punkte mehr: die Sterne kommen aus der
-       Funkel-Ebene und sehen dort wie Sterne aus statt wie Murmeln. */
-    stil: "linear-gradient(180deg, #262b5e 0%, #3a3775 55%, #513d78 100%)",
-    hinweis: "Dunkel in beiden Modi, mit Absicht. Der Hintergrund für die späten Runden — und der, auf dem Glitzer am besten aussieht." },
-  { key: "abendrot", name: "Abendrot", preis: preis(12, 4),
-    stil: "linear-gradient(180deg, #4a3a76 0%, #a45a8a 34%, #e8815e 66%, #ffc06a 100%)",
-    nacht: "linear-gradient(180deg, #2b2350 0%, #6e3c5e 34%, #9b573f 66%, #b8834a 100%)",
-    hinweis: "Der Verlauf, den ein Abend über der Havel macht. Teuer, weil er als einziger die ganze Karte umfärbt." },
-  { key: "regen", name: "Regenbogen", preis: preis(15, 6),
+  { key: "sterne", name: "Sternenhimmel", preis: preis(18, 7), deko: "schnuppe",
+    stil: "linear-gradient(180deg, #1e2352 0%, #322f68 55%, #47356b 100%)",
+    hinweis: "Dunkel in beiden Modi, mit Absicht. Die Sterne funkeln, und ab und zu fällt eine Sternschnuppe — der Grund, warum er so viel kostet." },
+  { key: "regen", name: "Regenbogen", preis: preis(22, 9),
     stil: "linear-gradient(160deg, #ff9aa2 0%, #ffd59a 18%, #fff3a0 34%, #a8e6a1 52%, #9ad5f0 70%, #c3a8ee 86%, #f0a8d8 100%)",
     nacht: "linear-gradient(160deg, #8a5560 0%, #8a7150 18%, #8a8352 34%, #5b7d58 52%, #53748a 70%, #6a5c8a 86%, #83587a 100%)",
-    hinweis: "Der teuerste Posten im ganzen Laden. 15 ♥ und 6 ★ heißt: rund fünf volle Übungstage und sechs Streckziele. Es soll sich nach etwas anfühlen." },
+    hinweis: "Der teuerste Posten im ganzen Laden. 22 ♥ und 9 ★ heißt: rund acht volle Übungstage und neun Streckziele. Es soll sich nach etwas anfühlen." },
 ];
 
 /* Das Bild zu einem Hintergrund — hell oder dunkel. Eine Stelle, damit Laden,
@@ -424,11 +443,59 @@ function hintergrundStil(key, nacht) {
    Punkte, die auf 60 px Hoehe wie Murmeln aussahen ("sternförmig und feiner
    sein und twinkeln"), und bewegen konnte sich davon gar nichts. */
 function hintergrundKlassen(key, nacht) {
-  if (!key || key === "keiner") return "";
+  var h = null;
+  HINTERGRUENDE.forEach(function (x) { if (x.key === key) h = x; });
+  if (!h || !h.stil) return "";
   var k = [];
   if (nacht || key === "sterne") k.push("mk-hg-sterne");
-  if (key === "schnee") k.push("mk-hg-schnee");
+  if (h.deko) k.push("mk-hg-" + h.deko);
   return k.join(" ");
+}
+
+/* Die Ebenen als HTML. Drei leere Elemente, die shop.css fuellt:
+
+     mk-hg-bild    der Verlauf. Wird nach aussen ausgeblendet (mask-image),
+                   damit der Hintergrund nicht als Rechteck endet, sondern
+                   ausfranst — Jennifer: "die hgs sollten nach außen faden".
+     mk-hg-flor    zwei Sternebenen, versetzt funkelnd.
+     mk-hg-extra   die eine Deko dieses Hintergrunds: Wolken, Gras, Schnee,
+                   Strahlen oder Sternschnuppe.
+
+   WARUM DREI ELEMENTE UND NICHT EINS MIT PSEUDOELEMENTEN: ein Element hat
+   ::before und ::after, also zwei Ebenen. Gebraucht werden bis zu fuenf
+   (Verlauf, zwei Sterngruppen, Deko, und die Maske darf die Figur NICHT
+   erwischen). Vor allem das Letzte erzwingt die Teilung: eine Maske auf dem
+   Kasten wuerde auch das Tier darin ausblenden. Der Verlauf muss deshalb in
+   einem eigenen Element liegen, das die Figur nicht enthaelt.
+
+   Die Elemente sind <i> und nicht <div>: sie stehen in beiden Trainern in
+   einer Zeile mit der Figur, und <i> ist das kuerzeste Element ohne eigene
+   Bedeutung. aria-hidden, weil sie nichts sagen. */
+/* Klassen fuer das <pre> der FIGUR — alles, was sich bewegen soll und dafuer
+   aus dem Zeichenraster heraus muss.
+
+   Ein <pre> aus Blockzeichen kann vieles, aber nichts davon kann fliegen. Die
+   Musiknoten aus den Kopfhoerern steigen auf und verlassen dabei die Figur;
+   das ist keine Zelle mehr, das ist eine Ebene darueber. shop.css haengt sie
+   als ::before und ::after an das <pre>.
+
+   Die FLUEGEL stehen bewusst NICHT hier, obwohl sie sich auch bewegen: sie
+   sind Zellen der Figur, und ihre Klasse kommt darum aus farbTabelle() an den
+   einzelnen Spans an. Eine Klasse am <pre> haette alles mitbewegt. */
+function figurKlassen(getragen) {
+  var g = getragen || {};
+  var k = [];
+  if (g.kopf && g.kopf.stueck === "kopfhoerer") k.push("mk-noten");
+
+  return k.join(" ");
+}
+
+function hintergrundHtml(key, nacht) {
+  var stil = hintergrundStil(key, nacht);
+  if (!stil) return "";
+  return '<i class="mk-hg-bild" aria-hidden="true" style="background-image:' + stil + '"></i>' +
+         '<i class="mk-hg-flor" aria-hidden="true"></i>' +
+         '<i class="mk-hg-extra" aria-hidden="true"></i>';
 }
 
 /* ==========================================================================
@@ -582,29 +649,99 @@ function farbTabelle(farben, getragen) {
   var T = { F: f(farben.fell), M: f(farben.muster),
             A: f(farben.akzent || farben.muster), T: f(farben.tinte || farben.muster) };
   T.__grund = farben.fell;
-  Object.keys(getragen || {}).forEach(function (slot) {
+
+  /* Die AUGEN haben einen eigenen Schluessel, obwohl sie dieselbe Farbe tragen
+     wie das Maul. Der Grund ist das Blinzeln: es ist eine Animation auf dem
+     Zeichen, und ein gemeinsamer Schluessel haette das Maul mitblinzeln
+     lassen. Zwei Dinge, die gleich AUSSEHEN, aber Verschiedenes TUN, brauchen
+     zwei Schluessel — auch wenn die Farbe dieselbe ist. */
+  T.E = farben.glanz ? { farbe: farben.tinte || farben.muster, glanz: true, auge: true }
+                     : { farbe: farben.tinte || farben.muster, auge: true };
+
+  var g = getragen || {};
+  Object.keys(g).forEach(function (slot) {
     var slotDef = SLOTS[slot];
-    var eintrag = getragen[slot];
+    var eintrag = g[slot];
     if (!slotDef || !eintrag || !eintrag.stueck) return;
     var stueck = stueckVon(slotDef.regal, eintrag.stueck);
-    var f = farbeVon(eintrag, stueck);
-    if (!f) return;
-    T[slotDef.zeichen] = { farbe: f.farbe, verlauf: f.verlauf, schimmert: !!(stueck && stueck.schimmert) };
+    var farbe = farbeVon(eintrag, stueck);
+    if (!farbe) return;
+    T[slotDef.zeichen] = {
+      farbe: farbe.farbe, verlauf: farbe.verlauf,
+      schimmert: !!(stueck && stueck.schimmert),
+      // "zart" heisst halb durchscheinend (Sommersprossen, Rouge). Jennifer:
+      // "sommersprossen und rouge halbtransparent."
+      zart: !!(stueck && stueck.zart),
+      blinzelt: slot === "wimpern",
+      // Nur die Fluegel bewegen sich. Ein Rucksack, der schwingt, waere kein
+      // Rucksack mehr, und der Schal soll ruhig bleiben.
+      schwingt: eintrag.stueck === "fluegel",
+    };
   });
+
+  /* Die NASE bekommt ihr sattes Dunkel nur, solange Lippenstift getragen wird.
+     Ohne ihn gibt es den Schluessel gar nicht, das Maul bleibt Tinte, und das
+     Gesicht sieht aus wie immer. */
+  if (g.mund && g.mund.stueck === "lippenstift") {
+    T[SLOTS.nase.zeichen] = { farbe: "#1a1520" };
+  }
+
+  /* Wimper AUF Lidschatten: ein Zeichen in der einen Farbe auf einem Grund in
+     der anderen. Nur gebaut, wenn wirklich beides getragen wird — anziehen()
+     benutzt den Schluessel auch nur dann. */
+  if (g.lid && g.lid.stueck && g.wimpern && g.wimpern.stueck) {
+    var lidF = farbeVon(g.lid, stueckVon("makeup", g.lid.stueck));
+    var wimF = farbeVon(g.wimpern, stueckVon("makeup", g.wimpern.stueck));
+    if (lidF && wimF) {
+      T[WIMPER_AUF_LID] = { farbe: wimF.farbe, verlauf: wimF.verlauf,
+                            grund: lidF.verlauf ? null : lidF.farbe, blinzelt: true };
+    }
+  }
   return T;
 }
 
 /* Ein Look ueberschreibt die vier Figurfarben und laesst alles andere stehen. */
+/* EIN LOOK ERSETZT DIE EIFARBEN NICHT MEHR, ER LIEGT DARUEBER.
+
+   Bis zum 04.09.2026 tauschte er sie eins zu eins aus. Jennifers Befund:
+   "die looks sind zu krass, die farben sollten lowkey sein … und vllt eher so
+   mit leichter deckung anstatt so 100 %."
+
+   Das ist mehr als eine Geschmacksfrage. Ein voll deckender Look loescht die
+   Wahl, die Rose ganz am Anfang getroffen hat — welches Ei sie genommen hat.
+   Danach sieht ein Karo-Tier aus wie ein Blueten-Tier, und das Muster, das
+   ihre Kreatur von den anderen unterscheidet, ist weg. Mit `deckung` bleibt
+   es sichtbar: der Look faerbt, er uebermalt nicht.
+
+   Gemischt wird in CSS (color-mix), nicht in JavaScript. Das ist kein Trick,
+   sondern die richtige Stelle — der Browser mischt im selben Farbraum, in dem
+   er auch zeichnet, und die Ei-Farbe bleibt im Ergebnis lesbar stehen, statt
+   in einer Hex-Zahl zu verschwinden, die niemand mehr zuordnen kann.
+
+   deckung fehlt bei "natur" (dort gibt es nichts zu mischen) und faellt sonst
+   auf 1 zurueck, damit ein neuer Look ohne das Feld nicht still halb
+   durchsichtig wird. */
+function mische(look, ei, anteil) {
+  if (!(anteil > 0 && anteil < 1)) return look;
+  return "color-mix(in srgb, " + look + " " + Math.round(anteil * 100) + "%, " + ei + ")";
+}
+
 function farbenFuer(variante, lookKey) {
   var basis = { fell: variante.fell, muster: variante.muster,
-                akzent: variante.akzent, tinte: variante.tinte };
+                akzent: variante.akzent || variante.muster,
+                tinte: variante.tinte || variante.muster };
   var look = null;
   LOOKS.forEach(function (l) { if (l.key === lookKey) look = l; });
   if (!look || !look.pal) return basis;
-  return { fell: look.pal.fell, muster: look.pal.muster,
-           akzent: look.pal.akzent, tinte: look.pal.tinte,
-           // Wandert bis in farbTabelle() durch und wird dort zu einer Klasse.
-           glanz: !!look.glanz };
+  var d = (typeof look.deckung === "number") ? look.deckung : 1;
+  return {
+    fell: mische(look.pal.fell, basis.fell, d),
+    muster: mische(look.pal.muster, basis.muster, d),
+    akzent: mische(look.pal.akzent, basis.akzent, d),
+    tinte: mische(look.pal.tinte, basis.tinte, d),
+    // Wandert bis in farbTabelle() durch und wird dort zu einer Klasse.
+    glanz: !!look.glanz,
+  };
 }
 
 /* ==========================================================================
@@ -701,7 +838,36 @@ function zeileOben(e) {
    gezeichnet, und was auf dem Ruecken sitzt, ist von vorn nun einmal nicht
    zu sehen. Er zeigt jetzt das, was man von vorn wirklich sieht: die
    Traeger. Siehe unten bei "6. Ruecken". */
-var RUECKEN_LUFT = { fluegel: 2 };
+/* Wie viel Luft ein Rueckenstueck je Seite braucht.
+   Der Rucksack braucht sie NUR bei Tieren mit Ohren oben — dort haengt er
+   neben der Figur statt auf ihr (siehe "6. Ruecken"). Deshalb ist der Wert
+   hier eine Funktion und keine Zahl. */
+function rueckenLuft(stueck, e) {
+  if (stueck === "fluegel") return 2;
+  if (stueck === "rucksack") return e.ohrHoehe > 0 ? 2 : 0;
+  return 0;
+}
+
+/* Luecken unter den Ohren schliessen.
+
+   Die Kopf-Oberkante ist ein Halbblock (▄) und fuellt nur die untere
+   Zellhaelfte. Steht darueber ein Ohr — bei der Katze in Zeile 0 —, klafft
+   dazwischen eine halbe Zelle. Solange dort Fell auf Fell trifft, faellt das
+   nicht auf; sobald ein HUT die Kante uebernimmt, wird die Luecke zu einem
+   hellen Spalt zwischen Ohr und Hut. Jennifer: "hut sollte keine lücken bei
+   der katze erzeugen."
+
+   Also: wo die Zeile darueber etwas traegt, wird die Zelle darunter voll.
+   Dieselbe Regel, die figurEbenen() im ST-Trainer schon fuer den Ohransatz
+   anwendet — hier noch einmal, weil das Kopfstueck sie ueberschrieben hat. */
+function schliesseOben(e, z, k) {
+  if (z <= 0) return;
+  var oben = e.zeilen[z - 1], hier = e.zeilen[z];
+  if (!oben || !hier) return;
+  for (var sp = 0; sp < e.breite; sp++) {
+    if (oben[sp] && oben[sp] !== " " && hier[sp] === "▄") setz(e, z, sp, "█", k);
+  }
+}
 
 function anziehen(ebenen, getragen) {
   var g = getragen || {};
@@ -715,7 +881,7 @@ function anziehen(ebenen, getragen) {
 
   /* ---- 1. Platz schaffen ---- */
   var ruecken = traegt("ruecken");
-  if (ruecken) verbreitern(e, RUECKEN_LUFT[ruecken] || 1);
+  if (ruecken) verbreitern(e, rueckenLuft(ruecken, e));
 
   var kopf = traegt("kopf");
 
@@ -769,12 +935,15 @@ function anziehen(ebenen, getragen) {
     setz(e, kZ, mitte + 3, "▄", K);
     setz(e, kZ, mitte + 4, "▄", K);
     setz(e, kZ, mitte + 5, "▖", K);
+    schliesseOben(e, kZ, K);
   } else if (kopf === "krone") {
     /* Drei Zacken aus dem Wechsel von oberer und unterer Halbzelle: ▀ steht
        oben in der Zeile und liest sich als Spitze, ▄ steht unten und liest
        sich als Tal. Kein Sonderzeichen, das in einen Ersatzfont fallen kann. */
     var zacken = ["▀", "▄", "▀", "▄", "▀"];
     for (var j = 0; j < 5; j++) setz(e, kZ, mitte - 2 + j, zacken[j], K);
+    schliesseOben(e, kZ, K);
+    schliesseOben(e, kZ, K);
   } else if (kopf === "kopfhoerer") {
     /* DER BUEGEL MUSS DIE MUSCHELN BERUEHREN. Bis zum 04.09.2026 lag oben ein
        Balken und unten sassen zwei einzelne Zellen an den Kopfseiten, ohne
@@ -793,18 +962,32 @@ function anziehen(ebenen, getragen) {
     var augZ = e.augen.length ? e.augen[0][0] : e.ohrHoehe + 2;
     var mL = Math.min.apply(null, e.augen.map(function (a) { return a[1]; })) - 2;
     var mR = Math.max.apply(null, e.augen.map(function (a) { return a[1] + a[2] - 1; })) + 2;
-    // Der Buegel: aussen halbe Zellen an den Knicken, in der Mitte volle.
+    /* OBEN DUENN, SEITLICH DICK (Jennifer). Der erste Buegel war ueberall
+       gleich stark und sah dadurch aus wie ein Henkel. Echte Kopfhoerer haben
+       genau diesen Unterschied: ein schmaler Buegel ueber dem Kopf, zwei
+       kraeftige Muscheln an den Seiten.
+
+       Der Buegel ist ▄ und damit eine halbe Zelle hoch, die Schenkel und die
+       Muschel darunter sind volle Zellen ueber drei Zeilen. Das ist der
+       Unterschied.
+
+       WARUM NICHT ▀ FUER DEN BUEGEL, obwohl "oben" ja oben heisst: ▀ fuellt
+       die OBERE Zellhaelfte, die Kopf-Oberkante darunter die untere. Auf
+       derselben Zelle kann nur eins von beiden stehen — der Buegel haette also
+       die Kopfkante verdraengt und waere mit einer halben Zelle Luft ueber dem
+       Kopf geschwebt. ▄ sitzt an genau der Stelle, an der die Kante ohnehin
+       war, und liegt damit auf dem Kopf auf. */
+    for (var b = mL + 1; b < mR; b++) setz(e, kZ, b, "▄", K);
     setz(e, kZ, mL, "▄", K);
-    for (var b = mL + 1; b < mR; b++) setz(e, kZ, b, "█", K);
     setz(e, kZ, mR, "▄", K);
-    // Die Schenkel dazwischen, damit die Linie nicht abreisst.
-    for (var sz = kZ + 1; sz < augZ; sz++) {
+    for (var sz = kZ + 1; sz <= augZ; sz++) {
       setz(e, sz, mL, "█", K);
       setz(e, sz, mR, "█", K);
     }
-    // Die Muscheln selbst, eine Zelle hoch auf Augenhoehe.
-    setz(e, augZ, mL, "█", K);
-    setz(e, augZ, mR, "█", K);
+    // Die Muschel reicht eine Zelle unter die Augenzeile — das macht sie dick.
+    setz(e, augZ + 1, mL, "▀", K);
+    setz(e, augZ + 1, mR, "▀", K);
+    schliesseOben(e, kZ, K);
   }
 
   /* ---- 3. Kleinteile an den Kopfseiten ----
@@ -837,18 +1020,31 @@ function anziehen(ebenen, getragen) {
   }
 
   /* ---- 4. Brille ----
-     Folgt den ECHTEN Augen, nicht einer festen Zeile: sonst sitzt sie bei
-     jeder anderen Figur im Kopf. Danach die Augen wieder obendrauf, sonst
-     traegt die Figur eine Augenbinde statt einer Brille. */
+     ZWEI FASSUNGEN MIT STEG, kein Balken quer ueber dem Gesicht.
+
+     Der erste Entwurf malte ▄ ueber die ganze Augenzeile und setzte die Augen
+     danach wieder obendrauf. Das war technisch richtig und las sich trotzdem
+     als Schlafmaske: eine durchgehende dunkle Linie ueber beiden Augen ist
+     das, was eine Maske ausmacht, und eine Brille ist das Gegenteil davon —
+     sie besteht aus dem, was die Augen UMGIBT.
+
+     Deshalb jetzt: je Auge ein Rand links und rechts, dazwischen der Steg.
+     ▐ fuellt die rechte Zellhaelfte, ▌ die linke — beide schmiegen sich also
+     an das Auge an, statt daneben zu schweben. Die Augen selbst werden gar
+     nicht mehr angefasst; sie bleiben, was sie sind. */
   if (traegt("gesicht") === "brille" && e.augen.length) {
     var G = zeichenVon("gesicht");
-    var zz = e.augen[0][0];
-    var links = Math.min.apply(null, e.augen.map(function (a) { return a[1]; })) - 1;
-    var rechts = Math.max.apply(null, e.augen.map(function (a) { return a[1] + a[2] - 1; })) + 1;
-    for (var sp = links; sp <= rechts; sp++) setz(e, zz, sp, "▄", G);
+    var bz = e.augen[0][0];
     e.augen.forEach(function (a) {
-      for (var q = 0; q < a[2]; q++) setz(e, a[0], a[1] + q, "█", "T");
+      setz(e, bz, a[1] - 1, "▐", G);
+      setz(e, bz, a[1] + a[2], "▌", G);
     });
+    /* Der Steg zwischen den Fassungen. Nur die Zellen, die noch frei sind —
+       bei einem Tier mit eng stehenden Augen beruehren sich die Fassungen
+       schon, und dann gibt es nichts zu ueberbruecken. */
+    var links = Math.min.apply(null, e.augen.map(function (a) { return a[1] + a[2]; }));
+    var rechts = Math.max.apply(null, e.augen.map(function (a) { return a[1]; })) - 1;
+    for (var sp = links + 1; sp < rechts; sp++) setz(e, bz, sp, "▄", G);
   }
 
   /* ---- 5. Schal ----
@@ -869,7 +1065,30 @@ function anziehen(ebenen, getragen) {
     var R = zeichenVon("ruecken");
     var re = e.breite - 1;
     var kZeile = e.ohrHoehe;           // oberste Koerperzeile
-    if (ruecken === "rucksack") {
+    /* OB DIE FIGUR OHREN OBEN TRAEGT, entscheidet beim Rucksack alles.
+       Jennifer: "rucksack funktioniert bei hund aber nicht bei katze, da muss
+       es dann eher neben sein."
+
+       Der Grund steht in der Figur: die Gurte laufen an den Aussenkanten des
+       Koerpers herunter. Beim Hund ist dort Fell (die Schlappohren sitzen noch
+       weiter aussen), die Gurte liegen also AUF der Brust. Bei der Katze
+       laufen sie an derselben Stelle — nur steht dort ueber ihnen eine
+       Ohrspitze, und die Linie liest sich dann als Fortsetzung des Ohrs bis
+       zum Boden. Aus zwei Gurten werden zwei Streben.
+
+       ohrHoehe sagt genau das, und zwar ohne die Tierart zu kennen: > 0 heisst
+       "traegt seine Ohren oben". Dann haengt die Tasche NEBEN der Figur. */
+    var obenOhren = e.ohrHoehe > 0;
+    if (ruecken === "rucksack" && obenOhren) {
+      // Eine Tasche in der Luft rechts, mit einem kurzen Riemen nach oben.
+      var tz = e.augen.length ? e.augen[0][0] : kZeile + 2;
+      setz(e, tz - 1, re, "▄", R);
+      setz(e, tz, re, "█", R);
+      setz(e, tz + 1, re, "█", R);
+      setz(e, tz + 2, re, "▀", R);
+      // Der Riemen, der sie an der Schulter haelt.
+      setz(e, tz - 1, re - 1, "▄", R);
+    } else if (ruecken === "rucksack") {
       /* ZWEI TRAEGER, KEINE TASCHE. Die Figuren sind von vorn gezeichnet; ein
          Rucksack sitzt hinten und ist von vorn nicht zu sehen — was man sieht,
          sind die Gurte ueber den Schultern. Sie faerben nur um und tasten kein
@@ -903,37 +1122,35 @@ function anziehen(ebenen, getragen) {
      reisst ein Blockzeichen heraus. */
   if (e.augen.length) {
     var augZ2 = e.augen[0][0];
-    var lid = traegt("lid");
-    if (lid === "lidschatten") {
-      /* DUENNER SEIT DEM 04.09.2026 (Jennifer: "lidschatten dünner"). Vorher
-         wurde die ganze Zelle ueber dem Auge umgefaerbt — eine volle Zellhoehe
-         Farbe ueber einem zwei Zellen breiten Auge, das las sich als Balken.
 
-         Jetzt ▄ statt der ganzen Zelle: nur die untere Haelfte traegt Farbe,
-         und die liegt direkt auf dem Auge auf. Die obere Haelfte bekommt ueber
-         AUF_FELL den Fellgrund — ohne den waere dort ein Loch, durch das die
-         Karte scheint. Genau deshalb ist der Slot "lid" als aufFell markiert. */
+    /* LIDSCHATTEN UND WIMPERN LIEGEN AUF DERSELBEN ZELLE und schliessen sich
+       trotzdem nicht mehr aus (Jennifer: "lidschatten und wimpern kann man ja
+       hoffentlich kombinieren").
+
+       Aufgeloest ueber die zwei Ebenen, die der Maler ohnehin hat: der
+       Lidschatten wird zur ZELLFARBE, die Wimper zum ZEICHEN darin. Genau die
+       Reihenfolge, in der man es auch auftraegt. Der Schluessel dafuer ist
+       WIMPER_AUF_LID; farbTabelle() baut ihn aus beiden Farben.
+
+       Allein getragen bleibt jedes bei seinem eigenen Schluessel — sonst
+       muesste farbTabelle() eine Farbe erfinden, die niemand gewaehlt hat. */
+    var hatLid = traegt("lid") === "lidschatten";
+    var hatWimpern = traegt("wimpern") === "wimpern";
+    if (hatLid && !hatWimpern) {
       var L = zeichenVon("lid");
       e.augen.forEach(function (a) {
         for (var q = 0; q < a[2]; q++) setz(e, a[0] - 1, a[1] + q, "▄", L);
       });
-    } else if (lid === "wimpern") {
-      /* GESTUECKELT, nicht durchgezogen (Jennifer: "wimpern sollten gestückelt
-         sein … man sollte die individuellen wimpern sehen"). Ein durchgehendes
-         ▄ ueber dem Auge ist ein Lidstrich, keine Wimpern.
-
-         Viertelbloecke geben je Zelle einen einzelnen Strich, und weil ▖ links
-         und ▗ rechts in der Zelle sitzt, stehen sie ABWECHSELND weiter aussen
-         und weiter innen. Bei zwei Zellen Augenbreite sind das vier Wimpern je
-         Auge mit ungleichem Abstand — genau das, was einen Wimpernkranz von
-         einem Strich unterscheidet.
-
-         Sie sitzen unten in ihrer Zelle und damit direkt auf dem Auge auf;
-         der Rest der Zelle ist Fellgrund (AUF_FELL). */
-      var L2 = zeichenVon("lid");
+    }
+    if (hatWimpern) {
+      /* Viertelbloecke geben je Zelle einen einzelnen Strich, und weil ▖ links
+         und ▗ rechts in der Zelle sitzt, stehen sie abwechselnd weiter aussen
+         und weiter innen — vier Wimpern je Auge mit ungleichem Abstand. Genau
+         das unterscheidet einen Wimpernkranz von einem Lidstrich. */
+      var YK = hatLid ? WIMPER_AUF_LID : zeichenVon("wimpern");
       e.augen.forEach(function (a) {
         for (var q = 0; q < a[2]; q++) {
-          setz(e, a[0] - 1, a[1] + q, q % 2 === 0 ? "▖" : "▗", L2);
+          setz(e, a[0] - 1, a[1] + q, q % 2 === 0 ? "▖" : "▗", YK);
         }
       });
     }
@@ -949,10 +1166,8 @@ function anziehen(ebenen, getragen) {
       var wz = augZ2 + 1;
       e.augen.forEach(function (a) {
         if (wange === "rouge") {
-          // Weicher Fleck direkt unter dem Auge: nur umfaerben, kein Zeichen antasten.
           for (var q = 0; q < a[2]; q++) setz(e, wz, a[1] + q, null, W);
         } else if (wange === "sommersprossen") {
-          // Zwei Viertelbloecke je Auge, mit Fellhintergrund (siehe AUF_FELL).
           setz(e, wz, a[1], "▘", W);
           setz(e, wz, a[1] + a[2], "▝", W);
         }
@@ -969,22 +1184,18 @@ function anziehen(ebenen, getragen) {
   }
 
   /* ---- 8. Lippenstift ----
-     LIPPEN NEBEN DER NASE, NICHT AUF IHR. Bis zum 04.09.2026 suchte sich diese
-     Stelle das Maul ueber die MASKE (die einzige Tinte-Zelle unterhalb der
-     Augen) und faerbte es rot. Jennifers Befund im ersten Durchgang: "lmao bei
-     lippen verliert er die nase."
+     LIPPEN NEBEN DER NASE, NICHT AUF IHR. Bis zum 04.09.2026 faerbte diese
+     Stelle das Maul rot. Jennifers Befund: "lmao bei lippen verliert er die
+     nase" — und sie hatte recht, der dunkle Fleck IST die Nase, und ein
+     Gesicht aus Blockgrafik hat genau einen davon.
 
-     Sie hatte recht, und der Fehler war ein Denkfehler, kein Tippfehler: der
-     dunkle Fleck IST die Nase. Ein Gesicht aus Blockgrafik hat genau einen
-     dunklen Punkt in der hellen Schnauze, und der traegt die ganze Mimik. Wer
-     ihn umfaerbt, nimmt sie weg — was danach dasteht, ist ein roter Fleck ohne
-     Gesicht drumherum.
-
-     Jetzt bekommt der Laden `maul` und `schnauze` aus figurEbenen() und legt
-     die Lippen auf die Schnauzenzellen NEBEN dem Maul. Die Nase bleibt dunkel,
-     links und rechts davon wird es rot — und weil die Schnauze ohnehin die
-     helle Flaeche im Gesicht ist, liegt der Lippenstift genau dort, wo er
-     hingehoert.
+     ZUSAETZLICH BEKOMMT DIE NASE IHREN EIGENEN SCHLUESSEL. Im zweiten
+     Durchgang: "lippenstift war doch gut so, aber die nase war eben nicht mehr
+     schwarz." Sie trug bis dahin die Tinte des Eis, und die ist je nach Ei ein
+     mittleres Violett oder Braun — zwischen zwei roten Lippen liest sich das
+     als Teil des Mundes statt als Nase. Mit einem eigenen Schluessel kann
+     farbTabelle() ihr ein sattes Dunkel geben, und zwar NUR solange
+     Lippenstift getragen wird; ohne ihn bleibt das Gesicht, wie es war.
 
      Faellt zurueck auf das Maul selbst, wenn eine Figur gar keine Schnauze hat
      (der Blob). Dort gibt es keine Nase, die verlorengehen koennte. */
@@ -992,8 +1203,12 @@ function anziehen(ebenen, getragen) {
     var P = zeichenVon("mund");
     var maulSp = (e.maul || []).map(function (m) { return m[1]; });
     var lippen = (e.schnauze || []).filter(function (x) { return maulSp.indexOf(x[1]) < 0; });
-    if (lippen.length) lippen.forEach(function (x) { setz(e, x[0], x[1], null, P); });
-    else (e.maul || []).forEach(function (m) { setz(e, m[0], m[1], null, P); });
+    if (lippen.length) {
+      lippen.forEach(function (x) { setz(e, x[0], x[1], null, P); });
+      (e.maul || []).forEach(function (m) { setz(e, m[0], m[1], null, zeichenVon("nase")); });
+    } else {
+      (e.maul || []).forEach(function (m) { setz(e, m[0], m[1], null, P); });
+    }
   }
 
   return e;
@@ -1028,10 +1243,16 @@ function malen(e, FARBE) {
       if (!puffer) return;
       if (k === " ") { out += puffer; puffer = ""; return; }
       var eintrag = FARBE[k];
-      var farbe = (eintrag && typeof eintrag === "object") ? eintrag.farbe : eintrag;
-      var verlauf = !!(eintrag && typeof eintrag === "object" && eintrag.verlauf);
-      var schimmert = !!(eintrag && typeof eintrag === "object" && eintrag.schimmert);
-      var glanz = !!(eintrag && typeof eintrag === "object" && eintrag.glanz);
+      var objekt = eintrag && typeof eintrag === "object";
+      var farbe = objekt ? eintrag.farbe : eintrag;
+      var verlauf = !!(objekt && eintrag.verlauf);
+      var schimmert = !!(objekt && eintrag.schimmert);
+      var glanz = !!(objekt && eintrag.glanz);
+      var zart = !!(objekt && eintrag.zart);
+      var blinzelt = !!(objekt && (eintrag.blinzelt || eintrag.auge));
+      var schwingt = !!(objekt && eintrag.schwingt);
+      // Ein eigener Zellgrund (Wimper auf Lidschatten). Sonst das Fell.
+      var grund = (objekt && eintrag.grund) || GRUND;
       if (!farbe) farbe = GRUND;
 
       /* ---- Wie viele Spans die Zelle braucht ----
@@ -1040,32 +1261,38 @@ function malen(e, FARBE) {
 
            - der VERLAUF, weil background-clip:text alle Hintergruende der
              Zelle auf die Glyphe beschneidet — auch den Fellgrund;
-           - der SCHIMMER, weil opacity das ganze Element ausblendet, den
-             Fellgrund eingeschlossen.
+           - der SCHIMMER und das BLINZELN, weil beide das ganze Element
+             ausblenden bzw. stauchen, den Fellgrund eingeschlossen;
+           - ZART, weil eine halbe Deckkraft sonst auch den Grund halbiert und
+             die Karte durchscheinen laesst.
 
-         Beide ergeben auf einem einzigen Span dasselbe Ergebnis, und es ist
-         dasselbe falsche: ein Loch, durch das die Karte scheint. Beim Glitzer
-         hat man das erst im Browser gesehen, weil das Loch nur waehrend der
-         halben Sekunde offen steht, in der er weggeblendet ist.
+         Alle vier ergeben auf einem einzigen Span dasselbe falsche Ergebnis:
+         ein Loch, durch das die Karte scheint. Beim Glitzer stand es nur
+         waehrend der halben Sekunde offen, in der er weggeblendet war —
+         deshalb hat man es erst im Browser gesehen.
 
-         Jennifers Vorgabe fuer den Glitzer war ausdruecklich "zwischen
-         Glitzerstern auf Farbe und Farbe" — also bis auf die Fellfarbe
-         herunter und zurueck, nicht bis auf die Karte. Genau das leistet die
-         Teilung: aussen der Fellgrund, der stehen bleibt, innen das Zeichen,
-         das verschwindet. */
+         Die Teilung loest es sauber: aussen der Grund, der stehen bleibt,
+         innen das Zeichen, das sich bewegt oder durchscheint. */
       var klassen = [];
       if (schimmert) klassen.push("mk-schimmer");
       if (glanz) klassen.push("mk-glanz");
       if (verlauf) klassen.push("mk-verlauf");
+      if (zart) klassen.push("mk-zart");
+      if (blinzelt) klassen.push("mk-blinzelt");
+      if (schwingt) klassen.push("mk-fluegel");
       var aufFell = AUF_FELL.indexOf(k) >= 0;
-      var eigenerGrund = aufFell && (verlauf || schimmert);
+      var eigenerGrund = (aufFell || blinzelt) && (verlauf || schimmert || zart || blinzelt);
 
       var stil = verlauf ? "background-image:" + farbe : "color:" + farbe;
-      if (aufFell && !eigenerGrund) stil += ";background:" + GRUND;
+      if (aufFell && !eigenerGrund) stil += ";background:" + grund;
 
       var kern = "<span" + (klassen.length ? ' class="' + klassen.join(" ") + '"' : "") +
                  ' style="' + stil + '">' + puffer + "</span>";
-      out += eigenerGrund ? '<span style="background:' + GRUND + '">' + kern + "</span>" : kern;
+      // Der Aussengrund entfaellt, wenn die Zelle gar keinen braucht (die
+      // Augen sitzen im Fell und bekommen ihn ueber aufFell nicht).
+      out += eigenerGrund
+        ? '<span style="background:' + (aufFell ? grund : GRUND) + '">' + kern + "</span>"
+        : kern;
       puffer = "";
     }
     for (var j = 0; j < zeile.length; j++) {
@@ -1208,11 +1435,11 @@ function blattFuellen(blatt, api) {
        sehen, ohne zu scrollen. Nach einem Kauf springt blatt.scrollTop auf 0
        und damit genau hierher. */
     var hgKey = api.wahl("hintergrund");
-    var buehne = el("div", "shop-buehne " + hintergrundKlassen(hgKey, api.nacht()));
-    var hg = hintergrundStil(hgKey, api.nacht());
-    if (hg) buehne.style.backgroundImage = hg;
+    var buehne = el("div", ("shop-buehne " + hintergrundKlassen(hgKey, api.nacht())).trim());
+    // Die drei Ebenen als HTML voran; die Figur kommt danach und liegt darueber.
+    buehne.innerHTML = hintergrundHtml(hgKey, api.nacht());
     var buehneBild = document.createElement("pre");
-    buehneBild.className = "shop-buehne-bild";
+    buehneBild.className = ("shop-buehne-bild " + figurKlassen(getragen)).trim();
     buehneBild.setAttribute("aria-hidden", "true");
     buehneBild.innerHTML = api.figur({ look: look, getragen: getragen });
     buehne.appendChild(buehneBild);
@@ -1248,10 +1475,12 @@ function blattFuellen(blatt, api) {
         bild.setAttribute("aria-hidden", "true");
         bild.innerHTML = opt.bildHtml;
         karte.appendChild(bild);
-      } else if (opt.flaeche) {
+      } else if (opt.flaeche != null) {
         var f = el("div", "shop-flaeche" + (opt.flaecheKlassen ? " " + opt.flaecheKlassen : ""));
-        f.style.backgroundImage = opt.flaeche;
         f.setAttribute("aria-hidden", "true");
+        // Bei einem Hintergrund kommen die Ebenen mit; ein Farbtopf ist nur Farbe.
+        if (opt.flaecheHtml) f.innerHTML = opt.flaecheHtml;
+        else f.style.backgroundImage = opt.flaeche;
         karte.appendChild(f);
       }
 
@@ -1372,7 +1601,7 @@ function blattFuellen(blatt, api) {
         r.appendChild(kachel({
           name: stueck.name, hinweis: stueck.hinweis, preis: stueck.preis,
           bildHtml: api.figur({ look: look, getragen: nur }),
-          bildKlasse: "shop-bild-figur",
+          bildKlasse: ("shop-bild-figur " + figurKlassen(nur)).trim(),
           hat: hat, an: an, slot: stueck.slot, farbe: an ? eintrag.farbe : null,
           ausText: ausText,
           kaufen: function () {
@@ -1447,6 +1676,7 @@ function blattFuellen(blatt, api) {
       rHg.appendChild(kachel({
         name: h.name, hinweis: h.hinweis, preis: h.preis,
         flaeche: hintergrundStil(h.key, api.nacht()) || "linear-gradient(var(--paper-2), var(--paper-2))",
+        flaecheHtml: hintergrundHtml(h.key, api.nacht()),
         flaecheKlassen: hintergrundKlassen(h.key, api.nacht()),
         hat: hat, an: an, anText: "ist an", ausText: "aufhängen",
         ablegen: h.key === "keiner" ? null : function () { api.waehle("hintergrund", "keiner"); nachKauf(); },
@@ -1483,7 +1713,7 @@ export {
   KLEIDUNG, MAKEUP, FARBTOEPFE, LOOKS, HINTERGRUENDE, PETS, REGALE,
   preis, preisText, preisGesprochen, fehltText, bezahlbar,
   stueckVon, stueckId, farbeVon, farbTabelle, farbenFuer,
-  hintergrundStil, hintergrundKlassen,
+  hintergrundStil, hintergrundKlassen, hintergrundHtml, figurKlassen,
   petVon, petHtml,
   anziehen, malen, alsText, verbreitern, zeileOben, setz, kopie,
   blattFuellen, buehneSatz,

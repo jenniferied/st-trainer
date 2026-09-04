@@ -1095,7 +1095,7 @@ function home() {
   const hubExtra = {
     begriffe: () => begriffeHome(home),
     warmhalten: () => starte({
-      modus: "spaced", anzahl: 15, auswahl: "smart", spaced: true,
+      modus: "spaced", anzahl: Spiele.whRunde(), auswahl: "smart", spaced: true,
       timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
       sprache: "schwer", nurPingo: C.nurPingoGemerkt(),
     }),

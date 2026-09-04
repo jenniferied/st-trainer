@@ -750,10 +750,14 @@ function figurEbenen(variante, stufe, nacht) {
 
   /* Offenes Auge volle Zelle, nachts eine halbe: ein Lid, das faellt - und
      kein Sonderzeichen, das in einen Ersatzfont fallen koennte. */
+  /* Die Augen tragen seit dem 04.09.2026 den Schluessel "E" statt "T", obwohl
+     sie dieselbe Farbe haben wie das Maul. Der Grund ist das Blinzeln: es ist
+     eine Animation auf dem Zeichen, und mit einem gemeinsamen Schluessel haette
+     das Maul mitgeblinzelt. farbTabelle() gibt E dieselbe Farbe wie T. */
   const augeCh = nacht ? "▄" : "█";
   k.augen.forEach((a) => {
     for (let i = 0; i < k.augenBreit; i++) {
-      setzTier(zeilen, maske, a[0] + hoch, a[1] + i, ahnung ? "▄" : augeCh, ahnung ? "A" : "T");
+      setzTier(zeilen, maske, a[0] + hoch, a[1] + i, ahnung ? "▄" : augeCh, ahnung ? "A" : "E");
     }
   });
   if (!ahnung) k.maul.forEach((m) => setzTier(zeilen, maske, m[0] + hoch, m[1], "▄", "T"));
@@ -1125,7 +1129,11 @@ function standHtml(tz) {
      umgekehrte Fall: liefe ein gesyncter Stand mit unbekannten Schluesseln hier
      durch, bliebe die Figur trotzdem heil — anziehen() zeichnet nur, was es kennt. */
   const traegtWas = stufe >= SHOP_STUFE ? { look: wahl("look"), getragen: outfit() } : null;
-  const pre = `<pre class="mk-ei${anim}" aria-hidden="true">${bildHtml(v, stufe, t.nacht, traegtWas)}</pre>`;
+  // Was sich BEWEGEN soll, kann keine Zelle sein - die Musiknoten aus den
+  // Kopfhoerern steigen auf und verlassen dabei die Figur. Sie haengen als
+  // Ebene am <pre>, siehe geteilt-laden.js figurKlassen().
+  const figKl = traegtWas ? Laden.figurKlassen(traegtWas.getragen) : "";
+  const pre = `<pre class="mk-ei${anim}${figKl ? " " + figKl : ""}" aria-hidden="true">${bildHtml(v, stufe, t.nacht, traegtWas)}</pre>`;
   const titel = chatTitel(stufe);
   // NUR hier, in der ruhigen Ansicht. Ankunft und Schluepfen sind Momente, die
   // genau einmal stattfinden; dort darf nichts damit konkurrieren.
@@ -1158,8 +1166,10 @@ function standHtml(tz) {
     ? Laden.hintergrundStil(hgKey, nachtJetzt()) : null;
   // Die Klassen tragen die BEWEGTEN Ebenen (Sterne, Schnee). Sie lassen sich
   // nicht als Farbwert ausdruecken - ein Verlauf funkelt nicht.
+  // Die drei Ebenen zuerst, die Figur danach: sie liegt darueber (z-index in
+  // shop.css) und wird von der Ausblendung nach aussen NICHT erfasst.
   const mitHg = hgStil
-    ? `<div class="${("mk-hintergrund " + Laden.hintergrundKlassen(hgKey, nachtJetzt())).trim()}" style="background-image:${hgStil}">${mitPet}</div>`
+    ? `<div class="${("mk-hintergrund " + Laden.hintergrundKlassen(hgKey, nachtJetzt())).trim()}">${Laden.hintergrundHtml(hgKey, nachtJetzt())}${mitPet}</div>`
     : mitPet;
 
   return `<div class="mk-zeile">

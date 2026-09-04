@@ -779,12 +779,22 @@ function figurEbenen(variante, stufe, nacht) {
      1: bis Stufe 4 hat der Blob noch keine Ohren.
 
      augenBreit wird hier aufgeloest: der Laden soll nicht wissen muessen, dass
-     ein Blob einzellige Augen hat und alles andere zweizellige. */
+     ein Blob einzellige Augen hat und alles andere zweizellige.
+
+     maul und schnauze kamen am 04.09.2026 dazu, wegen genau einem Satz von
+     Jennifer: "bei lippen verliert er die nase". Der Lippenstift suchte sich
+     das Maul ueber die MASKE (die einzige Tinte-Zelle unter den Augen) und
+     faerbte es um — damit war der dunkle Fleck weg, der als Nase gelesen wird.
+     Jetzt bekommt der Laden beides benannt und legt die Lippen NEBEN die Nase.
+
+     Ein Blob hat weder Schnauze noch Brustmarke; die Listen sind dann leer. */
   return {
     zeilen, maske,
     breite: zeilen[0].length,
     ohrHoehe: hoch,
     augen: k.augen.map((a) => [a[0] + hoch, a[1], k.augenBreit]),
+    maul: (k.maul || []).map((m) => [m[0] + hoch, m[1]]),
+    schnauze: (k.schnauze || []).map((x) => [x[0] + hoch, x[1]]),
     unten: zeilen.length - 1,
   };
 }
@@ -1146,8 +1156,10 @@ function standHtml(tz) {
   const hgKey = stufe >= SHOP_STUFE ? wahl("hintergrund") : null;
   const hgStil = hgKey && besitzt(Laden.stueckId("hintergrund", hgKey))
     ? Laden.hintergrundStil(hgKey, nachtJetzt()) : null;
+  // Die Klassen tragen die BEWEGTEN Ebenen (Sterne, Schnee). Sie lassen sich
+  // nicht als Farbwert ausdruecken - ein Verlauf funkelt nicht.
   const mitHg = hgStil
-    ? `<div class="mk-hintergrund" style="background-image:${hgStil}">${mitPet}</div>`
+    ? `<div class="${("mk-hintergrund " + Laden.hintergrundKlassen(hgKey, nachtJetzt())).trim()}" style="background-image:${hgStil}">${mitPet}</div>`
     : mitPet;
 
   return `<div class="mk-zeile">

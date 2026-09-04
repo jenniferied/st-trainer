@@ -381,6 +381,8 @@ function kontrastHtml(gruppe) {
     </div></div>`;
 }
 
+const konzepteHabenBeide = (gruppe) => gruppe.konzepte.some((k) => k.key === "beide");
+
 // ============ GAME 1: Verwechslungspaare ============
 /* 8 -> 10 am 04.09.2026 (Jennifer: "ganz subtil die Zahl der Antworten
    erhoehen"). Die Verschaerfung sitzt bewusst HIER und nicht am Tagesziel:
@@ -409,7 +411,22 @@ export function vpSpiel(zurueckFn, gruppeId = null) {
      eine Gruppe. Das ist die Bereiche-Haelfte von Jennifers "fragen/bereiche". */
   const stufe = stufeFuerIds(gruppe.items.map((i) => i.id), bk);
   const rundenLaenge = stufe >= 3 ? VP_RUNDE_BOSS : VP_RUNDE;
-  const items = zieh(gruppe.items, Math.min(rundenLaenge, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
+  let items = zieh(gruppe.items, Math.min(rundenLaenge, gruppe.items.length), (i) => 1 + Math.min(3, itemFehler[i.id] || 0));
+  /* Mindestens EINE beide-Karte, wenn die Gruppe das dritte Fach hat.
+     Nachgerechnet am 04.09.2026 gegen Roses echte Fehlerzahlen: ohne diesen
+     Boden haette bei vp-datennutzung jede achte Runde gar keine enthalten
+     (12,6 %), bei vp-parsons-funktionen jede zehnte. In so einer Runde traefe
+     Rose das dritte Fach als Ueberraschung, und die Kontrast-Karte am Ende
+     erklaerte eine Unterscheidung, die in der Runde nie vorkam.
+     Getauscht wird die zuletzt gezogene Karte, danach wird neu gemischt, damit
+     die beide-Karte nicht immer am selben Platz steht. */
+  if (konzepteHabenBeide(gruppe) && !items.some((i) => i.richtig === "beide")) {
+    const kandidaten = gruppe.items.filter((i) => i.richtig === "beide" && !items.includes(i));
+    if (kandidaten.length) {
+      items[items.length - 1] = zieh(kandidaten, 1)[0];
+      items = zieh(items, items.length);
+    }
+  }
   const t = C.THEMEN[gruppe.oberthema] || {};
   let idx = 0, richtig = 0, t0 = Date.now();
 

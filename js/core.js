@@ -1889,7 +1889,7 @@ function snapshot() {
    Merge findet auf der Gegenseite eben nichts. Ein ENTFERNTES Feld wird
    stillschweigend nicht mehr gemerged und faellt beim naechsten Push des
    anderen Geraets weg. */
-export const MK_WAHL_FELDER = ["pet", "getragen", "look", "hintergrund", "tier"];
+export const MK_WAHL_FELDER = ["pet", "getragen", "look", "hintergrund", "tier", "farben"];
 
 /* Die Kauf-Ids eines mk-Objekts, sortiert und entdoppelt. Reine Funktion —
    signatur() wird auch auf die SERVER-Antwort angewandt, und eine dort doppelt

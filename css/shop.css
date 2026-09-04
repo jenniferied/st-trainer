@@ -242,7 +242,7 @@
      größer sein, damit man mehr sieht — z. B. sieht man die wolken ja gar
      nicht"). Ein Verlauf, der nur die Figur umrandet, zeigt von einer Wolke
      einen Streifen. */
-  min-height: 178px; padding: 34px 30px 24px;
+  min-height: 210px; padding: 42px 40px 28px;
   position: relative;
   margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 14px;
@@ -272,7 +272,7 @@
    Farbtoepfe und Hintergruende haben keine Blockgrafik — sie SIND die Farbe.
    Ein Rechteck in der Sache selbst sagt mehr als jedes Symbol davor. */
 .shop-flaeche {
-  width: 100%; height: 78px; border-radius: 10px;
+  width: 100%; height: 92px; border-radius: 10px;
   position: relative; overflow: hidden;
   background-size: cover; background-position: center;
   border: 1px solid var(--line);
@@ -319,7 +319,7 @@
      der Figur (mk-figur-hof). Mit gleichem Rand ringsum steht es fast auf der
      Kante, und der Himmel hoert genau dort auf, wo das zweite Wesen anfaengt.
      Oben am meisten — dort haengen Sonne, Wolken und Sterne. */
-  padding: 26px 30px 14px 20px; border-radius: 14px;
+  padding: 32px 42px 18px 26px; border-radius: 16px;
   background-size: cover; background-position: center;
   flex-shrink: 0;
   position: relative; overflow: hidden;
@@ -426,14 +426,19 @@
    Rechteck; das ist haesslich, aber nichts geht kaputt. */
 .mk-hg-bild {
   background-size: cover; background-position: center;
-  -webkit-mask-image: radial-gradient(ellipse 78% 82% at 50% 46%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
-  mask-image: radial-gradient(ellipse 78% 82% at 50% 46%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+  /* KOMPLETT ausgeblendet zum Rand (Jennifer: "die hintergründe sollen
+     komplett faden zum rand"). Der erste Versuch endete bei 100 % und damit
+     genau an der Kante — sichtbar blieb ein Rest Rechteck. Jetzt ist bei 88 %
+     schon nichts mehr da, und der Kern deckt nur noch bis 24 %: der Uebergang
+     ist dadurch lang statt hart. */
+  -webkit-mask-image: radial-gradient(ellipse 72% 76% at 50% 45%, #000 24%, rgba(0,0,0,.42) 58%, transparent 88%);
+  mask-image: radial-gradient(ellipse 72% 76% at 50% 45%, #000 24%, rgba(0,0,0,.42) 58%, transparent 88%);
 }
 /* Die Deko wird MIT ausgeblendet — sonst schwebten Sterne und Flocken noch
    dort, wo der Himmel laengst aufgehoert hat. */
 .mk-hg-flor, .mk-hg-extra {
-  -webkit-mask-image: radial-gradient(ellipse 76% 80% at 50% 46%, #000 40%, rgba(0,0,0,.5) 70%, transparent 100%);
-  mask-image: radial-gradient(ellipse 76% 80% at 50% 46%, #000 40%, rgba(0,0,0,.5) 70%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 74% at 50% 45%, #000 22%, rgba(0,0,0,.4) 56%, transparent 86%);
+  mask-image: radial-gradient(ellipse 70% 74% at 50% 45%, #000 22%, rgba(0,0,0,.4) 56%, transparent 86%);
 }
 
 /* ---------- Sterne ----------
@@ -479,7 +484,11 @@
   background-size: 300px 110px; background-repeat: repeat-x;
   background-position-y: 12%;
   opacity: .9;
-  animation: mk-zieht 46s linear infinite;
+  /* Langsamer seit dem 04.09. abends (Jennifer: "clouds can be a bit slower").
+     46 Sekunden waren schon gemaechlich, aber man SAH sie ziehen — und etwas,
+     das man ziehen sieht, zieht auch den Blick. 78 Sekunden fuer eine
+     Kachelbreite heisst: es hat sich bewegt, wenn man zweimal hinsieht. */
+  animation: mk-zieht 78s linear infinite;
 }
 @keyframes mk-zieht {
   from { background-position-x: 0; }
@@ -503,15 +512,29 @@
 }
 
 /* ---------- Gras ----------
-   Sitzt unten und wiederholt sich nur waagerecht. Es bewegt sich NICHT: ein
-   Grashalm, der wackelt, waere die dritte Bewegung in einer Karte, die beim
-   Lernen im Blick steht. */
+   Gebogene Halme mit runden Enden statt spitzer Dreiecke, und sie WIEGEN SICH
+   IM WIND — aber nur oben (Jennifer: "weniger spitz und im wind leicht wiegen,
+   aber nur oben am halm; zudem sollten sie eh leicht gebogen sein").
+
+   "Nur oben" ist der interessante Teil, denn eine Hintergrundgrafik laesst sich
+   nicht teilweise bewegen. skewX mit transform-origin unten loest es trotzdem:
+   die Scherung ist an der Unterkante null und waechst nach oben — die Halme
+   stehen also fest im Boden und neigen ihre Spitzen. Genau das, was Wind mit
+   Gras macht.
+
+   Zurueckhaltender als vorher (opacity .38): es ist Hintergrund, kein Motiv. */
 .mk-hg-gras .mk-hg-extra::before {
   content: ""; position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2060%2030'%3E%3Cpath%20d='M2%2030%20L4.2%208%20L6.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M9%2030%20L10.8%2015%20L12.6%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M15%2030%20L17.4%204%20L19.8%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M23%2030%20L25.0%2012%20L27.0%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M30%2030%20L32.2%207%20L34.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M37%2030%20L38.7%2017%20L40.4%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M43%2030%20L45.5%202%20L48.0%2030%20Z'%20fill='%23fff'/%3E%3Cpath%20d='M51%2030%20L53.0%2011%20L55.0%2030%20Z'%20fill='%23fff'/%3E%3C/svg%3E");
-  background-size: 60px 30px; background-repeat: repeat-x;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2060%2030'%3E%3Cpath%20d='M3%2030%20Q4.4%2018.0%206.5%2010'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M11%2030%20Q10.0%2022.2%208.5%2017'%20stroke='%23fff'%20stroke-width='2.2'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M18%2030%20Q19.6%2015.600000000000001%2022.0%206'%20stroke='%23fff'%20stroke-width='2.8'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M26%2030%20Q24.8%2020.4%2023.0%2014'%20stroke='%23fff'%20stroke-width='2.4'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M33%2030%20Q34.28%2017.4%2036.2%209'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M41%2030%20Q40.12%2022.8%2038.8%2018'%20stroke='%23fff'%20stroke-width='2.0'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M47%2030%20Q48.68%2014.4%2051.2%204'%20stroke='%23fff'%20stroke-width='3.0'%20stroke-linecap='round'%20fill='none'/%3E%3Cpath%20d='M55%2030%20Q53.64%2019.8%2051.6%2013'%20stroke='%23fff'%20stroke-width='2.4'%20stroke-linecap='round'%20fill='none'/%3E%3C/svg%3E");
+  background-size: 58px 28px; background-repeat: repeat-x;
   background-position: bottom;
-  opacity: .5;
+  opacity: .38;
+  transform-origin: 50% 100%;
+  animation: mk-wiegt 6.5s ease-in-out infinite;
+}
+@keyframes mk-wiegt {
+  0%, 100% { transform: skewX(-2.2deg); }
+  50% { transform: skewX(2.2deg); }
 }
 
 /* ---------- Sonnenstrahlen ----------
@@ -530,30 +553,66 @@
 }
 @keyframes mk-strahlt { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
 
-/* ---------- Sternschnuppe ----------
-   Sie faellt SELTEN. 14 Sekunden Umlauf, davon knapp eine sichtbar — der Rest
-   der Zeit steht sie auf opacity 0 ausserhalb des Bildes. Genau das macht sie
-   zu einem kleinen Ereignis statt zu einer Animation. */
-.mk-hg-schnuppe .mk-hg-extra::after {
+/* ---------- Sternschnuppen ----------
+   Sie fallen SELTEN und jetzt in die richtige Richtung. Im ersten Entwurf
+   zeigte der Schweif nach oben rechts, waehrend sich die Schnuppe nach unten
+   rechts bewegte — sie flog also rueckwaerts. Der Schweif liegt jetzt hinter
+   dem Kopf, dort, wo sie herkam.
+
+   Der Kopf ist ein STERN, kein Kreis (Jennifer). Eine runde Murmel mit einem
+   Strich dahinter ist ein Komet; eine Sternschnuppe soll aussehen wie das,
+   wonach sie heisst — und der Vierzack ist derselbe wie im Sternenfeld
+   darunter, also dieselbe Handschrift.
+
+   ZWEI Stueck ("es können mehr sein"), auf verschiedenen Bahnen und mit
+   verschiedenen Umlaeufen: 13 und 19 Sekunden. Weil die beiden Zahlen
+   teilerfremd sind, treffen sie sich praktisch nie — es sieht nach Zufall aus,
+   ohne dass irgendwo gewuerfelt wird. Sichtbar ist jede nur gut eine Sekunde
+   je Umlauf; genau das macht sie zu einem kleinen Ereignis. */
+.mk-hg-schnuppe .mk-hg-extra::after,
+.mk-hg-schnuppe .mk-hg-bild::after {
   content: ""; position: absolute;
-  top: 6%; left: 4%; width: 34px; height: 34px;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2034%2034'%3E%3Cpath%20d='M2%2030%20L30%202'%20stroke='%23fff'%20stroke-width='2.2'%20stroke-linecap='round'%20opacity='.75'/%3E%3Ccircle%20cx='30'%20cy='2'%20r='2.6'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2036%2036'%3E%3Cpath%20d='M2%202%20L26%2026'%20stroke='%23fff'%20stroke-width='2.2'%20stroke-linecap='round'%20opacity='.7'/%3E%3Cpath%20d='M28%2022.6L29.404%2026.596L33.4%2028L29.404%2029.404L28%2033.4L26.596%2029.404L22.6%2028L26.596%2026.596Z'%20fill='%23fff'/%3E%3C/svg%3E");
   background-size: contain; background-repeat: no-repeat;
   opacity: 0;
-  animation: mk-schnuppe 14s linear infinite;
 }
-@keyframes mk-schnuppe {
-  0%, 82% { opacity: 0; transform: translate(0, 0) scale(.8); }
-  84% { opacity: .9; }
-  95% { opacity: 0; transform: translate(150px, 96px) scale(1); }
-  100% { opacity: 0; transform: translate(150px, 96px) scale(1); }
+.mk-hg-schnuppe .mk-hg-extra::after {
+  top: 4%; left: 2%; width: 32px; height: 32px;
+  animation: mk-schnuppe-a 13s linear infinite;
+}
+.mk-hg-schnuppe .mk-hg-bild::after {
+  top: 2%; left: 42%; width: 22px; height: 22px;
+  animation: mk-schnuppe-b 19s linear infinite;
+  animation-delay: -6s;
+}
+@keyframes mk-schnuppe-a {
+  0%, 84% { opacity: 0; transform: translate(0, 0); }
+  86% { opacity: .95; }
+  97% { opacity: 0; transform: translate(120px, 118px); }
+  100% { opacity: 0; transform: translate(120px, 118px); }
+}
+@keyframes mk-schnuppe-b {
+  0%, 88% { opacity: 0; transform: translate(0, 0); }
+  90% { opacity: .8; }
+  99% { opacity: 0; transform: translate(78px, 82px); }
+  100% { opacity: 0; transform: translate(78px, 82px); }
 }
 
 /* ---------- Halb durchscheinende Marken ----------
-   Sommersprossen und Rouge (Jennifer: "halbtransparent"). Die Deckkraft sitzt
-   auf dem INNEREN Span; der Fellgrund liegt aussen und bleibt voll — sonst
-   waere es keine zarte Marke, sondern ein halbes Loch. Siehe malen(). */
-.mk-zart { opacity: .55; }
+   Nur noch die Sommersprossen. Rouge lief zuerst auch hierueber, faerbt aber
+   seit dem 04.09.2026 ueber einen radialen Verlauf (farbTabelle): das laeuft
+   nach aussen aus, statt gleichmaessig blass zu sein, und liest sich damit
+   als aufgetragen statt als aufgeklebt.
+
+   Die Deckkraft sitzt auf dem INNEREN Span; der Fellgrund liegt aussen und
+   bleibt voll — sonst waere es keine zarte Marke, sondern ein halbes Loch. */
+.mk-zart { opacity: .62; }
+
+/* ---------- Was sich dreht ----------
+   Die Bluete. Sehr langsam (18 Sekunden je Umdrehung) und in einer Richtung —
+   schneller waere ein Propeller, und hin und her waere nervoes. */
+@keyframes mk-drehen { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.mk-dreht { display: inline-block; animation: mk-drehen 18s linear infinite; }
 
 /* ---------- Blinzeln ----------
    Jennifer: "wimpern sind cute, kann man blinzeln einbauen, selten?"
@@ -566,9 +625,14 @@
    nur die Hoehe faellt zusammen. transform-origin unten, damit das Lid von
    oben herunterkommt statt sich in der Mitte zu treffen.
 
-   Augen UND Wimpern tragen dieselbe Klasse und damit dieselbe Animation. Weil
-   beide zum selben Zeitpunkt starten (kein delay), schliessen sie zusammen —
-   ein Auge, das ohne seine Wimper blinzelt, saehe kaputt aus. */
+   NUR DIE WIMPERN, nicht die Augen (Jennifer: "ich meinte blinzeln wenn man
+   wimpern drauf hat … das blinzeln ist dann quasi nur der teil, den die
+   wimpern gerade machen"). Ohne gekaufte Wimpern blinzelt gar nichts.
+
+   Das hat einen zweiten Effekt, der im Browser gemessen wurde: display
+   inline-block richtet sich an der Grundlinie anders aus als der Text daneben.
+   Solange die Augen die Klasse trugen, sass genau dort ein Spalt — der Spalt
+   zwischen Lidschatten und Auge, den Jennifer gemeldet hat. */
 @keyframes mk-blinzeln {
   0%, 92%, 100% { transform: scaleY(1); }
   95%, 96% { transform: scaleY(.12); }
@@ -635,7 +699,73 @@
      kein Entgegenkommen. */
   .mk-hg-sterne .mk-hg-flor::before, .mk-hg-sterne .mk-hg-flor::after,
   .mk-hg-schnee .mk-hg-extra::before, .mk-hg-wolken .mk-hg-extra::before,
-  .mk-hg-strahlen .mk-hg-extra::after, .mk-fluegel { animation: none; }
+  .mk-hg-strahlen .mk-hg-extra::after, .mk-hg-gras .mk-hg-extra::before,
+  .mk-hg-glimmer .mk-hg-extra::before, .mk-fluegel, .mk-dreht { animation: none; }
   .mk-blinzelt { animation: none; transform: none; }
-  .mk-hg-schnuppe .mk-hg-extra::after, .mk-noten::before, .mk-noten::after { display: none; }
+  .mk-hg-schnuppe .mk-hg-extra::after, .mk-hg-schnuppe .mk-hg-bild::after,
+  .mk-noten::before, .mk-noten::after { display: none; }
+}
+
+
+/* ==========================================================================
+   SCHLAFEN — 04.09.2026
+   ==========================================================================
+   Zwischen 0 und 6 Uhr steigen Zzz auf, von der Kreatur UND vom Mini-Pet
+   (Jennifer: "can they at late night have zzzs, both the pet if its there and
+   the animal? moving zzzs"). geteilt-laden.js setzt die Klasse (figurKlassen /
+   petKlassen), hier steht nur, wie es aussieht.
+
+   Als Blockgrafik gezeichnet und nicht als Buchstabe "z": ein z aus der
+   Schrift stuende schraeg neben einer Figur, die aus Rechtecken besteht. Das
+   SVG ist ein Z aus fuenf Balken — oben, diagonal in Stufen, unten.
+
+   DREI Zzz je Figur waeren zu viel Bewegung; es sind zwei, versetzt, mit einer
+   langen Pause. Sie steigen auf, driften dabei zur Seite und werden kleiner —
+   das ist die Richtung, in die man Schlafblasen erwartet.
+
+   Das Pet bekommt kleinere (mk-schlaeft-klein): es ist kleiner als die Figur,
+   und gleich grosse Zzz saehen aus, als traeume es lauter. */
+.mk-schlaeft { position: relative; }
+.mk-schlaeft::before, .mk-schlaeft::after {
+  content: ""; position: absolute;
+  width: 11px; height: 11px;
+  right: -2px; top: 4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%3E%3Crect%20x='2'%20y='2'%20width='16'%20height='3.4'%20fill='%23fff'/%3E%3Crect%20x='12.5'%20y='5'%20width='3.4'%20height='3.6'%20fill='%23fff'/%3E%3Crect%20x='9'%20y='8'%20width='3.4'%20height='3.6'%20fill='%23fff'/%3E%3Crect%20x='5.5'%20y='11'%20width='3.4'%20height='3.6'%20fill='%23fff'/%3E%3Crect%20x='2'%20y='14.2'%20width='16'%20height='3.4'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: contain; background-repeat: no-repeat;
+  opacity: 0; pointer-events: none;
+}
+.mk-schlaeft::before { animation: mk-zzz 5.2s ease-out infinite; }
+.mk-schlaeft::after { animation: mk-zzz 5.2s ease-out infinite; animation-delay: 2.6s; }
+.mk-schlaeft-klein::before, .mk-schlaeft-klein::after { width: 8px; height: 8px; }
+@keyframes mk-zzz {
+  0% { opacity: 0; transform: translate(0, 0) scale(.7) rotate(-8deg); }
+  18% { opacity: .85; }
+  62% { opacity: .55; }
+  100% { opacity: 0; transform: translate(11px, -22px) scale(1.15) rotate(12deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-schlaeft::before, .mk-schlaeft::after { display: none; }
+}
+
+
+/* ---------- Der Regenbogen glimmert ----------
+   Jennifer: "rainbow can glimmer a bit (like the gradient moving)". Ein
+   heller Schleier wandert schraeg darueber — background-position auf einem
+   Verlauf, der GROESSER ist als die Flaeche. Deshalb background-size 220 %:
+   waere er genau so gross wie der Kasten, gaebe es nichts zu verschieben.
+
+   Die Ebene liegt auf mk-hg-extra und nicht auf dem Verlauf selbst: der sitzt
+   in mk-hg-bild und traegt dort die Ausblendung nach aussen. Zwei Aufgaben auf
+   einem Element waeren zwei Animationen auf derselben background-position. */
+.mk-hg-glimmer .mk-hg-extra::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: linear-gradient(160deg,
+    rgba(255,255,255,0) 0%, rgba(255,255,255,.30) 18%, rgba(255,255,255,0) 38%,
+    rgba(255,255,255,.20) 62%, rgba(255,255,255,0) 82%);
+  background-size: 220% 220%;
+  animation: mk-glimmert 11s ease-in-out infinite;
+}
+@keyframes mk-glimmert {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
 }

@@ -3313,7 +3313,20 @@ function begriffeRunde(kat, zurueck) {
   const st = C.state();
   st.bgRichtung = !st.bgRichtung; C.save();
   const drehen = !!st.bgRichtung && paare.every((p) => (p.antwort || "").length < 60);
-  const t0 = Date.now();
+  /* Die Uhr wird nach JEDEM Treffer neu gestellt (04.09.2026). Vorher stand hier
+     der Rundenstart, jedes Paar loggte also die Sekunden seit Rundenbeginn - bei
+     fuenf Paaren summierte sich eine Zwei-Minuten-Runde zu ueber sechs Minuten
+     Uebungszeit. Genau daran ist die Frage "wie teilt Rose ihre Tage zwischen
+     ST und GE auf" gescheitert: hier wurde ueberzaehlt, drueben gar nicht
+     gezaehlt. Deckel wie drueben (LUECKE_MAX_SEK): mehr als fuenf Minuten
+     zwischen zwei Treffern ist eine Pause, keine Bearbeitungsdauer. */
+  const LUECKE_MAX = 300;
+  let tPaar = Date.now();
+  const paarZeit = () => {
+    const s = Math.round((Date.now() - tPaar) / 1000);
+    tPaar = Date.now();
+    return s >= 0 && s <= LUECKE_MAX ? s : null;
+  };
   const lbl = C.begriffe()[0] ? (C.begriffe().find((p) => p.kategorie === kat)?.kategorieLabel || kat) : kat;
   h(`<div class="fade-in">
     ${Hub.kopfHtml({ titel: lbl, zurueck })}
@@ -3328,7 +3341,7 @@ function begriffeRunde(kat, zurueck) {
     rechtsText: (p) => (drehen ? p.begriff : p.antwort),
     // Nur der ERSTE Anlauf je Paar zählt für den Lernstand.
     onTreffer: (id, voll) => {
-      C.logAntwort({ qid: id, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: Math.round((Date.now() - t0) / 1000) });
+      C.logAntwort({ qid: id, sid: "begriffe", modus: "begriffe", punkte: voll ? 1 : 0, max: 1, voll, zeit: paarZeit() });
       C.syncEvent({ frage_id: id, gewaehlt: null, punkte: voll ? 1 : 0, max_punkte: 1, voll, modus: "begriffe", ts: new Date().toISOString() });
     },
     onFertig: (erg) => begriffeFazit(kat, paare, erg, zurueck),

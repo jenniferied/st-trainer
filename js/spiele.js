@@ -686,7 +686,21 @@ export function opZuordnen(zurueckFn) {
      von den Signalwoertern. Wer das Praefix aendert, muss hier mitziehen. */
   const stufe = stufeFuerIds(moeglich.map((o) => "opz-" + o.id));
   const paare = zieh(moeglich, Math.min(stufe >= 2 ? OPZ_PAARE_BOSS : OPZ_PAARE, moeglich.length));
-  const t0 = Date.now();
+  /* Die Uhr wird nach JEDEM Treffer neu gestellt (04.09.2026). Vorher stand hier
+     der Rundenstart, jedes Paar loggte also die Sekunden seit Rundenbeginn - bei
+     fuenf Paaren summierte sich eine Zwei-Minuten-Runde zu ueber sechs Minuten
+     Uebungszeit. Genau daran ist die Frage "wie teilt Rose ihre Tage zwischen
+     ST und GE auf" gescheitert: hier wurde ueberzaehlt, drueben gar nicht
+     gezaehlt. Deckel wie drueben (LUECKE_MAX_SEK): mehr als fuenf Minuten
+     zwischen zwei Treffern ist eine Pause, keine Bearbeitungsdauer. */
+  const LUECKE_MAX = 300;
+  let tPaar = Date.now();
+  const paarZeit = () => {
+    const s = Math.round((Date.now() - tPaar) / 1000);
+    tPaar = Date.now();
+    return s >= 0 && s <= LUECKE_MAX ? s : null;
+  };
+
   app().innerHTML = `<div class="fade-in">${kopf("↔️ Zuordnen", zurueckFn, stufenAbzeichen(stufe) + wendungenBtn)}
     <p class="muted" style="margin:0 0 10px">Links die Wendung antippen, rechts, was sie verlangt.</p>
     <div id="opzSpiel"></div>
@@ -697,7 +711,7 @@ export function opZuordnen(zurueckFn) {
     paare,
     linksText: (p) => p.wendung,
     rechtsText: (p) => p.verlangt,
-    onTreffer: (id, voll) => logSpiel("op", "opz-" + id, voll ? 1 : 0, 1, voll, Math.round((Date.now() - t0) / 1000)),
+    onTreffer: (id, voll) => logSpiel("op", "opz-" + id, voll ? 1 : 0, 1, voll, paarZeit()),
     onFertig: ({ ok, n, fehler }) => {
       const erkl = paare.filter((p) => fehler.includes(p.id)).map((p) => `<div class="review-q" style="padding:8px 0"><b>${esc(p.wendung)}</b> → ${esc(p.verlangt)}${p.tipp ? `<div class="explain good"><span class="bt">${esc(p.tipp)}</span></div>` : ""}</div>`).join("");
       fazit(document.getElementById("opzFazit"), ok, n, () => opZuordnen(zurueckFn), zurueckFn,

@@ -1132,7 +1132,9 @@ function standHtml(tz) {
   // Was sich BEWEGEN soll, kann keine Zelle sein - die Musiknoten aus den
   // Kopfhoerern steigen auf und verlassen dabei die Figur. Sie haengen als
   // Ebene am <pre>, siehe geteilt-laden.js figurKlassen().
-  const figKl = traegtWas ? Laden.figurKlassen(traegtWas.getragen) : "";
+  // Die Zzz haengen NICHT an traegtWas: zwischen 0 und 6 Uhr schlaeft die
+  // Kreatur, ob sie etwas gekauft hat oder nicht.
+  const figKl = Laden.figurKlassen(traegtWas && traegtWas.getragen);
   const pre = `<pre class="mk-ei${anim}${figKl ? " " + figKl : ""}" aria-hidden="true">${bildHtml(v, stufe, t.nacht, traegtWas)}</pre>`;
   const titel = chatTitel(stufe);
   // NUR hier, in der ruhigen Ansicht. Ankunft und Schluepfen sind Momente, die
@@ -1153,7 +1155,7 @@ function standHtml(tz) {
   const petKey = wahl("pet");
   const petAn = petKey && besitzt("pet:" + petKey) && stufe >= SHOP_STUFE;
   const mitPet = petAn
-    ? `<div class="mk-figur-hof">${bild}<pre class="mk-pet${REDUCE_MOTION ? "" : " mk-atmet"}" aria-hidden="true">${petHtml(petKey, wahl("look"))}</pre></div>`
+    ? `<div class="mk-figur-hof">${bild}<pre class="${("mk-pet" + (REDUCE_MOTION ? "" : " mk-atmet") + " " + Laden.petKlassen()).trim()}" aria-hidden="true">${petHtml(petKey, wahl("look"))}</pre></div>`
     : bild;
 
   /* Der Hintergrund ist eine CSS-Ebene DAHINTER, kein gezeichnetes Feld: die

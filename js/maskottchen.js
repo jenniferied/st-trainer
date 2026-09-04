@@ -816,7 +816,11 @@ export function figurHtml(variante, stufe, nacht, opt) {
   const farben = Laden.farbenFuer(variante, o.look);
   let e = figurEbenen(variante, stufe, nacht);
   if (o.getragen) e = Laden.anziehen(e, o.getragen);
-  return Laden.malen(e, Laden.farbTabelle(farben, o.getragen));
+  const FARBE = Laden.farbTabelle(farben, o.getragen);
+  /* Die Brille kommt als ZWEITE Blockebene dazu, auf einem doppelt so feinen
+     Raster (siehe geteilt-laden.js brilleBloecke). Dieselben Zeichen wie das
+     Tier, nur kleiner. */
+  return Laden.malen(e, FARBE) + Laden.brilleBloecke(e, o.getragen);
 }
 
 /* Das Bild zur Stufe — Ei oder Tier, eine Entscheidung an einer Stelle.

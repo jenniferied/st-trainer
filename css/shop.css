@@ -101,6 +101,14 @@
   margin: 0 auto 16px; max-width: 44ch;
   text-align: center; font-size: .8rem; color: var(--ink-soft);
 }
+/* Der Tausch-Knopf unter dem Konto: eine Zeile, mittig, der Satz daneben in
+   der Kleinschrift des Hinweises. Auf schmalen Geraeten bricht der Satz unter
+   den Knopf (flex-wrap), der Knopf bleibt ganz. */
+.shop-tausch {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap; margin: 0 auto 10px; max-width: 44ch;
+}
+.shop-tausch-text { font-size: .78rem; color: var(--ink-soft); text-align: center; }
 
 /* ---------- Ein Regal ---------- */
 .shop-regal-kopf {
@@ -220,6 +228,11 @@
    bekommt dieselbe Animation, aber verzoegert — zwei Wesen, die synchron
    atmen, sehen aus wie ein Bild, das flackert. */
 .mk-pet.mk-atmet { animation-delay: .9s; }
+/* Im Tanz nach der Klausur (.mk-feier, GE style.css) einen halben Takt
+   versetzt: Figur oben, Pet unten, Figur unten, Pet oben - wie zwei, die
+   wirklich zusammen tanzen. Im ST-Trainer gibt es .mk-feier (noch) nicht,
+   die Regel ist dort schlicht tot. */
+.mk-feier .mk-pet.mk-atmet { animation-delay: .5s; }
 @media (prefers-reduced-motion: reduce) {
   .mk-pet.mk-atmet { animation: none; }
 }

@@ -957,7 +957,7 @@ function fokusFaktor(d) {
 
    Der 10.09. ist im Fenster, damit auch an dem Tag nichts hart bewertet wird -
    das PENSUM setzt an dem Tag ohnehin aus, siehe tagesPlan. */
-const GE_KLAUSUR = "2026-09-10";
+export const GE_KLAUSUR = "2026-09-10";
 const SENKUNG_VON = "2026-08-29", SENKUNG_BIS = GE_KLAUSUR;
 const SENKUNG = { ziel: 30, minimum: 10, stretch: 40 };
 function senkungFuer(iso) {
@@ -1277,15 +1277,40 @@ function waehleFragen(reps, n, strat) {
     //   > bekannt & wacklig (1) > gemeistert (0.4).
     // Bewusst Gewichtung, kein Filter: Bekanntes bleibt möglich, sonst würde die
     // Simulation zum zweiten PK-Pfad und liefe nach ein paar Wochen leer.
+    // NACHGEZOGEN 13.09.2026 (Roses halbe Klausur von heute Nacht: 0 von 21
+    // Fragen je gesehen, aber 15 von 21 waren -aw/-fs/-kw-Zwillinge bekannter
+    // Substanz, und sie merkt das - "ich erinnere mich an die Fragen").
+    // Zwei Befunde, die die alte Gewichtung stumpf machten:
+    //   (a) rundenPool() reicht je Gruppe bevorzugt ein UNGESEHENES Mitglied
+    //       herein (Roses Wunsch 10.08., bleibt so). Also traf gew() fast nie
+    //       auf L[q.id] - der "gemeistert -> 0.4"-Zweig war praktisch tot, jeder
+    //       Zwilling bekam pauschal 3, egal ob die Substanz sitzt oder wackelt.
+    //   (b) gemeistert (Level >= 3) trifft bei Rose 15 von 785 Fragen. Ein
+    //       Schwellenwert, der fast nichts trifft, steuert auch fast nichts.
+    // Deshalb rechnet die Gewichtung jetzt ueber die GRUPPE: das beste Level,
+    // das irgendein Mitglied je erreicht hat, sagt, ob die Substanz sitzt.
+    //   ganz neue Gruppe (8) > Zwilling wackliger Substanz (3)
+    //   > Zwilling sitzender Substanz (1) = gesehen & wacklig (1)
+    //   > gesehen & auf gutem Weg (0.6) > gesehen & gemeistert (0.25).
+    // Weiter Gewichtung, kein Filter - Begruendung oben. Und weiter gilt: wenn
+    // KEINE Gruppe mehr neu ist (Stand 13.09.: genau so), kann keine Gewichtung
+    // eine Wiederholung verhindern - dann hilft nur neue Substanz im Korpus.
+    const grpVon = (q) => q.sprachVarianteVon || q.variantenVon || q.id;
     const gruppeGesehen = new Set();
+    const gruppenLvl = new Map(); // bestes je erreichtes Level in der Gruppe
     for (const q of POOL) {
       const e = L[q.id];
-      if (e && e.seen) gruppeGesehen.add(q.sprachVarianteVon || q.variantenVon || q.id);
+      if (!e || !e.seen) continue;
+      const g = grpVon(q);
+      gruppeGesehen.add(g);
+      gruppenLvl.set(g, Math.max(gruppenLvl.has(g) ? gruppenLvl.get(g) : -9, e.lvl || 0));
     }
     const gew = (q) => {
+      const g = grpVon(q);
+      if (!gruppeGesehen.has(g)) return 8;
       const e = L[q.id];
-      if (!e || !e.seen) return gruppeGesehen.has(q.sprachVarianteVon || q.variantenVon || q.id) ? 3 : 8;
-      return e.lvl >= 3 ? 0.4 : 1;
+      if (!e || !e.seen) return gruppenLvl.get(g) >= 2 ? 1 : 3;
+      return e.lvl >= 3 ? 0.25 : e.lvl >= 1 ? 0.6 : 1;
     };
     const byTh = {};
     for (const q of reps) (byTh[q.oberthema] = byTh[q.oberthema] || []).push(q);

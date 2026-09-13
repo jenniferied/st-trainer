@@ -53,8 +53,30 @@
 // Geteilt mit dem GE-Trainer. Quelle: rose/geteilte-styles/tagesstand.js —
 // diese Datei ist eine verteilte Kopie und wird NIE hier bearbeitet.
 import { liesHeute, liesOffen, tagesPilleKlasse, tagesText, tagesWorte, tagesZeigen, nochNichts, zeigAnstupser, losText, losWorte, offenText } from "./geteilt-tagesstand.js";
+// Nur die Konstante, kein Zugriff auf state() oder Schreibpfade: der Termin
+// steht in core.js an EINER Stelle (Senkung, Klausurtag-Pause), hier wird er
+// nur gelesen.
+import { GE_KLAUSUR } from "./core.js";
 
 const GE_CODE = "rose-ge";
+
+/* ---------- Nach der GE-Klausur (13.09.2026) ----------
+   Die GE-Klausur war am 10.09. Seit dem Tag danach ist jede Tagesstand-Pille
+   hier eine Fehlanzeige: der GE-Trainer rechnet drueben weiter ein Pensum aus
+   dem Reststoff, Rose uebt dort aber (zu Recht) nichts mehr - der Link zeigte
+   also dauerhaft "0 %" in Rot neben einer Klausur, die sie hinter sich hat.
+   Jennifer: "Zielfahne und Party-Symbol statt 0 % in Rot."
+
+   Am DATUM festgemacht, nicht am fremden Snapshot: der bewegt sich nur, wenn
+   drueben geuebt wird, und wenn Rose mit GE fertig ist, bewegt er sich nie
+   wieder. Wer auf ihn wartete, wartete ewig. Beide roten Stellen haengen an
+   diesem einen Schalter - das Offen-Abzeichen UND der Anstupser; nur eins
+   davon abzuschalten liesse den anderen Punkt weiterpulsen. Netz wird dann
+   gar nicht mehr gebraucht: hole() faellt weg, der Link steht fest. */
+const geVorbei = () => {
+  const [j, m, t] = GE_KLAUSUR.split("-").map(Number);
+  return heuteTag() > new Date(j, m - 1, t).getTime();
+};
 const CACHE_KEY = "st-nachbar-ge";
 // Wie oft ueberhaupt nachgesehen wird. Gefragt wird dabei erst nur nach dem
 // Zeitstempel (ein paar Byte); der Snapshot selbst wird nur geholt, wenn es
@@ -202,6 +224,15 @@ export function zeigeGeStand(a) {
   if (!a) return;
   const feld = a.querySelector(".nachbar-stand");
   if (!feld) return;
+
+  if (geVorbei()) {
+    // Dieselbe Bauform wie das gruene "✓ heute"-Abzeichen, nur mit anderem
+    // Inhalt - Rose kennt die Pille von den Tageskacheln. Kein Puls, kein Rot.
+    feld.innerHTML = `<span class="stand-badge sitzt kompakt geschafft">🏁 geschafft 🎉</span>`;
+    a.title = "Zum GE-Trainer — die Klausur liegt hinter dir. Geschafft! 🎉";
+    a.setAttribute("aria-label", "Zum GE-Trainer wechseln, die GE-Klausur ist geschrieben");
+    return;
+  }
 
   const male = () => {
     if (!a.isConnected) return;

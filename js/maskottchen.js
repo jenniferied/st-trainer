@@ -419,12 +419,48 @@ const ausgegeben = () => kaeufe().reduce((summe, k) => {
 
 /* Guthaben, abgeleitet. Bei 0 geklemmt — siehe UEBERZIEH-FALL oben. Eine
    negative Zahl waere Strafe fuer etwas, das Rose nicht falsch gemacht hat. */
+/* ---------- Sterne: verdient, getauscht, ausgegeben ----------
+   Seit dem Tausch (13.09.2026) gibt es zwei Quellen fuer Sterne, und sie
+   duerfen nicht in einen Topf: Rose stand im ST-Trainer am 13.09. bei 13 ★
+   ehrlich gezaehlt und 20 ★ ausgegeben - die Kaeufe waren zu ihrer Zeit
+   gedeckt, danach ist der ehrlich gerechnete Stand gefallen (OG-Kappung,
+   Schwellenwechsel). Mit EINEM Topf haette der erste Tausch 5 ♥ gekostet und
+   0 ★ gezeigt: der neue Stern waere in dem alten Minus verschwunden. Das ist
+   genau die Sorte Strafe, die eine Belohnungswaehrung nie austeilen darf.
+
+   Also: getauschte Sterne sind ein eigener Topf, und aus dem wird ZUERST
+   bezahlt - aber nur fuer Kaeufe, die zeitlich NACH dem ersten Tausch liegen
+   (frueher konnte es diese Sterne nicht gegeben haben). Was der Topf nicht
+   deckt, geht gegen die verdienten Sterne, und die klemmen wie bisher bei 0.
+   Ohne Minus sind beide Rechnungen identisch (verdient + getauscht −
+   ausgegeben); der Unterschied zeigt sich nur im Ueberzieh-Fall - dort geht
+   ein getauschter Stern nie unter, und ein ausgegebener kommt nie zurueck. */
+function sterneKonto(stand) {
+  const alle = kaeufe();
+  const tausche = alle.filter((k) => k && k.ertrag);
+  const ersterTausch = tausche.reduce((m, k) => Math.min(m, k.ts || 0), Infinity);
+  const getauscht = tausche.reduce((s, k) => {
+    const e = k.ertrag.stern;
+    return s + (isFinite(e) && e > 0 ? e : 0);
+  }, 0);
+  let ausgesamt = 0, ausDanach = 0;
+  alle.forEach((k) => {
+    if (!k || k.ertrag) return;
+    const p = kaufPreis(k).stern;
+    ausgesamt += p;
+    if ((k.ts || 0) >= ersterTausch) ausDanach += p;
+  });
+  const ausTausch = Math.min(ausDanach, getauscht);
+  const verdient = (stand && stand.sterne) || 0;
+  return Math.max(0, verdient - (ausgesamt - ausTausch)) + (getauscht - ausTausch);
+}
+
 export function guthaben(stand) {
   const s = stand || { herzen: 0, sterne: 0 };
   const aus = ausgegeben();
   return {
     herz: Math.max(0, (s.herzen || 0) - aus.herz),
-    stern: Math.max(0, (s.sterne || 0) - aus.stern),
+    stern: sterneKonto(s),
   };
 }
 
@@ -448,6 +484,40 @@ export function kaufen(was, preis, stand) {
   mk.kaeufe.push({ id: kaufId(was), was, preis: p, ts: Date.now() });
   // save() schreibt nur nach localStorage. Ein Kauf ist eine Entscheidung und
   // soll auf dem zweiten Geraet stehen, bevor Rose dort das naechste Mal aufmacht.
+  C.save(); C.syncBald(500);
+  return true;
+}
+
+
+/* ---------- Der Tausch: 5 ♥ -> 1 ★ (Jennifer, 13.09.2026) ----------
+   Sterne entstehen nur an Streckziel-Tagen, Herzen jeden Tag. Wer selten
+   ueber das Streckziel kommt, sieht die Stern-Preise im Laden als Vitrine.
+   Der Tausch ist dieselbe Bauart wie ein Kauf - eine Zeile im Register,
+   LOG = WAHRHEIT - mit zwei Unterschieden:
+
+   1. Die Zeile hat einen ERTRAG: { stern: 1 }. guthaben() rechnet ihn den
+      Sternen zu, wie es den Preis den Herzen abzieht. Alte Clients, die das
+      Feld nicht kennen, sehen die 5 ♥ weg und den Stern (noch) nicht - bis
+      zum naechsten Laden der App, harmlos und einseitig in die sichere
+      Richtung (nie mehr Guthaben als verdient).
+   2. Die Id haengt an der ZEIT, nicht am Stueck ("kf:tausch:stern:<ts>").
+      Die Regel "abgeleitete Id, damit derselbe Kauf auf zwei Geraeten auf
+      eine Zeile kollabiert" gilt fuer Stuecke, die man nur einmal besitzen
+      kann. Ein Tausch ist wiederholbar: zwei Tausche auf zwei Geraeten SIND
+      zwei Tausche, beide bezahlt, beide gutgeschrieben - kollabierten sie,
+      waeren 5 ♥ weg ohne Stern. besitzt() greift damit nicht; der Waechter
+      ist allein das Guthaben.
+   Der Kurs steht historisch in der Zeile (preis + ertrag): aendert sich der
+   Kurs, bleiben alte Tausche, was sie waren. */
+export const TAUSCH = { herz: 5, stern: 1 };
+export function tauschen(stand) {
+  const frei = guthaben(stand);
+  if (frei.herz < TAUSCH.herz) return false;
+  const ts = Date.now();
+  const was = "tausch:stern:" + ts;
+  const mk = C.state().mk || (C.state().mk = {});
+  if (!Array.isArray(mk.kaeufe)) mk.kaeufe = [];
+  mk.kaeufe.push({ id: kaufId(was), was, preis: { herz: TAUSCH.herz, stern: 0 }, ertrag: { stern: TAUSCH.stern }, ts });
   C.save(); C.syncBald(500);
   return true;
 }
@@ -1382,6 +1452,8 @@ export function shopOeffnen(tz, neu) {
     // Der Preis wird gegen den Stand von JETZT geprueft, nicht gegen den vom
     // Oeffnen — das Sheet kann lange offen liegen.
     kaufen: (was, preis) => kaufen(was, preis, standJetzt(tz)),
+    tauschen: () => tauschen(standJetzt(tz)),
+    TAUSCH,
     wahl, waehle, outfit, anlegen, stueckFarbe, faerbeStueck,
     figur: (opt) => bildHtml(EIER[eiIndex()], stufeImLaden, false, opt),
     pet: petHtml,

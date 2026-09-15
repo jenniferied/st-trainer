@@ -57,17 +57,18 @@ function tsMs(e) {
   return Number.isFinite(p) ? p : 0;
 }
 
-/* Manifest und Server-Ereignisse holen. Liefert true, wenn vom Server etwas
-   kam — dann lohnt ein Neuzeichnen der Startseite. Mehrfach aufgerufen laeuft
-   es nur einmal. */
+/* Manifest und Server-Ereignisse holen. Liefert true, wenn sich dadurch an
+   der Anzeige etwas aendert (Server-Zeilen, oder Kapiteltitel fuer schon
+   lokal vorhandene Zeilen) — dann lohnt ein Neuzeichnen der Startseite.
+   Mehrfach aufgerufen laeuft es nur einmal. */
 export function lade() {
   if (ladePromise) return ladePromise;
   ladePromise = (async () => {
+    let neu = false;
     try {
       const r = await fetch("hoeren/manifest.json");
-      if (r.ok) manifestEinlesen(await r.json());
+      if (r.ok) { manifestEinlesen(await r.json()); neu = tagesZeilen().length > 0; }
     } catch { /* ohne Manifest bleiben Track-Ids als Titel */ }
-    let neu = false;
     if (C.syncAktiv()) {
       try {
         const cfg = window.ST_CONFIG;
@@ -76,7 +77,7 @@ export function lade() {
         const r = await fetch(url, { headers: { apikey: cfg.supabaseAnonKey, Authorization: "Bearer " + cfg.supabaseAnonKey } });
         if (r.ok) {
           const rows = await r.json();
-          if (Array.isArray(rows)) { remote = rows; neu = rows.length > 0; }
+          if (Array.isArray(rows)) { remote = rows; neu = neu || rows.length > 0; }
         }
       } catch { /* still: dann nur lokal */ }
     }
@@ -103,9 +104,13 @@ function manifestEinlesen(m) {
   }
 }
 
+/* Manifest-Titel sind zwei Saetze ("Schulqualitaet, Kapitel sechs: Effektive
+   Schulen. Mehr Zuwachs, als ..."); in der Zuletzt-Zeile reicht der erste. */
 export function titelVon(track) {
   const t = titel[track];
-  return t ? t.replace(/\.\s*$/, "") : track;
+  if (!t) return track;
+  const m = t.match(/^(.*?[^.])\.(\s|$)/);
+  return (m ? m[1] : t).trim();
 }
 
 // Woertlich die Regel aus karte/shell.html (bestanden).

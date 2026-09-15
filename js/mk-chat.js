@@ -99,7 +99,8 @@ function stand() {
     uebungstage: hs.tage,
     herzenHeute: Mk.herzenHeute(tz),
     herzenBisNaechste: Mk.herzenBisNaechste(hs.herzen, stufe),
-    heute: { n: tz.n, ziel: tz.ziel, minimum: tz.minimum, stretch: tz.stretch },
+    // nGesamt = dieselbe Zahl wie die Zonen-Bar (inklusive Karten-Einheiten)
+    heute: { n: tz.nGesamt != null ? tz.nGesamt : tz.n, ziel: tz.ziel, minimum: tz.minimum, stretch: tz.stretch },
     // Leere Liste heisst "heute alles durch", null hiesse "weiss ich nicht".
     // offeneDailies() liefert immer eine Liste — dieselbe, aus der der Hub
     // seine Kacheln baut.

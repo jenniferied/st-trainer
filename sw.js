@@ -16,6 +16,8 @@ const CACHE = "st-trainer-v2";
 // geteilt-laden.js) und die Figur verloere ihre Kleidung. maskottchen.js stand
 // hier bis dahin nicht — es wird von main.js importiert und lag deshalb nur im
 // Laufzeit-Cache, was fuer die Huelle zu spaet ist.
+// karte-stand.js (15.09.) aus demselben Grund: statischer Import in main.js —
+// fehlt das Modul offline, startet die ganze App nicht.
 const SHELL = [
   ".",
   "index.html",
@@ -30,6 +32,7 @@ const SHELL = [
   "js/geteilt-zuordnen.js",
   "js/main.js",
   "js/core.js",
+  "js/karte-stand.js",
   "manifest.json",
 ];
 

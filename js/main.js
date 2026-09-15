@@ -5,6 +5,7 @@ import * as Spiele from "./spiele.js";
 import * as Story from "./story.js";
 import * as Llm from "./llm.js";
 import * as Mk from "./maskottchen.js";
+import * as Karte from "./karte-stand.js";
 import * as Nachbar from "./nachbar.js";
 /* Kreaturen-Chat: die ST-Seite des geteilten Sheets (Adapter). Das Sheet selbst
    liegt in geteilt-maskottchen-chat.js, Quelle rose/geteilte-styles/. */
@@ -665,13 +666,17 @@ function tageszielHtml(tz, sich) {
   // Drei dynamische Stufen (aus dem echten Restbedarf, taeglich eingefroren):
   // Minimum (Boden fuer zaehe Tage) -> Tagespensum (der Plan) -> Streckziel.
   // Die Bar endet am Streckziel; Zonengrenzen wandern mit den Tageswerten.
+  // Seit dem 15.09. zaehlt die Bar nGesamt: Antworten aus dem antwortLog PLUS
+  // die heute geloesten Einheiten der Schultheorie-Karte (karte-stand.js). Die
+  // Karten-Einheiten stehen nur hier in der Anzeige, nie im Lernstand.
+  const n = tz.nGesamt != null ? tz.nGesamt : tz.n;
   const minP = Math.round((100 * tz.minimum) / tz.stretch);
   const zielP = Math.round((100 * tz.ziel) / tz.stretch);
-  const pct = Math.min(100, Math.round((100 * tz.n) / tz.stretch));
+  const pct = Math.min(100, Math.round((100 * n) / tz.stretch));
   // Fuenf Zonen: unter Minimum -> Minimum -> Tagespensum -> Streckziel (tiefes
   // leuchtendes Gruen) -> darueber hinaus (Regenbogen). Beide oberen Stufen
   // seit 12.08.; Gold ist raus, weil es neben dem Orange unten wie Orange las.
-  const zone = tz.n > tz.stretch ? "rb" : tz.n >= tz.stretch ? "st" : tz.n >= tz.ziel ? "g" : tz.n >= tz.minimum ? "y" : "o";
+  const zone = n > tz.stretch ? "rb" : n >= tz.stretch ? "st" : n >= tz.ziel ? "g" : n >= tz.minimum ? "y" : "o";
   // Der Regenbogen liegt seit dem 03.09.2026 schon AUF dem Streckziel und nicht
   // erst darueber (Jennifer: "st when full und streckziel auch regenbogen").
   // Genau so macht es der GE-Trainer seit jeher — dort legt zonenBalken() ihn
@@ -680,10 +685,10 @@ function tageszielHtml(tz, sich) {
   // Die BOTSCHAFT bleibt getrennt: "Streckziel" und "ueber dem Streckziel" sind
   // zwei verschiedene Tage, nur die Leiste sieht bei beiden gleich aus.
   const fuell = zone === "st" ? "rb" : zone;
-  const msg = zone === "rb" ? `Über dem Streckziel! 🌈 ${tz.n - tz.stretch} Karten mehr als geplant — das ist ein richtig starker Tag.`
+  const msg = zone === "rb" ? `Über dem Streckziel! 🌈 ${n - tz.stretch} Karten mehr als geplant — das ist ein richtig starker Tag.`
     : zone === "st" ? "Streckziel! ⭐ Du bist dem Plan voraus — Pause ist mehr als verdient."
     : zone === "g" ? "Tagespensum geschafft 🎉 Alles ab hier ist Vorsprung für morgen."
-    : tz.n === 0 ? "Frischer Tag, frische Bar. Die erste Karte ist der ganze Trick — eine ⚡ 10er reicht zum Ankommen."
+    : n === 0 ? "Frischer Tag, frische Bar. Die erste Karte ist der ganze Trick — eine ⚡ 10er reicht zum Ankommen."
     : zone === "y" ? `Minimum steht ✓ — ab hier geht's Richtung Tagespensum (${tz.ziel}).`
     : `Warmlaufen — erstes Etappenziel: ${tz.minimum}. Jede Karte zählt, Begriffe-Blitz auch.`;
   const note = tz.tage == null ? ""
@@ -692,13 +697,16 @@ function tageszielHtml(tz, sich) {
     // Reststoff — der Satz muss das sagen, sonst erklaert er eine Herleitung,
     // die gerade nicht laeuft. Der Reststoff steht trotzdem da: er ist die
     // ehrliche Zahl und wird von der Senkung nicht angefasst.
-    : tz.gesenkt ? `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — bis zur GE-Klausur am 10.09. bewusst niedriger gesetzt, damit hier nicht auch noch volles Pensum steht. Danach rechnet es wieder aus deinem Reststoff (aktuell ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`
-    : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz zählt mit. ${M.infoBtn("relearning")}</p>`;
+    : tz.gesenkt ? `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — bis zur GE-Klausur am 10.09. bewusst niedriger gesetzt, damit hier nicht auch noch volles Pensum steht. Danach rechnet es wieder aus deinem Reststoff (aktuell ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz und Karten-Übungen zählen mit. ${M.infoBtn("relearning")}</p>`
+    : `<p class="muted tz-note">Minimum <b>${tz.minimum}</b> · Tagespensum <b>${tz.ziel}</b> · Streckziel <b>${tz.stretch}</b> — täglich neu aus deinem echten Reststoff gerechnet (noch ~${tz.restBedarf} Antworten, ${tz.tage} Übungstage). Begriffe-Blitz und Karten-Übungen zählen mit. ${M.infoBtn("relearning")}</p>`;
+  // Die Karten-Einheiten sichtbar ausweisen, sobald es welche gibt — sonst
+  // steht da eine Zahl, die groesser ist als alles, was Rose im Trainer getan hat.
+  const karteHinweis = tz.karteN ? ` <span class="muted" title="davon ${tz.karteN} aus der Schultheorie-Karte">· 🗺 ${tz.karteN}</span>` : "";
   const grad = `linear-gradient(to right, var(--zone-o) 0 ${minP}%, var(--zone-y) ${minP}% ${zielP}%, var(--zone-g) ${zielP}% 100%)`;
   return `<div class="card tagesziel glim">
     ${Mk.html(tz)}
-    <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${tz.n}</b> / ${tz.ziel} Karten</span></div>
-    <div class="zonen-bar" role="img" aria-label="${tz.n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
+    <div class="tz-head"><b>Heute</b><span class="tz-count"><b>${n}</b> / ${tz.ziel} Karten${karteHinweis}</span></div>
+    <div class="zonen-bar" role="img" aria-label="${n} von ${tz.ziel} Karten heute, Streckziel ${tz.stretch}" style="background:${grad}">
       <i class="fill ${fuell}" style="width:${pct}%"></i>
       <span class="mark" style="left:${minP}%"></span><span class="mark" style="left:${zielP}%"></span>
     </div>
@@ -1216,7 +1224,9 @@ function home() {
   // ist ab jetzt dem Streckziel vorbehalten.
   // Abstiege werden bewusst NIE kommentiert — ehrlich anzeigen, nicht reinreiben.
   const heuteKey = new Date().toDateString();
-  if ((tz.tage == null || tz.tage > 0) && tz.n >= tz.stretch && s.settings.tzFeierGold !== heuteKey) {
+  // Dieselbe Zahl wie die Bar (nGesamt, also inklusive Karten-Einheiten) —
+  // sonst leuchtet die Bar Regenbogen, und das Konfetti bleibt aus.
+  if ((tz.tage == null || tz.tage > 0) && (tz.nGesamt != null ? tz.nGesamt : tz.n) >= tz.stretch && s.settings.tzFeierGold !== heuteKey) {
     s.settings.tzFeierGold = heuteKey; C.save();
     konfetti({ n: 90, ms: 3600 });
   }
@@ -1278,11 +1288,22 @@ function histRowEinzel(e) {
     ${e.max ? `<span class="sc">${e.punkte}/${e.max}</span>` : ""}
     <button class="btn ghost small" data-del-einzel="${e.id}" title="Diese Antworten löschen">🗑</button></div>`;
 }
-// Sessions + Einzelfragen-Tage gemischt, Neuestes zuerst
+/* Eine Zeile je Kapitel und Tag aus der Schultheorie-Karte (karte-stand.js):
+   nur Anzeige, kein Detail, kein Loeschen — die Ereignisse gehoeren der Karte.
+   Als Link gebaut, damit der Klick eingebettet in karte.html ueber den
+   postMessage-Abfang oben (a[href^="karte.html"]) laeuft und frei stehend
+   einfach die Karte oeffnet. */
+function histRowKarte(z) {
+  return `<a class="hist-item click" href="karte.html#hoeren/${esc(z.track)}" style="text-decoration:none;color:inherit"><div><b>🗺 Karte · ${esc(z.titel)}</b>
+    <div class="when">${datum(z.ts)} · ${z.geloest} von ${z.n} ${z.n === 1 ? "Einheit" : "Einheiten"} gelöst</div></div>
+    <span class="sc">${z.geloest}/${z.n}</span></a>`;
+}
+// Sessions + Einzelfragen-Tage + Karten-Tage gemischt, Neuestes zuerst
 function histEintraege() {
   return [
     ...C.state().sessions.map((s) => ({ ts: s.ts, html: histRow(s) })),
     ...C.einzelGruppen().map((e) => ({ ts: e.ts, html: histRowEinzel(e) })),
+    ...Karte.tagesZeilen().map((z) => ({ ts: z.ts, html: histRowKarte(z) })),
   ].sort((a, b) => b.ts - a.ts);
 }
 // Verlaufs-Zeilen: antippen öffnet die Detail-Auswertung, 🗑 löscht,
@@ -3448,6 +3469,9 @@ function verlauf() {
     // wir wuerden zu WENIG offene Aufgaben in den Lernstand schreiben — also in
     // die verbotene Richtung irren. Steht deshalb vor flushSync(), das pusht.
     C.setzeOffenZaehler(Spiele.offeneDailies);
+    // Karten-Einheiten von heute zaehlen additiv im Tagesziel (nur Anzeige,
+    // nichts davon im Lernstand — siehe karte-stand.js).
+    C.setzeKarteZaehler(Karte.heuteGeloest);
     // Chat-Knoepfe (Block E) — ohne Function einfach unsichtbar/fallback. Die
     // zweite Funktion liefert die laufende Session: waehrend einer Runde gibt es
     // die aid der Antwort noch nicht (sie entsteht erst beim Abschluss), die
@@ -3471,6 +3495,9 @@ function verlauf() {
     if (kq) { history.replaceState(null, "", location.pathname + location.search); starteKartenQuiz(kq.karte, kq.n); }
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen
     C.syncLernstand().then((neu) => { if (neu && !R && document.getElementById("homeRoot")) home(); });
+    // Karten-Ereignisse (Manifest + Server, einmal pro Seitenaufbau); Fehler
+    // schluckt das Modul still, dann bleiben die lokalen Ereignisse.
+    Karte.lade().then((neu) => { if (neu && !R && document.getElementById("homeRoot")) home(); });
     // Beim Zurueckkommen auf den Tab: nachziehen, was auf dem anderen Geraet passiert ist
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible" || R) return;

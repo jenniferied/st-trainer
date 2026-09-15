@@ -67,9 +67,14 @@ const grussVon = (h) => h < 5 ? "Nanu, so spät noch" : h < 11 ? "Guten Morgen" 
    "Herzen heute" nennen koennen, und die Rechnung darf es NICHT ein zweites
    Mal geben. Zwei Stellen, die dieselbe Frage beantworten, beantworten sie
    irgendwann verschieden — dieselbe Falle wie bei Bild und Text am 12.08. */
+/* nGesamt (Antworten plus heute geloeste Karten-Einheiten, core.js
+   tagesStand) statt n: die Zonen-Bar zaehlt seit dem 15.09. dieselbe Zahl, und
+   Blase und Bar duerfen nicht zwei Wahrheiten zeigen. Die Historie (herzenStand
+   ueber aktivitaetProTag) kennt die Karte NICHT — sie ist gesynct und bleibt
+   antwortLog-rein; "heute" ist Anzeige. tz ohne nGesamt (Testseite) faellt auf n. */
 export function herzenHeute(tz) {
   if (!tz) return 0;
-  const n = tz.n || 0;
+  const n = (tz.nGesamt != null ? tz.nGesamt : tz.n) || 0;
   return (n > 0 ? 1 : 0) + (n >= tz.minimum ? 1 : 0) + (n >= tz.ziel ? 1 : 0);
 }
 
@@ -1094,7 +1099,7 @@ function auswahlHtml() {
    dem Rand der Karte. */
 export function markenHtml(tz, minP, zielP) {
   if (!tz) return "";
-  const n = tz.n || 0;
+  const n = (tz.nGesamt != null ? tz.nGesamt : tz.n) || 0;   // wie die Bar, siehe herzenHeute
   const marke = (pos, zeichen, erreicht, titel, klasse) =>
     `<span class="tz-marke${erreicht ? " an" : ""}${klasse ? " " + klasse : ""}" style="left:${pos}%" title="${titel}">${zeichen}</span>`;
   return `<div class="tz-marken" aria-hidden="true">

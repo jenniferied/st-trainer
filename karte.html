@@ -3794,7 +3794,7 @@ function viewHoeren(info) {
   return `
   <div class="hoeren" style="--bc:${t ? t.color : "var(--ink)"}">
     <div class="links">
-      <div class="stufe-kopf" style="margin:0 0 6px"><div class="nr">${esc(stufeLabel)}</div><h2>${esc(info.titel)}</h2><div class="schalter"><label><input type="checkbox" id="pl-folgen" checked> Karte folgt dem Ton</label><span id="pl-msg" class="hint"></span></div></div>
+      <div class="stufe-kopf" style="margin:0 0 6px"><div class="nr">${esc(stufeLabel)}</div><div class="schalter"><label><input type="checkbox" id="pl-folgen" checked> Karte folgt dem Ton</label><span id="pl-msg" class="hint"></span></div></div>
       <div class="tabs" id="tabs"><button class="tab aktiv" data-tab="text">Text</button><button class="tab" data-tab="karte">Karte</button></div>
       <div class="transkript" id="transkript"><p class="hint">Text wird geladen …</p></div>
       <div class="naechstes" id="naechstes"></div>
@@ -3821,10 +3821,10 @@ function paneZeigen(info, was) {
   if (was.grafik != null && info.thema) {
     const g = info.thema.grafiken[was.grafik]; if (!g) return;
     el.innerHTML = grafikHtml(info.thema, was.grafik);
-    tt.textContent = "Grafik: " + g.titel; voll.hidden = false; voll.href = "#thema/" + info.thema.id; return;
+    tt.textContent = "Grafik"; voll.hidden = false; voll.href = "#thema/" + info.thema.id; return;
   }
   renderPath(was.path, el, { eingebettet: true, ...(was.opts || {}) });
-  tt.textContent = was.titel || ""; voll.hidden = false; voll.href = "#" + was.path;
+  tt.textContent = was.path.startsWith("karte/") ? "Karte" : was.path.startsWith("quiz") ? "Quiz" : "Karte"; voll.hidden = false; voll.href = "#" + was.path;
 }
 
 async function starteHoeren(info) {

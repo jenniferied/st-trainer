@@ -4475,6 +4475,9 @@ addEventListener("hashchange", () => { document.getElementById("kapitel-menu").h
 notizenBinden();
 route();
 ereignisseLaden();
+// Alle Geraete gleich: Haken aus der Cloud alle 30 Sekunden nachlesen, solange die Seite sichtbar ist
+setInterval(() => { if (!document.hidden) ereignisseLaden(); }, 30000);
+addEventListener("visibilitychange", () => { if (!document.hidden) ereignisseLaden(); });
 </script>
 
 </body>

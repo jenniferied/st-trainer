@@ -4071,7 +4071,7 @@ async function ereignisseLaden() {
       if (e.art === "reset") { const k = e.ziel.startsWith("begriffe:") ? e.ziel : "quiz:" + e.ziel; if (ERLEDIGT[k] && ERLEDIGT[k] < Date.parse(e.ts)) { delete ERLEDIGT[k]; neu = true; } continue; }
       if (bestanden(e.art, e.punkte, e.von)) { const k = e.art + ":" + e.ziel; if (!ERLEDIGT[k]) { ERLEDIGT[k] = Date.parse(e.ts); neu = true; } }
     }
-    if (neu) { speichern("erledigt", ERLEDIGT); if (HP.info && modus() === "hoeren") { aufgabenZeichnen(HP.info, false); naechstesZeichnen(); } leisteZeichnen(); }
+    if (neu) { speichern("erledigt", ERLEDIGT); if (HP.info && modus() === "hoeren") { aufgabenZeichnen(HP.info, false); naechstesZeichnen(); } else if (modus() === "karte") { MAP_KEY = null; route(); } leisteZeichnen(); }
   } catch (e) {}
 }
 function naechsterTrack(id) { const l = trackListe(); const i = l.findIndex((x) => x.id === id); return l[i + 1] || null; }

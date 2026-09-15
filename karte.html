@@ -3813,7 +3813,7 @@ function paneStandard(info) {
 function paneZeigen(info, was) {
   const el = document.getElementById("pane-inhalt"), tt = document.getElementById("pane-titel"), voll = document.getElementById("pane-voll");
   if (!el) return;
-  if (was.html) { el.innerHTML = was.html; tt.textContent = was.titel || ""; voll.hidden = true; return; }
+  if ("html" in was) { el.innerHTML = was.html; tt.textContent = was.titel || ""; voll.hidden = true; return; }   // auch leer = bewusst nichts
   if (was.grafik != null && info.thema) {
     const g = info.thema.grafiken[was.grafik]; if (!g) return;
     el.innerHTML = grafikHtml(info.thema, was.grafik);

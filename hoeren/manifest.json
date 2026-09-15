@@ -1,0 +1,186 @@
+{
+"gesamt": {
+"dur": 609.6,
+"titel": "Die ganze Vorlesung in einem Kapitel."
+},
+"sq-bilanz": {
+"dur": null,
+"titel": "Schulqualität, Kapitel acht: Die Sitzung in einem Blick."
+},
+"sq-effektiv": {
+"dur": null,
+"titel": "Schulqualität, Kapitel sechs: Effektive Schulen. Mehr Zuwachs, als die Herkunft erwarten lässt."
+},
+"sq-foerder": {
+"dur": null,
+"titel": "Schulqualität, Kapitel sieben: Förderprogramme. Fünf Namen, je ein Satz."
+},
+"sq-komposition": {
+"dur": null,
+"titel": "Schulqualität, Kapitel fünf: Kompositionseffekte. Die Klasse wirkt mit, über das Kind hinaus."
+},
+"sq-orientierung": {
+"dur": null,
+"titel": "Schulqualität, Kapitel vier: Der Orientierungsrahmen Brandenburg. Drei Dimensionen, vier Qualitätsbereiche."
+},
+"sq-perspektiven": {
+"dur": null,
+"titel": "Schulqualität, Kapitel zwei: Vier Perspektiven. Es kommt darauf an, wen man fragt."
+},
+"sq-rahmen": {
+"dur": null,
+"titel": "Schulqualität, Kapitel drei: Rahmenmodelle. Was hineinwirkt und was herauskommt."
+},
+"sq-ueberblick": {
+"dur": null,
+"titel": "Schulqualität, Kapitel eins: Was ist eine gute Schule? Der Überblick."
+},
+"sr-lehrkraefte": {
+"dur": null,
+"titel": "Schulrecht, Kapitel sechs: Lehrkräfte. In eigener Verantwortung, aber mit Pflichten."
+},
+"sr-neutral": {
+"dur": null,
+"titel": "Schulrecht, Kapitel sieben: Neutralität. Mäßigung ja, Schweigen nein."
+},
+"sr-pflicht": {
+"dur": null,
+"titel": "Schulrecht, Kapitel vier: Sechs Jahre Grundschule, zehn Jahre Schulpflicht."
+},
+"sr-schule": {
+"dur": null,
+"titel": "Schulrecht, Kapitel drei: Die Schule. Anstalt des Schulträgers, selbstständig, und alle wirken mit."
+},
+"sr-staat": {
+"dur": null,
+"titel": "Schulrecht, Kapitel zwei: Der Staat setzt den Rahmen. Zwei Artikel und ein Satz."
+},
+"sr-ueberblick": {
+"dur": null,
+"titel": "Schulrecht, Kapitel eins: Überblick. Wo steht, was Schule darf und muss."
+},
+"sr-verhaeltnis": {
+"dur": null,
+"titel": "Schulrecht, Kapitel fünf: Das Schulverhältnis. Rechte, Pflichten, Zeugnisse und die Treppe der Ordnungsmaßnahmen."
+},
+"sr-zahlen": {
+"dur": null,
+"titel": "Schulrecht, Kapitel acht: Der Spickzettel. Jede Zahl, jede Stelle."
+},
+"st1-bourdieu": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel fünf: Bourdieu. Schule reproduziert soziale Ungleichheit."
+},
+"st1-fend": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel vier: Fend. Vier Funktionen, und das Individuum handelt."
+},
+"st1-parsons": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel drei: Parsons. Schule hält die Gesellschaft stabil."
+},
+"st1-ueberblick": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel eins: Überblick. Was Schule für die Gesellschaft tut, und was die Gesellschaft mit der Schule macht."
+},
+"st1-ungleich": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel sechs: Bildungsungleichheit. Aus Theorie wird Zahl."
+},
+"st1-vergleich": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel sieben: Die drei nebeneinander. Take Home."
+},
+"st1-wozu": {
+"dur": null,
+"titel": "Schultheorie eins, Kapitel zwei: Wozu Schultheorien? Brillen für den Blick auf Schule."
+},
+"st2-foucault": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel drei: Foucault. Schule diszipliniert, sie befreit nicht."
+},
+"st2-gwp": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel vier: Geisteswissenschaftliche Pädagogik. Sagen, wie Schule sein soll."
+},
+"st2-hentig": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel fünf: von Hentig. Schule als polis, Demokratie im Kleinen."
+},
+"st2-mead": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel sechs: Mead. Wer ich bin, erfahre ich in der Interaktion."
+},
+"st2-system": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel zwei: Systematisierung. Zwei Fragen, zwei Haltungen."
+},
+"st2-ueberblick": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel eins: Überblick. Kritik und Binnenstruktur."
+},
+"st2-vergleich": {
+"dur": null,
+"titel": "Schultheorie zwei, Kapitel sieben: Die drei nebeneinander. Take Home."
+},
+"st3-comenius": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel drei: Comenius. Allen alles lehren, weil alle Ebenbild Gottes sind."
+},
+"st3-herbart": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel sechs: Herbart. Erziehender Unterricht für einen Menschen, der sich selbst bildet."
+},
+"st3-humboldt": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel fünf: Humboldt. Schule als allgemeine Menschenbildung, nicht als Staatsdienst."
+},
+"st3-leitfragen": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel zwei: Leitfragen. Drei Fragen an vier Klassiker."
+},
+"st3-rousseau": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel vier: Rousseau. Erziehung soll die natürliche Entwicklung nicht stören."
+},
+"st3-ueberblick": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel eins: Überblick. Vier Klassiker und eine Frage: Wem gehört die Schule?"
+},
+"st3-vergleich": {
+"dur": null,
+"titel": "Schultheorie drei, Kapitel sieben: Die vier nebeneinander."
+},
+"um-absinken": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel vier: Absinken. Motivation sinkt im Schulverlauf, und zwar aus zwei Gründen."
+},
+"um-begriff": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel zwei: Motivation. Der Zustand, der Handeln antreibt."
+},
+"um-feedback": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel sieben: Feedback und Attribution. Drei Richtungen und die Kunst der günstigen Ursache."
+},
+"um-kontinuum": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel drei: Das Kontinuum. Intrinsisch, extrinsisch und die vier Stufen dazwischen."
+},
+"um-merkmale": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel sechs: Fünf Merkmale. Was motivationsförderlichen Unterricht ausmacht."
+},
+"um-sdt": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel fünf: Drei Grundbedürfnisse. Autonomie, Kompetenz, Eingebundenheit."
+},
+"um-ueberblick": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel eins: Überblick. Warum Motivation sinkt und was Unterricht dagegen tun kann."
+},
+"um-vergleich": {
+"dur": null,
+"titel": "Unterricht motivierend gestalten, Kapitel acht: Take Home. Absinken ist normal, Unterricht kann gegensteuern."
+}
+}

@@ -27,7 +27,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const bildHtml = (q) => q.bild ? `<div class="q-bild"><img src="data/img/${esc(q.bild)}" alt="Grafik zur Frage" loading="lazy" onclick="this.classList.toggle('zoom')"></div>` : "";
 // Fallvignetten aus der Vorlesung (Sachverhalt) — steht ueber der Frage, wie im Original-PDF
 const fallHtml = (q) => q.sachverhalt ? `<div class="q-fall"><b>Sachverhalt</b>${esc(q.sachverhalt)}</div>` : "";
-const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde", probeklausur: "🏆 Probeklausur", sprach: "🗣 Sprachverständnis" };
+const MODUS_LBL = { klausur: "🎓 Klausur-Simulation", halbe: "🕧 Halbe Klausur", spaced: "🧠 Schlaues Wiederholen", schnell: "⚡ Schnelle 10er", fehler: "🔁 Fehler-Training", eigene: "🧩 Eigene Runde", probeklausur: "🏆 Probeklausur", sprach: "🗣 Sprachverständnis", karte: "🗺 Karten-Quiz" };
 // Probeklausuren tragen ihre Nummer (I-V) im Label; alles andere wie gehabt
 const pkLbl = (nr) => `🏆 Probeklausur ${C.PK_ROEM[nr] || nr || ""}`.trim();
 const sessLbl = (s) => {
@@ -1131,6 +1131,9 @@ function home() {
       <button class="mode-card wide" data-go="eigene"><b>🧩 Eigene Runde</b><span>Themen, Timer, Feedback — alles frei wählbar</span></button>
     </div>
 
+    <h2 class="abschnitt-titel">Wiederholen</h2>
+    <a class="mode-card wide" href="karte.html" style="width:100%;text-decoration:none;display:block"><b>🗺 Schultheorie-Karte und Hörbuch</b><span>Alle sechs Themen als Mind-Map in drei Zoomstufen, jedes Kapitel zum Hören, mit Karten-Quiz und 5-Fragen-Runden von jeder Karte aus</span></a>
+
     <h2 class="abschnitt-titel">Stöbern</h2>
     <button class="mode-card wide" data-go="explore" style="width:100%"><b>🗂 Alle Fragen browsen</b><span>Nach Thema & Quelle sortiert, aufklappbar, direkt übbar</span></button>
     ${Story.verfuegbar() ? `<button class="mode-card wide story-kachel" data-go="story" style="width:100%"><b>☕ Lehrerzimmer <span class="story-herz">💗</span></b><span>${(() => { const s = C.storyStand(); return s.n ? `Eine Geschichte in fünf Kapiteln · ${s.n}/${s.gesamt} Szenen` : "Eine Geschichte in fünf Kapiteln · echte Klausurfragen, aber zum Lesen"; })()}</span></button>` : ""}
@@ -1924,6 +1927,37 @@ function starte(cfg) {
     nebenbei(`Es sind ${sess.runde.length} statt ${cfg.anzahl} Fragen geworden — mehr passende gibt es zu dieser Auswahl gerade nicht.`);
   laufLos(sess);
 }
+// ---- Karten-Quiz: Einstieg aus der Schultheorie-Karte (karte.html) ----
+// URL-Schema: index.html#quiz/<thema>/<karte>?n=5   (thema = st1|st2|st3|sq|sr|um,
+// karte = Karten-Id aus karte/daten-<thema>.js, n = 1..42, Standard 5).
+// Eine ganz normale Sofort-Feedback-Runde (modus "karte"), nur der Pool ist auf
+// die Fragen der Karte eingeschraenkt (data/karten-fragen.json, Filter in
+// rundenPool). Geloggt und gesynct wie jede andere Runde. Der Rueckweg zur Karte
+// steht im Fazit (ergebnis()) und haengt an cfg.karte.
+const KARTE_URL = (karte) => `karte.html#karte/${karte}`;
+const KARTE_HASH = /^#quiz\/([a-z0-9]+)\/([a-z0-9-]+)(?:\?(.*))?$/i;
+function kartenQuizAusHash() {
+  const m = KARTE_HASH.exec(location.hash || "");
+  if (!m) return null;
+  const n = parseInt(new URLSearchParams(m[3] || "").get("n") || "5", 10);
+  return { karte: `${m[1].toLowerCase()}/${m[2].toLowerCase()}`, n: Math.min(42, Math.max(1, Number.isFinite(n) ? n : 5)) };
+}
+function starteKartenQuiz(karte, n, ohne = []) {
+  const e = C.kartenFragen(karte);
+  if (!e) { sag("Zu dieser Karte kenne ich keine Fragen. Geh in der Karte einen Schritt zurück und probier eine andere."); return; }
+  // Kein Baukasten, kein Ziel-Floor wie in starte(): eine Karte mit drei Fragen
+  // darf drei Fragen liefern — verkuerzt wird angesagt, nicht verweigert.
+  const sess = C.erstelleSession({
+    modus: "karte", karte, anzahl: n, auswahl: "smart",
+    timerModus: "aus", pausierbar: true, feedback: "sofort", examLook: false,
+    sprache: "schwer", nurPingo: false, ...(ohne.length ? { ohne } : {}),
+  });
+  if (!sess) { sag("Zu dieser Karte ist gerade keine Frage frei — vielleicht stecken alle noch in einer Probeklausur. Probier eine Nachbarkarte."); return; }
+  if (sess.runde.length < n)
+    nebenbei(`Es sind ${sess.runde.length} statt ${n} Fragen geworden — mehr gibt es zu dieser Karte gerade nicht.`);
+  laufLos(sess);
+}
+
 // Frisch erstellte Session (Preset, Baukasten oder Probeklausur) sofort loslegen
 function laufLos(sess) {
   R = sess;
@@ -2673,7 +2707,10 @@ function ergebnis(session, runde, opts = {}) {
     <div class="card an-card glim"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>
     <div class="card"><h3>Nach Thema & Unterthema</h3>${themenRows}</div>
-    ${opts.ausVerlauf ? "" : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
+    ${opts.ausVerlauf ? "" : session.cfg?.karte && C.kartenFragen(session.cfg.karte)
+      ? `<div class="btn-row"><a class="btn" id="karteZurueck" style="text-decoration:none;text-align:center" href="${esc(KARTE_URL(session.cfg.karte))}">‹ Zurück zur Karte</a><button class="btn secondary" id="karteNoch">Noch ${session.cfg.anzahl || 5}</button></div>
+    <div class="btn-row"><button class="btn secondary" id="homeBtn">Übersicht</button></div>`
+      : `<div class="btn-row"><button class="btn" id="nochmal">Neue Session</button><button class="btn secondary" id="homeBtn">Übersicht</button></div>`}
     <div class="card mt"><h3>Alle Fragen im Detail</h3>${review || "<p class='muted'>Keine beantworteten Fragen.</p>"}</div>
   </div>`);
   const zurueck = opts.zurueck || home;
@@ -2685,7 +2722,9 @@ function ergebnis(session, runde, opts = {}) {
   const ry = document.getElementById("retryBtn"); if (ry) ry.onclick = () => retrySession(session.id);
   if (!opts.ausVerlauf) {
     document.getElementById("homeBtn").onclick = home;
-    document.getElementById("nochmal").onclick = home;
+    const nm = document.getElementById("nochmal"); if (nm) nm.onclick = home;
+    // Karten-Quiz: "Noch N" zieht neu aus derselben Karte (neue Session, kein Retry)
+    const kn = document.getElementById("karteNoch"); if (kn) kn.onclick = () => starteKartenQuiz(session.cfg.karte, session.cfg.anzahl || 5, (session.proFrage || []).map((x) => x.qid));
   }
   bindUebe(); // "Wo du stehst"-Hebel direkt aus der Auswertung ueben
   // Auswertung beleben: Punktzahl zählt hoch, Themen-Balken wachsen rein.
@@ -3390,6 +3429,7 @@ function verlauf() {
     await C.ladeStory();  // optional — ohne data/story.json fehlt nur die Lehrerzimmer-Kachel
     await Story.ladeBilder(); // optional — ohne eigene Bilder laufen die normalen Sticker
     await Spiele.ladeSpiele(); // optional — Kacheln erscheinen nur mit Daten (Detektiv immer)
+    await C.ladeKartenFragen(); // optional — ohne Datei gibt es nur kein Karten-Quiz
     // Erst JETZT anmelden, nicht frueher: dailies() haengt an den geladenen
     // Spieldaten (VIG/OPS/Begriffe). Vor dem Laden waere die Liste kuerzer und
     // wir wuerden zu WENIG offene Aufgaben in den Lernstand schreiben — also in
@@ -3410,6 +3450,12 @@ function verlauf() {
     Mk.initChat(() => MkChat.oeffnen(frag));
     C.flushSync();
     home();
+    // Einstieg aus der Schultheorie-Karte (#quiz/<thema>/<karte>?n=5): Runde sofort
+    // starten. Den Hash danach loeschen, sonst startet jedes Neuladen ein neues Quiz —
+    // eine offene Runde liegt ja schon in state().offen. Kein Router, nur dieser
+    // eine Einstieg (siehe geteilt-tages-hub.js: die Apps haben bewusst keinen).
+    const kq = kartenQuizAusHash();
+    if (kq) { history.replaceState(null, "", location.pathname + location.search); starteKartenQuiz(kq.karte, kq.n); }
     // Lernstand vom Server holen; wenn dabei Neues dazukommt, Startseite auffrischen
     C.syncLernstand().then((neu) => { if (neu && !R && document.getElementById("homeRoot")) home(); });
     // Beim Zurueckkommen auf den Tab: nachziehen, was auf dem anderen Geraet passiert ist

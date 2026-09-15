@@ -328,6 +328,27 @@ export function erstelleProbeklausur(pk, { timerModus = "nta", pausierbar = fals
   return sess;
 }
 
+// ---------- Karten-Quiz (Schultheorie-Karte, karte.html) ----------
+// data/karten-fragen.json (scripts/baue-karten-fragen.py): je Karte der
+// Schultheorie-Karte die Fragen-Ids, die zu ihr gehoeren, getrennt nach frei
+// und PK-quarantaeniert. Welche davon gerade ziehbar sind, entscheidet
+// rundenPool() zur Laufzeit (pkGesperrt, Sprache, Varianten-Gruppen) — hier
+// liegt nur die Zuordnung. Ohne Datei bleibt das Karten-Quiz einfach aus.
+let KARTEN_FRAGEN = {};
+export async function ladeKartenFragen() {
+  try {
+    const r = await fetch("data/karten-fragen.json");
+    KARTEN_FRAGEN = r.ok ? (await r.json()) || {} : {};
+  } catch { KARTEN_FRAGEN = {}; }
+  return KARTEN_FRAGEN;
+}
+export const kartenFragen = (karte) => KARTEN_FRAGEN[karte] || null;
+// Alle Ids einer Karte (frei + PK); die Quarantaene filtert rundenPool() selbst.
+export function kartenIds(karte) {
+  const e = KARTEN_FRAGEN[karte];
+  return e ? new Set([...(e.ids || []), ...Object.keys(e.pk || {})]) : new Set();
+}
+
 export function unterthemen(thema) {
   const set = new Map();
   for (const q of POOL) if (q.oberthema === thema) set.set(q.unterthema, (set.get(q.unterthema) || 0) + 1);
@@ -1187,6 +1208,14 @@ export function rundenPool(cfg) {
   }
   if (cfg.themen?.length) qs = qs.filter((q) => cfg.themen.includes(q.oberthema));
   if (cfg.unterthemen?.length) qs = qs.filter((q) => cfg.unterthemen.includes(q.oberthema + "/" + q.unterthema));
+  // Karten-Quiz: nur die Fragen EINER Karte der Schultheorie-Karte. Die Ids liegen
+  // in data/karten-fragen.json, nicht in cfg — sonst truege jede Session bis zu
+  // 150 Ids in den Lernstand-Sync. Alle Filter oben (PK-Sperre, Sprache) gelten.
+  if (cfg.karte) { const ids = kartenIds(cfg.karte); qs = qs.filter((q) => ids.has(q.id)); }
+  // "Noch 5" im Karten-Quiz: die eben gespielten Fragen zurueckstellen — sonst
+  // zieht smart die gerade verpatzten sofort wieder (Level 0 = faellig). Nur,
+  // wenn danach noch eine volle Runde uebrig bleibt; sonst gilt der ganze Pool.
+  if (cfg.ohne?.length) { const rest = qs.filter((q) => !cfg.ohne.includes(q.id)); if (rest.length >= (cfg.anzahl || 10)) qs = rest; }
   if (cfg.nurFehler) qs = qs.filter((q) => { const e = state().leitner[q.id]; return e && e.seen > 0 && e.lvl < 3; });
   if (cfg.quellen?.length) qs = qs.filter((q) => cfg.quellen.includes(q.quelle));
   // Globaler Pingo-Filter: greift in JEDEM Uebungsmodus (Schnellrunde, Baukasten,

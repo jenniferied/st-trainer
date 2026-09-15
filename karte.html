@@ -244,6 +244,10 @@ td:first-child { font-weight: 700; white-space: nowrap; } td b { font-weight: 70
 .transkript .abs.aktiv { background: var(--card); border-left-color: var(--bc); color: var(--ink); }
 .transkript .abs.aside { background: var(--idee-bg); border: 1.5px dashed var(--idee); border-left-width: 1.5px; }
 .transkript .abs.aside.aktiv { border-left: 3px solid var(--idee); }
+.transkript .abs.kritik-abs { border-left: 3px solid var(--st1); background: color-mix(in srgb, var(--st1) 6%, var(--card)); }
+.transkript .abs .tag.folien { color: var(--st1); border-color: var(--st1); }
+.transkript .f-tag { font-size: .7rem; padding: 0 5px; margin: 0 1px; }
+.nachschlag { margin-top: 14px; display: grid; gap: 8px; max-width: 66ch; }
 .transkript .abs .tag { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--idee); border: 1px solid var(--idee); border-radius: 4px; padding: 0 6px; margin-right: 6px; vertical-align: middle; }
 .kapitel { margin-top: 10px; } .kapitel summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
 .kapitel h4 { margin: 10px 0 6px; }
@@ -3835,12 +3839,20 @@ function paneZeigen(info, was) {
   tt.textContent = was.path.startsWith("karte/") ? "Karte" : was.path.startsWith("quiz") ? "Quiz" : "Karte"; voll.hidden = false; voll.href = "#" + was.path;
 }
 
+// Am Ende des Textes: die Kritik-Kaesten der Karte (Folien und abgeleitet getrennt), zum Nachlesen
+function kritikNachschlag(info) {
+  if (info.stufe !== 3) return "";
+  const k = info.karte, name = k.titel.split(":")[0]; if (!(k.kritikAn || k.kritikSelbst || k.kritikIdee)) return "";
+  return `<div class="nachschlag"><h4>Kritik zum Nachlesen</h4><div class="kritiken">${kritikBox("Kritik an " + name, k.kritikAn, "", "")}${kritikBox("Kritik, die " + name + " selbst übt", k.kritikSelbst, "", "")}${kritikBox("Naheliegende Kritik", k.kritikIdee, "idee", "")}</div></div>`;
+}
 async function starteHoeren(info) {
   const tr = await ladeTrack(info.id);
   const tk = document.getElementById("transkript"); if (!tk) return;
   HP.info = info; HP.id = info.id; HP.paras = tr.paras; HP.starts = tr.starts; HP.cur = -1; HP.folgen = true; HP.audio = tr.audio;
   if (HP.fertig && HP.fertig !== info.id) HP.fertig = null;
-  tk.innerHTML = tr.paras.length ? tr.paras.map((p) => `<p class="abs ${p.aside ? "aside" : ""} ${p.titel ? "titel" : ""}" data-i="${p.i}">${p.aside ? '<span class="tag">nicht auf den Folien</span> ' : ""}${esc(p.text)}</p>`).join("")
+  const chips = (t) => esc(t).replace(/\bFolien\s(\d+)\s(?:bis|und)\s(\d+)/g, (m, a, b) => `<span class="f-tag">F ${a}–${b}</span>`).replace(/\bFolie\s(\d+)/g, (m, n) => `<span class="f-tag">F ${n}</span>`);
+  const istKritik = (p) => !p.aside && /^(jetzt die kritik|die kritik|kritik|kritische würdigung|auf den folien steht .* kritik)/i.test(p.text);
+  tk.innerHTML = tr.paras.length ? tr.paras.map((p) => `<p class="abs ${p.aside ? "aside" : ""} ${p.titel ? "titel" : ""} ${istKritik(p) ? "kritik-abs" : ""}" data-i="${p.i}">${p.aside ? '<span class="tag">abgeleitet, nicht auf den Folien</span> ' : istKritik(p) ? '<span class="tag folien">Kritik laut Folien</span> ' : ""}${chips(p.text)}</p>`).join("") + kritikNachschlag(info)
     : `<p class="hint">Für dieses Kapitel gibt es noch keinen Text.</p>`;
   if (!tr.audio) document.getElementById("pl-msg").textContent = tr.paras.length ? "Noch nicht vertont, nur Text." : "";
   tk.querySelectorAll(".abs").forEach((p) => p.addEventListener("click", () => { const i = +p.dataset.i; if (HP.starts[i] != null && tr.audio) { AUDIO.currentTime = HP.starts[i]; AUDIO.play(); } }));

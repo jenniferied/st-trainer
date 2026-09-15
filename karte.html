@@ -3892,7 +3892,8 @@ function grafikenVon(info) {
   const eigene = (id) => (MANIFEST && MANIFEST[id] && MANIFEST[id].grafiken) || [];
   if (info.stufe === 3) return eigene(info.id).filter((i) => info.thema.grafiken[i]);
   const belegt = new Set(info.thema.karten.flatMap((k) => eigene(trackId(info.thema, k))));
-  return info.thema.grafiken.map((_, i) => i).filter((i) => !belegt.has(i));
+  const selbst = new Set(eigene(info.id));   // was der Ueberblick selbst ansagt (z. B. das Regal), bleibt bei ihm
+  return info.thema.grafiken.map((_, i) => i).filter((i) => selbst.has(i) || !belegt.has(i));
 }
 // Alle Aufgaben zu einem Kapitel, rechts unter dem Pane, jede auf- und zuklappbar, Inhalt inline
 function aufgabenListe(info) {

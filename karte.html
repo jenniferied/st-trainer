@@ -3379,6 +3379,7 @@ function starteQuiz(tid) {
     zeichne(treffer, false);
     const fehlt = frei; const q = lesen("quiz", {}); q[tid] = { richtig: [...treffer.keys()], von: kand.length, datum: Date.now() }; speichern("quiz", q);
     ereignis("quiz", tid, treffer.size, kand.length, { getroffen: [...treffer.keys()] });
+    if (!frei.length && el.closest("#map-haupt")) setTimeout(() => { MAP_KEY = null; route(); }, 1400);
     const ok = !fehlt.length;
     const naechst = t ? naechsterTrack(trackId(t)) : naechsterTrack("gesamt");
     const weiter = ok
@@ -3602,6 +3603,14 @@ function zeigeHauptkarte(key, titel, baue) {
   document.getElementById("zoom-minus").onclick = () => zoomen(1 / 1.25);
   document.getElementById("zoom-plus").onclick = () => zoomen(1.25);
   document.getElementById("zoom-fit").onclick = () => zoomen(null);
+  // Verdeckt, bis die Aeste eingetragen sind: statt der Karte steht das Eintrage-Quiz im Kartenbereich
+  const tid = key === "gesamt" ? "gesamt" : key.split(":")[1];
+  if (!erledigt("quiz:" + tid)) {
+    if (MAP_KEY === "verdeckt:" + tid) return; MAP_KEY = "verdeckt:" + tid;
+    document.getElementById("map-titel").textContent = titel + " · verdeckt, bis du die Äste eingetragen hast"; cs.hidden = true;
+    el.classList.remove("passt"); el.innerHTML = ""; renderPath("quiz/" + tid, el, { eingebettet: true });
+    return;
+  }
   if (MAP_KEY === key) return;
   const alt = MAP_KEY; MAP_KEY = key;
   const zeichne = () => { const m = baue(); setzeMap(el, m); notizenZeichnen(); };

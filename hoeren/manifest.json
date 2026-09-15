@@ -32,7 +32,7 @@
 "grafiken": []
 },
 "sq-perspektiven": {
-"dur": 355.49,
+"dur": 355.5,
 "titel": "Schulqualität, Kapitel zwei: Vier Perspektiven. Es kommt darauf an, wen man fragt.",
 "grafiken": [
 0
@@ -47,43 +47,43 @@
 ]
 },
 "sq-ueberblick": {
-"dur": null,
+"dur": 426.02,
 "titel": "Schulqualität, Kapitel eins: Was ist eine gute Schule? Der Überblick.",
 "grafiken": []
 },
 "sr-lehrkraefte": {
-"dur": null,
+"dur": 362.1,
 "titel": "Schulrecht, Kapitel sechs: Lehrkräfte. In eigener Verantwortung, aber mit Pflichten.",
 "grafiken": []
 },
 "sr-neutral": {
-"dur": null,
+"dur": 354.45,
 "titel": "Schulrecht, Kapitel sieben: Neutralität. Mäßigung ja, Schweigen nein.",
 "grafiken": []
 },
 "sr-pflicht": {
-"dur": null,
+"dur": 400.52,
 "titel": "Schulrecht, Kapitel vier: Sechs Jahre Grundschule, zehn Jahre Schulpflicht.",
 "grafiken": [
 1
 ]
 },
 "sr-schule": {
-"dur": null,
+"dur": 345.43,
 "titel": "Schulrecht, Kapitel drei: Die Schule. Anstalt des Schulträgers, selbstständig, und alle wirken mit.",
 "grafiken": [
 3
 ]
 },
 "sr-staat": {
-"dur": null,
+"dur": 380.03,
 "titel": "Schulrecht, Kapitel zwei: Der Staat setzt den Rahmen. Zwei Artikel und ein Satz.",
 "grafiken": [
 0
 ]
 },
 "sr-ueberblick": {
-"dur": null,
+"dur": 441.66,
 "titel": "Schulrecht, Kapitel eins: Überblick. Wo steht, was Schule darf und muss.",
 "grafiken": []
 },
@@ -164,7 +164,7 @@
 ]
 },
 "st2-mead": {
-"dur": 350.05,
+"dur": 350.06,
 "titel": "Schultheorie zwei, Kapitel sechs: Mead. Wer ich bin, erfahre ich in der Interaktion.",
 "grafiken": [
 0
@@ -214,7 +214,7 @@
 ]
 },
 "st3-rousseau": {
-"dur": 342.14,
+"dur": 342.13,
 "titel": "Schultheorie drei, Kapitel vier: Rousseau. Erziehung soll die natürliche Entwicklung nicht stören.",
 "grafiken": [
 1

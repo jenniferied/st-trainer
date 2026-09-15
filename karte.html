@@ -4482,7 +4482,9 @@ async function route() {
 let ZURUECK_HASH = null;   // wohin es nach den Klausurfragen zurueckgeht: die Ansicht, aus der sie gestartet wurden
 document.addEventListener("click", (e) => {
   const a = e.target.closest('a[href^="index.html"]'); if (!a) return;
-  e.preventDefault(); ZURUECK_HASH = location.hash || "#gesamt"; const cl = document.getElementById("classic"); cl.src = a.getAttribute("href"); location.hash = "#classic";
+  e.preventDefault(); ZURUECK_HASH = location.hash || "#gesamt"; const cl = document.getElementById("classic");
+  // Der Trainer liest #quiz/... nur beim Start: ein reiner Hash-Wechsel laedt nicht neu, deshalb mit Zeitstempel als Query
+  const href = a.getAttribute("href").replace("index.html", "index.html?q=" + Date.now()); cl.src = href; location.hash = "#classic";
 });
 // Der eingebettete Trainer meldet Sprünge zur Karte (statt die ganze Seite neu zu laden)
 addEventListener("message", (e) => {

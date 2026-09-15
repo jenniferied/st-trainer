@@ -4013,7 +4013,13 @@ const haken = (key) => erledigt(key) ? '<i class="haken" title="erledigt">✓</i
 const evCfg = () => window.ST_CONFIG || {};
 const evRemote = () => !!(evCfg().supabaseUrl && evCfg().supabaseAnonKey && evCfg().syncCode);
 const evHdr = () => ({ apikey: evCfg().supabaseAnonKey, Authorization: "Bearer " + evCfg().supabaseAnonKey, "Content-Type": "application/json" });
-const bestanden = (art, punkte, von) => art === "hoeren" || art === "fragen" || (von > 0 && punkte / von >= (art === "gquiz" ? 0.7 : 0.8));
+// Beherrschung: Aeste-Quiz und Begriffe muessen komplett stimmen, Grafiken ab 70 Prozent, Hoeren und Klausurfragen zaehlen mit Abschluss
+const bestanden = (art, punkte, von) => art === "hoeren" || art === "fragen" || (von > 0 && (art === "gquiz" ? punkte / von >= 0.7 : punkte >= von));
+// Regelwechsel (15.09., Aeste-Quiz erst bei 6 von 6): Haken aus dem lokalen Ereignis-Log neu berechnen, Cloud kommt beim Laden dazu
+if (lesen("erledigtV", 1) < 2) {
+  const neu = {}; for (const e of lesen("ereignisse", [])) { if (e.art === "reset") { delete neu[e.ziel.startsWith("begriffe:") ? e.ziel : "quiz:" + e.ziel]; continue; } if (bestanden(e.art, e.punkte, e.von)) neu[e.art + ":" + e.ziel] = e.ts || Date.now(); }
+  ERLEDIGT = neu; speichern("erledigt", ERLEDIGT); speichern("erledigtV", 2);
+}
 function ereignis(art, ziel, punkte, von, detail) {
   const key = art + ":" + ziel;
   if (bestanden(art, punkte, von)) { ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT); naechstesZeichnen(); if (HP.info) aufgabenZeichnen(HP.info, false); const el = document.getElementById("naechstes"); if (el && HP.info && quizzeFertig(HP.info) && art !== "hoeren") el.scrollIntoView({ block: "center", behavior: "smooth" }); }
@@ -4026,7 +4032,10 @@ async function ereignisseLaden() {
   try {
     const r = await fetch(`${evCfg().supabaseUrl}/rest/v1/karten_events?raum=eq.rose&select=art,ziel,punkte,von,ts&order=ts.asc`, { headers: evHdr() });
     if (!r.ok) return; let neu = false;
-    for (const e of await r.json()) { if (bestanden(e.art, e.punkte, e.von)) { const k = e.art + ":" + e.ziel; if (!ERLEDIGT[k]) { ERLEDIGT[k] = Date.parse(e.ts); neu = true; } } }
+    for (const e of await r.json()) {
+      if (e.art === "reset") { const k = e.ziel.startsWith("begriffe:") ? e.ziel : "quiz:" + e.ziel; if (ERLEDIGT[k] && ERLEDIGT[k] < Date.parse(e.ts)) { delete ERLEDIGT[k]; neu = true; } continue; }
+      if (bestanden(e.art, e.punkte, e.von)) { const k = e.art + ":" + e.ziel; if (!ERLEDIGT[k]) { ERLEDIGT[k] = Date.parse(e.ts); neu = true; } }
+    }
     if (neu) { speichern("erledigt", ERLEDIGT); if (HP.info && modus() === "hoeren") { aufgabenZeichnen(HP.info, false); naechstesZeichnen(); } leisteZeichnen(); }
   } catch (e) {}
 }

@@ -38,7 +38,22 @@ h3 { font-size: 1.2rem; }
 h4 { margin: 0; font-family: Karla, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; color: var(--muted); }
 p { margin: 0; }
 a { color: inherit; }
-.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px 80px; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 0 16px 80px; }
+.inhalt { max-width: 860px; margin: 0 auto; }
+#karte-bereich { margin: 14px 0 6px; }
+.map-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; min-height: 22px; }
+.map-kopf .schalter { margin: 0; }
+.map-werkzeuge { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.zoom { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+.zoom button { font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: transparent; border: none; padding: 4px 10px; cursor: pointer; min-width: 34px; }
+.zoom button + button { border-left: 1.5px solid var(--line); }
+.zoom button:hover { background: var(--soft); }
+.pfad .zurueck { flex: 0 0 auto; text-decoration: none; font-weight: 700; font-size: .85rem; color: var(--ink); padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card); white-space: nowrap; }
+.pfad .map-toggle { margin-left: auto; flex: 0 0 auto; font: inherit; font-size: .8rem; font-weight: 700; color: var(--muted); background: transparent; border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+#view, .map { transition: opacity .18s ease; }
+#view.wechsel, .map.wechsel { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { #view, .map { transition: none; } }
+@media (max-width: 640px) { .pfad .zurueck { font-size: 0; padding: 6px 9px; } .pfad .zurueck::before { content: "‹"; font-size: 1.1rem; } }
 /* Kopfzeile mit Pfad: immer sichtbar, eine Ebene hoch per Knopf */
 .pfad { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); margin: 0 -16px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; min-height: 48px; }
 .pfad .hoch { flex: 0 0 auto; width: 40px; height: 36px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 1.2rem; display: grid; place-items: center; text-decoration: none; }
@@ -57,6 +72,7 @@ header.kopf { padding: 30px 0 18px; display: grid; gap: 10px; }
 .stufe-kopf .nr { font-family: Fraunces, serif; font-weight: 900; font-size: .9rem; color: var(--bc, var(--st1)); letter-spacing: .04em; }
 .map { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); background: var(--card); border-radius: 6px; }
 .map svg { display: block; height: auto; }
+.map.passt { overflow-x: hidden; }
 .hint { font-size: .82rem; color: var(--muted); margin-top: 8px; }
 .schalter { display: flex; gap: 14px; align-items: center; font-size: .85rem; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
 .schalter label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
@@ -205,9 +221,15 @@ svg .hl .box { stroke-width: 2.4; }
 
 <div class="wrap">
   <nav class="pfad" aria-label="Pfad">
-    <a class="hoch" id="hoch" href="#" aria-label="Eine Ebene hoch" hidden>‹</a>
+    <a class="zurueck" href="index.html" title="Zurück zum ST-Trainer">‹ ST-Trainer</a>
+    <a class="hoch" id="hoch" href="#" aria-label="Eine Ebene hoch" hidden>↑</a>
     <ol id="pfad"></ol>
+    <button class="map-toggle" id="map-toggle" type="button" hidden>Karte ausblenden</button>
   </nav>
+  <section id="karte-bereich" hidden>
+    <div class="map-kopf"><span class="eyebrow" id="map-titel"></span><div class="map-werkzeuge"><label class="schalter" id="chips-schalter" hidden><input type="checkbox" id="chips"> Schlüsselbegriffe</label><span class="zoom" role="group" aria-label="Zoom"><button type="button" id="zoom-minus" title="Kleiner">−</button><button type="button" id="zoom-plus" title="Größer">+</button><button type="button" id="zoom-fit" title="In die Breite einpassen">⤢ Einpassen</button></span></div></div>
+    <div class="map" id="map-haupt"></div>
+  </section>
   <main id="view"></main>
 </div>
 
@@ -2737,6 +2759,15 @@ function mindmap(spec, opt) {
 // Karte einsetzen und so scrollen, dass die Wurzel (oder der markierte Ast) sichtbar ist
 function setzeMap(el, m) {
   el.innerHTML = m.svg;
+  // Die Karte wird so weit herausgezoomt, dass sie in die Breite passt (Jennifer, 15.09.).
+  // Nur wenn das unter 45 Prozent Groesse waere (Handy), bleibt sie in Originalgroesse und scrollt.
+  const svg = el.querySelector("svg");
+  if (svg && el.clientWidth && el.clientWidth / m.W >= 0.45) {
+    svg.removeAttribute("width"); svg.style.width = Math.round(100 * (el.zoom || 1)) + "%"; el.classList.toggle("passt", (el.zoom || 1) <= 1);
+    if ((el.zoom || 1) > 1) { el.scrollLeft = Math.max(0, (m.hlX ?? m.cx) / m.W * el.scrollWidth - el.clientWidth / 2); }
+    return;
+  }
+  el.classList.remove("passt");
   const ziel = m.hlX ?? m.cx;
   const scale = el.clientWidth ? Math.min(1, el.scrollWidth / m.W) : 1;
   el.scrollLeft = Math.max(0, ziel * scale - el.clientWidth / 2);
@@ -2754,7 +2785,7 @@ function gesamtSpec() {
   return { root: ["Schultheorie &", "Bildungsforschung"], left, right };
 }
 
-function viewGesamt() {
+function viewGesamt(mitMap) {
   const n = THEMEN.reduce((a, t) => a + t.karten.length, 0);
   return `
   <header class="kopf">
@@ -2764,8 +2795,7 @@ function viewGesamt() {
   </header>
   <div class="stufe-kopf"><div class="nr">STUFE 1</div><h2>Die ganze Klausur auf einen Blick</h2>
     <p class="lead">Sechs Oberthemen, ${THEMEN.reduce((a, t) => a + t.aeste.length, 0)} Unterthemen, ${n} Karten. Seitlich scrollen, am Handy zoomen, alles ist antippbar.</p></div>
-  <div class="map" id="map-gesamt"></div>
-  <div class="schalter"><label><input type="checkbox" id="chips" ${zeigeChips ? "checked" : ""}> Schlüsselbegriffe zeigen</label></div>
+  ${mitMap ? `<div class="map" id="map-gesamt"></div>` : ""}
   <div class="legende">${THEMEN.map((t) => `<span style="--bc:${t.color}">${esc(t.label)}</span>`).join("")}</div>
   <div class="hoer-start" style="--bc:var(--ink)"><div><div class="eyebrow">Zum Hören</div><b>Die ganze Vorlesung in einem Kapitel</b><small>Stufe 1: alles einmal genannt, als Erzählung. Die Karte bleibt dabei verdeckt, am Ende trägst du die Äste selbst ein.</small></div>${playChip("gesamt", "gross") || '<span class="hint">folgt</span>'}</div>
   <div class="themen-liste">${THEMEN.map((t) => `<a href="#thema/${t.id}" style="--bc:${t.color}"><b>${esc(t.label)}</b><small>${esc(t.sub)} · ${t.aeste.length} Unterthemen, ${t.karten.length} Karten · Folien ${esc(t.folien)}</small><span class="chips-zeile">${playChip(trackId(t))}<a class="play quiz" href="#quiz/${t.id}">✎ Äste-Quiz</a></span></a>`).join("")}</div>
@@ -2779,12 +2809,12 @@ function themaSpec(t) {
   return { root: [t.label, t.sub], left: t.aeste.filter((a) => a.seite !== "right").map(mk), right: t.aeste.filter((a) => a.seite === "right").map(mk) };
 }
 
-function viewThema(t, astId) {
+function viewThema(t, astId, mitMap) {
   return `
   <div class="stufe-kopf" style="--bc:${t.color}"><div class="nr">STUFE 2 · ${esc(t.label).toUpperCase()}</div><h2>${esc(t.sub)}</h2>
     <p class="lead">${t.intro} Folien ${esc(t.folien)}.</p><div class="chips-zeile">${playChip(trackId(t), "gross")}<a class="play quiz" href="#quiz/${t.id}">✎ Äste-Quiz</a></div></div>
-  <div class="map" id="map-thema"></div>
-  <p class="hint">Jeder Knoten: Fachbegriff, darunter in einfachen Worten, was er meint. Antippen öffnet die Karte dazu.</p>
+  ${mitMap ? `<div class="map" id="map-thema"></div>` : ""}
+  <p class="hint">Jeder Knoten in der Karte oben: Fachbegriff, darunter in einfachen Worten, was er meint. Antippen öffnet die Karte dazu.</p>
   <div class="stufe-kopf" style="--bc:${t.color}"><h3>Karten dieses Themas</h3></div>
   <div class="kette" style="--bc:${t.color}">${t.karten.map((k) => `<a href="#karte/${t.id}/${k.id}">${esc(k.titel.split(":")[0])}${MANIFEST && MANIFEST[trackId(t, k)] ? " ▶" : ""}</a>`).join("")}<a href="#alle/${t.id}">Alle untereinander</a></div>
   ${t.grafiken.length ? `<div class="stufe-kopf" style="--bc:${t.color}"><h3>Die Grafiken der Folien, nachgezeichnet</h3></div>
@@ -3118,49 +3148,84 @@ function pfad(items, hoch) {
   h.hidden = !hoch; if (hoch) h.href = hoch;
 }
 
+// Die Hauptkarte ueber dem Inhalt: bleibt ueber alle Stufen stehen, wechselt weich zwischen
+// Gesamtkarte und Themenkarte und markiert auf Stufe 3 den Ast der aktuellen Karte.
+let MAP_KEY = null;
+let mapZu = lesen("mapZu", null);
+function zeigeHauptkarte(key, titel, baue) {
+  const sec = document.getElementById("karte-bereich"), el = document.getElementById("map-haupt"), tg = document.getElementById("map-toggle");
+  const cs = document.getElementById("chips-schalter"), cb = document.getElementById("chips");
+  if (!key) { sec.hidden = true; tg.hidden = true; MAP_KEY = null; return; }
+  tg.hidden = false;
+  const zu = mapZu == null ? (innerWidth < 900 && key.startsWith("karte:")) : mapZu;
+  sec.hidden = zu; tg.textContent = zu ? "Karte einblenden" : "Karte ausblenden";
+  tg.onclick = () => { mapZu = !zu; speichern("mapZu", mapZu); MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
+  if (zu) return;
+  document.getElementById("map-titel").textContent = titel;
+  cs.hidden = key !== "gesamt"; cb.checked = zeigeChips;
+  cb.onchange = () => { zeigeChips = cb.checked; MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
+  const zoomen = (f) => { el.zoom = f == null ? 1 : Math.min(3, Math.max(0.5, (el.zoom || 1) * f)); MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
+  document.getElementById("zoom-minus").onclick = () => zoomen(1 / 1.25);
+  document.getElementById("zoom-plus").onclick = () => zoomen(1.25);
+  document.getElementById("zoom-fit").onclick = () => zoomen(null);
+  if (MAP_KEY === key) return;
+  const alt = MAP_KEY; MAP_KEY = key;
+  const zeichne = () => setzeMap(el, baue());
+  if (alt && alt.split(":")[0] !== key.split(":")[0] || (alt && alt.startsWith("gesamt") !== key.startsWith("gesamt"))) {
+    el.classList.add("wechsel"); setTimeout(() => { zeichne(); el.classList.remove("wechsel"); }, 180);
+  } else zeichne();
+}
+
 // Rendert einen Pfad ("thema/st1", "karte/st1/parsons", "gesamt") in ein Element.
 // eingebettet = im rechten Pane des Players: kein Pfad, keine Schalter, kompakter.
 function renderPath(path, view, opts = {}) {
   const p = String(path || "").replace(/^#\/?/, "").split("/").filter(Boolean);
   const t = p[1] && thema(p[1]);
   const emb = !!opts.eingebettet;
+  const spalte = (html) => emb ? html : `<div class="inhalt">${html}</div>`;
+  const themaMap = (astId) => () => mindmap(themaSpec(t), { aria: "Themenkarte " + t.label, rootW: 200, hl: astId });
   if (p[0] === "thema" && t) {
     const ast = p[2] && t.aeste.find((a) => a.id === p[2]);
-    view.innerHTML = viewThema(t, ast && ast.id);
-    if (!emb) pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`]], "#gesamt");
-    setzeMap(view.querySelector("#map-thema"), mindmap(themaSpec(t), { aria: "Themenkarte " + t.label, rootW: 200, hl: ast && ast.id }));
+    view.innerHTML = spalte(viewThema(t, ast && ast.id, emb));
+    if (!emb) { pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`]], "#gesamt"); zeigeHauptkarte("thema:" + t.id + ":" + (ast ? ast.id : ""), "Themenkarte · " + t.label, themaMap(ast && ast.id)); }
+    else setzeMap(view.querySelector("#map-thema"), themaMap(ast && ast.id)());
   } else if (p[0] === "karte" && t) {
     const k = t.karten.find((x) => x.id === p[2]) || t.karten[0];
-    view.innerHTML = viewKarte(t, k);
-    if (!emb) pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], [k.titel.split(":")[0], `#karte/${t.id}/${k.id}`]], `#thema/${t.id}`);
+    const ast = t.aeste.find((a) => a.karte === k.id);
+    view.innerHTML = spalte(viewKarte(t, k));
+    if (!emb) { pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], [k.titel.split(":")[0], `#karte/${t.id}/${k.id}`]], `#thema/${t.id}`); zeigeHauptkarte("karte:" + t.id + ":" + k.id, "Themenkarte · " + t.label + " · " + k.titel.split(":")[0], themaMap(ast && ast.id)); }
   } else if (p[0] === "alle" && t) {
-    view.innerHTML = viewAlle(t);
-    if (!emb) pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], ["Alle Karten", `#alle/${t.id}`]], `#thema/${t.id}`);
+    view.innerHTML = spalte(viewAlle(t));
+    if (!emb) { pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], ["Alle Karten", `#alle/${t.id}`]], `#thema/${t.id}`); zeigeHauptkarte("thema:" + t.id + ":", "Themenkarte · " + t.label, themaMap(null)); }
   } else if (p[0] === "quiz" && (p[1] === "gesamt" || t)) {
-    view.innerHTML = viewQuiz(p[1]);
+    view.innerHTML = spalte(viewQuiz(p[1]));
+    if (!emb) zeigeHauptkarte(null);
     if (!emb) pfad([["Gesamtkarte", "#gesamt"], ...(t ? [[t.label, `#thema/${t.id}`]] : []), ["Quiz", `#quiz/${p[1]}`]], t ? `#thema/${t.id}` : "#gesamt");
     starteQuiz(p[1]);
   } else if (p[0] === "hoeren") {
     const info = trackInfo(p[1]) || trackListe()[0];
     view.innerHTML = viewHoeren(info);
+    if (!emb) zeigeHauptkarte(null);
     if (!emb) pfad([["Gesamtkarte", "#gesamt"], ...(info.thema ? [[info.thema.label, `#thema/${info.thema.id}`]] : []), ["Hören: " + info.titel, `#hoeren/${info.id}`]], info.thema ? (info.karte ? `#karte/${info.thema.id}/${info.karte.id}` : `#thema/${info.thema.id}`) : "#gesamt");
     starteHoeren(info);
   } else {
-    view.innerHTML = viewGesamt();
-    if (!emb) pfad([["Gesamtkarte", "#gesamt"]], null);
-    const el = view.querySelector("#map-gesamt");
+    view.innerHTML = spalte(viewGesamt(emb));
     const spec = () => { const s = gesamtSpec(); if (opts.ohneKinder) for (const b of [...s.left, ...s.right]) if (b.id === opts.ohneKinder) { b.kinder = []; b.stub = true; } return s; };
-    const zeichne = () => setzeMap(el, mindmap(spec(), { aria: "Gesamtkarte aller Oberthemen", chipMax: 320, chips: zeigeChips && !emb }));
-    zeichne();
-    const cb = view.querySelector("#chips"); if (cb) cb.addEventListener("change", (e) => { zeigeChips = e.target.checked; zeichne(); });
+    const baue = () => mindmap(spec(), { aria: "Gesamtkarte aller Oberthemen", chipMax: 320, chips: zeigeChips && !emb });
+    if (!emb) { pfad([["Gesamtkarte", "#gesamt"]], null); zeigeHauptkarte("gesamt", "Gesamtkarte · alle sechs Themen", baue); }
+    else setzeMap(view.querySelector("#map-gesamt"), baue());
   }
 }
 async function route() {
   await ladeManifest();
   await ladeKartenFragen();
-  renderPath(location.hash, document.getElementById("view"));
+  const view = document.getElementById("view");
+  view.classList.add("wechsel");
+  await new Promise((r) => setTimeout(r, 120));
+  renderPath(location.hash, view);
   miniZeichnen();
   window.scrollTo(0, 0);
+  requestAnimationFrame(() => view.classList.remove("wechsel"));
 }
 addEventListener("hashchange", route);
 route();

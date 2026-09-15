@@ -48,7 +48,7 @@ a { color: inherit; }
 .zoom button { font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: transparent; border: none; padding: 4px 10px; cursor: pointer; min-width: 34px; }
 .zoom button + button { border-left: 1.5px solid var(--line); }
 .zoom button:hover { background: var(--soft); }
-.leiste { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; margin: 0 -16px; padding: 6px 12px; background: var(--ink); color: var(--paper); min-height: 52px; }
+.leiste { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; margin: 0; padding: 6px 16px; background: var(--ink); color: var(--paper); min-height: 52px; }
 .marke { text-decoration: none; color: var(--paper); font-family: Fraunces, serif; font-weight: 700; font-size: 1rem; white-space: nowrap; flex: 0 0 auto; }
 .marke .kurz { display: none; }
 @media (max-width: 900px) {
@@ -69,8 +69,18 @@ a { color: inherit; }
 .widget select { font: inherit; font-size: .78rem; padding: 3px 4px; border-radius: 6px; border: none; background: color-mix(in srgb, var(--paper) 18%, transparent); color: var(--paper); }
 .widget.fertig .w-kn:first-child { background: var(--ok); color: #fff; }
 .w-kn.menu { margin-left: auto; font-size: 1rem; }
-.kapitel-menu { position: sticky; top: 52px; z-index: 6; margin: 0 -16px; padding: 10px 16px 14px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 60vh; overflow: auto; }
+.kapitel-menu { position: sticky; top: 52px; z-index: 6; margin: 0; padding: 10px 16px 14px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 60vh; overflow: auto; }
 .kapitel-menu h4 { margin: 8px 0 4px; }
+.aufgaben { margin-top: 18px; display: grid; gap: 8px; }
+.aufgaben h4 { display: flex; justify-content: space-between; align-items: baseline; }
+.aufgabe { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0; }
+.aufgabe summary { cursor: pointer; padding: 10px 12px; font-weight: 700; list-style: none; display: flex; gap: 8px; align-items: center; }
+.aufgabe summary::-webkit-details-marker { display: none; }
+.aufgabe summary::after { content: "▾"; margin-left: auto; color: var(--muted); } .aufgabe[open] summary::after { content: "▴"; }
+.aufgabe .stand { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: .8rem; }
+.aufgabe.fertig .stand { background: var(--ok); color: #fff; } .aufgabe.fertig summary { color: var(--muted); }
+.aufgabe-inhalt { padding: 0 12px 12px; }
+.aufgabe-inhalt .grafik { border: none; padding: 0; }
 .naechstes { margin-top: 26px; display: grid; gap: 6px; justify-items: start; }
 .btn-next { text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; background: var(--bc, var(--st1)); color: var(--paper); }
 .btn-next.gesperrt { background: var(--soft); color: var(--muted); pointer-events: none; }
@@ -78,8 +88,8 @@ a { color: inherit; }
 .quiz-form label.breit { grid-column: 1 / -1; text-transform: none; letter-spacing: 0; font-size: .95rem; color: var(--ink); font-weight: 500; }
 .w-quiz { background: var(--ok); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 700; text-decoration: none; white-space: nowrap; font-size: .82rem; animation: puls 1.2s ease-in-out infinite; }
 @media (max-width: 640px) { .widget .w-kn.klein, .widget select { display: none; } .modi a { padding: 6px 9px; font-size: .78rem; } }
-#classic { width: 100vw; height: calc(100vh - 52px); border: none; display: block; margin: 0 -16px; }
-body:has(#classic:not([hidden])) .wrap { padding-bottom: 0; max-width: none; }
+#classic { width: 100%; height: calc(100vh - 52px); border: none; display: block; }
+body:has(#classic:not([hidden])) .wrap { padding: 0; max-width: none; }
 .grafik-kopf .rund.klein { background: var(--soft); color: var(--ink); } .grafik-kopf .rund.klein.an { background: var(--bc, var(--st1)); color: var(--paper); }
 .grafik.geloest { border-color: var(--ok); } .grafik .haken.statisch, .mit-quiz .haken.statisch { position: static; display: inline-grid; width: 22px; height: 22px; font-size: .8rem; }
 .grafik .haken { position: static; display: inline-grid; width: 22px; height: 22px; font-size: .8rem; }
@@ -201,7 +211,6 @@ td:first-child { font-weight: 700; white-space: nowrap; } td b { font-weight: 70
 .hoeren .rechts { display: none; }
 .hoeren[data-tab="karte"] .rechts { display: block; } .hoeren[data-tab="karte"] .transkript, .hoeren[data-tab="karte"] .kapitel { display: none; }
 @media (min-width: 900px) {
-  .wrap:has(.hoeren) { max-width: 1320px; }
   .hoeren { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
   .hoeren .rechts { display: block; position: sticky; top: 60px; max-height: calc(100vh - 70px); overflow: auto; }
   .hoeren[data-tab="karte"] .transkript, .hoeren[data-tab="karte"] .kapitel { display: block; }
@@ -291,13 +300,13 @@ svg .plus:hover circle { fill: var(--um); stroke: var(--um); } svg .plus:hover t
 </style>
 
 <script src="js/config.js"></script>
-<div class="wrap">
-  <div class="leiste">
+<div class="leiste">
     <a class="marke" href="#classic" title="Schultheorie-Trainer"><span class="voll">✏️ Schultheorie-Trainer</span><span class="kurz">✏️ ST</span></a>
     <nav class="modi" aria-label="Modus"><a data-modus="classic" href="#classic">Trainer</a><a data-modus="karte" href="#gesamt">Karte</a><a data-modus="hoeren" href="#hoeren/gesamt">Hören</a></nav>
     <div class="widget" id="widget"></div>
   </div>
   <div class="kapitel-menu" id="kapitel-menu" hidden></div>
+<div class="wrap">
   <nav class="pfad" aria-label="Pfad">
     <a class="hoch" id="hoch" href="#" aria-label="Eine Ebene hoch" hidden>↑</a>
     <ol id="pfad"></ol>
@@ -3052,7 +3061,7 @@ function viewHoeren(info) {
       <div class="transkript" id="transkript"><p class="hint">Text wird geladen …</p></div>
       <div class="naechstes" id="naechstes"></div>
     </div>
-    <div class="rechts" id="pane"><div class="pane-kopf"><span id="pane-titel" class="eyebrow">Karte</span><a class="klein" id="pane-voll" href="#gesamt">Ganze Seite ↗</a></div><div id="pane-inhalt"></div></div>
+    <div class="rechts" id="pane"><div class="pane-kopf"><span id="pane-titel" class="eyebrow">Karte</span><a class="klein" id="pane-voll" href="#gesamt">Ganze Seite ↗</a></div><div id="pane-inhalt"></div><div class="aufgaben" id="pane-aufgaben"></div></div>
   </div>`;
 }
 
@@ -3103,7 +3112,7 @@ async function starteHoeren(info) {
     paneZeigen(info, { path: h, titel: "" });
   });
   if (HP.fertig === info.id) kapitelEnde(info, true); else paneZeigen(info, paneStandard(info));
-  naechstesZeichnen(); leisteZeichnen(); syncTick(info, true);
+  aufgabenZeichnen(info, HP.fertig === info.id); naechstesZeichnen(); leisteZeichnen(); syncTick(info, true);
 }
 function syncTick(info, force) {
   if (!HP.info || HP.info.id !== info.id) return;
@@ -3136,6 +3145,37 @@ function naechstesZeichnen() {
   el.innerHTML = nx ? `<a class="btn-next ${frei ? "frei leuchtet" : "gesperrt"}" href="#hoeren/${nx.id}" ${frei ? "" : 'aria-disabled="true"'}>Nächstes Kapitel: ${esc(nx.titel)} ›</a><span class="hint">${frei ? "Alle Quizze zu diesem Kapitel sind durch." : pflicht.length ? `Erst die ${offen === 1 ? "eine offene Aufgabe" : offen + " offenen Aufgaben"} zu diesem Kapitel, dann geht es weiter.` : ""}</span>` : `<span class="hint">Das war das letzte Kapitel.</span>`;
   if (frei && el.dataset.warFrei !== "1") { el.dataset.warFrei = "1"; }
 }
+// Alle Aufgaben zu einem Kapitel, rechts unter dem Pane, jede auf- und zuklappbar, Inhalt inline
+function aufgabenListe(info) {
+  const l = [];
+  if (info.stufe === 1) { l.push({ key: "quiz:gesamt", titel: "Die sechs Äste eintragen", art: "quiz", ziel: "gesamt" }); l.push({ key: "begriffe:gesamt", titel: "Die wichtigsten Begriffe", art: "bquiz" }); }
+  else if (info.stufe === 2) { const t = info.thema; l.push({ key: "quiz:" + t.id, titel: "Unterthemen von " + t.label + " eintragen", art: "quiz", ziel: t.id }); t.grafiken.forEach((g, i) => l.push({ key: `gquiz:${t.id}:${i}`, titel: "Grafik: " + g.titel, art: "grafik", i })); }
+  else { const kf = KARTEN_FRAGEN && KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id]; if (kf && kf.ids && kf.ids.length) l.push({ key: "fragen:" + info.thema.id + "/" + info.karte.id, titel: `${Math.min(5, kf.gruppen || kf.ids.length)} Klausurfragen im Trainer`, art: "fragen" }); }
+  return l;
+}
+function aufgabenZeichnen(info, aufklappen) {
+  const el = document.getElementById("pane-aufgaben"); if (!el || !info) return;
+  const l = aufgabenListe(info); if (!l.length) { el.innerHTML = ""; return; }
+  const offen = l.filter((a) => !erledigt(a.key)).length;
+  const ersteOffene = l.find((a) => !erledigt(a.key));
+  const vorher = new Set([...el.querySelectorAll("details[open]")].map((d) => d.dataset.key));
+  el.innerHTML = `<h4>Aufgaben zu diesem Kapitel <span class="hint">${offen ? offen + " offen" : "alle erledigt ✓"}</span></h4>` + l.map((a) => {
+    const auf = vorher.has(a.key) || (aufklappen && ersteOffene && ersteOffene.key === a.key);
+    return `<details class="aufgabe ${erledigt(a.key) ? "fertig" : ""}" data-key="${a.key}" data-art="${a.art}" ${auf ? "open" : ""}><summary><span class="stand">${erledigt(a.key) ? "✓" : "○"}</span> ${esc(a.titel)}</summary><div class="aufgabe-inhalt"></div></details>`;
+  }).join("");
+  el.querySelectorAll("details").forEach((d) => {
+    const fuellen = () => {
+      const box = d.querySelector(".aufgabe-inhalt"); if (box.dataset.da) return; box.dataset.da = "1";
+      const a = l.find((x) => x.key === d.dataset.key);
+      if (a.art === "quiz") renderPath("quiz/" + a.ziel, box, { eingebettet: true });
+      else if (a.art === "bquiz") { box.innerHTML = viewBquiz(); starteBquiz(); }
+      else if (a.art === "grafik") box.innerHTML = grafikHtml(info.thema, a.i);
+      else box.innerHTML = `<p class="hint">Fünf echte Klausurfragen zu dieser Karte, als geloggte Runde im Trainer. Das Ergebnis kommt hierher zurück.</p><div class="sprung"><a class="primaer" href="index.html#quiz/${info.thema.id}/${info.karte.id}?n=5">5 Fragen starten ›</a></div>`;
+    };
+    d.addEventListener("toggle", () => { if (d.open) fuellen(); });
+    if (d.open) fuellen();
+  });
+}
 // Welches Quiz nach einem Kapitel dran ist
 function quizNach(info) {
   if (info.stufe === 1) return erledigt("quiz:gesamt") ? [["Begriffe", "#bquiz/gesamt"]] : [["Äste eintragen", "#quiz/gesamt"], ["Begriffe", "#bquiz/gesamt"]];
@@ -3151,13 +3191,12 @@ function kapitelEnde(info, still) {
   const msg = document.getElementById("pl-msg");
   if (msg) msg.innerHTML = `<b>Kapitel abgeschlossen.</b> ${q.map(([l, h], i) => `<a class="${i ? "" : "primaer"}" href="${h}">${esc(l)} ›</a>`).join(" ")}`;
   document.querySelectorAll(".rund").forEach((b) => { if (q.some(([, h]) => b.getAttribute("href") === h)) b.classList.add("leuchtet"); });
-  naechstesZeichnen();
+  naechstesZeichnen(); aufgabenZeichnen(info, true);
   // Quiz inline rechts: Stufe 1/2 Aeste-Quiz, Stufe 3 die Karte mit ihrer Fragen-Leiste
   if (document.getElementById("pane-inhalt")) {
-    if (info.stufe === 1) paneZeigen(info, { path: "quiz/gesamt", titel: "Quiz: Äste eintragen" });
-    else if (info.stufe === 2) paneZeigen(info, { path: "quiz/" + info.thema.id, titel: "Quiz: Unterthemen von " + info.thema.label });
-    else paneZeigen(info, { path: `karte/${info.thema.id}/${info.karte.id}`, titel: info.karte.titel.split(":")[0] });
+    paneZeigen(info, paneStandard(info));
     const tabs = document.getElementById("tabs"); if (tabs && innerWidth < 900) tabs.querySelector('[data-tab="karte"]').click();
+    const au = document.getElementById("pane-aufgaben"); if (au) au.scrollIntoView({ block: "start", behavior: "smooth" });
   }
   leisteZeichnen();
 }
@@ -3243,7 +3282,7 @@ const evHdr = () => ({ apikey: evCfg().supabaseAnonKey, Authorization: "Bearer "
 const bestanden = (art, punkte, von) => art === "hoeren" || art === "fragen" || (von > 0 && punkte / von >= (art === "gquiz" ? 0.7 : 0.8));
 function ereignis(art, ziel, punkte, von, detail) {
   const key = art + ":" + ziel;
-  if (bestanden(art, punkte, von)) { ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT); naechstesZeichnen(); const el = document.getElementById("naechstes"); if (el && HP.info && quizzeFertig(HP.info) && art !== "hoeren") el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  if (bestanden(art, punkte, von)) { ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT); naechstesZeichnen(); if (HP.info) aufgabenZeichnen(HP.info, false); const el = document.getElementById("naechstes"); if (el && HP.info && quizzeFertig(HP.info) && art !== "hoeren") el.scrollIntoView({ block: "center", behavior: "smooth" }); }
   const ev = { id: "e-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), raum: "rose", art, ziel, punkte, von, detail: detail || null };
   const log = lesen("ereignisse", []); log.push({ ...ev, ts: Date.now() }); speichern("ereignisse", log.slice(-500));
   if (evRemote()) fetch(`${evCfg().supabaseUrl}/rest/v1/karten_events`, { method: "POST", headers: evHdr(), body: JSON.stringify(ev) }).catch(() => {});

@@ -248,6 +248,7 @@ td:first-child { font-weight: 700; white-space: nowrap; } td b { font-weight: 70
 .rechts .pane-kopf { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .rechts .klein { font-size: .82rem; color: var(--muted); }
 .rechts .stufe-kopf { margin-top: 0; } .rechts header.kopf { display: none; } .rechts .hoer-start, .rechts .schalter, .rechts .stand, .rechts .sprung { display: none; }
+.rechts form .sprung, .rechts .quiz-form .sprung, .rechts #quiz-ergebnis .sprung, .rechts .g-form .sprung { display: flex; }
 .verdeckt { display: grid; place-items: center; gap: 10px; text-align: center; padding: 40px 20px; border: 1.5px dashed var(--line); border-radius: 8px; color: var(--muted); }
 .verdeckt .ico { font-size: 2.4rem; color: var(--bc); } .verdeckt p { max-width: 40ch; }
 .verdeckt .knopf, .quiz-form button, .sprung button { text-decoration: none; padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
@@ -2779,15 +2780,15 @@ BEGRIFFE["sq-ueberblick"] = [
     { satz: "Forschungsrichtung, die in Deutschland lange dominant war und gute Schule normativ über soziale Integration, Schulleben und pädagogische Zuwendung bestimmt: …", begriff: "Schulklimaforschung", alias: ["Schulklima", "Klimaforschung"] },
     { satz: "Name der Liste mit fünf Faktoren von Scheerens 2004, unter anderem effektive Schulleitung und angemessene Leistungserwartungen: …", begriff: "Five Factor Model", alias: ["Five Factor", "Fünf-Faktoren-Modell", "5-Faktoren-Modell"] },
   ] },
-  { thema: "Rahmen und Komposition", items: [
+  { thema: "Rahmen, Brandenburg, Komposition", items: [
     { satz: "Faktoren, die weit weg vom Unterricht liegen und nur indirekt auf Leistungen wirken, etwa Schulform und Ausstattung: …", begriff: "Distale Variablen", alias: ["distal", "distale Faktoren", "distale Bedingungen"] },
-    { satz: "Faktoren nah am Kind, die direkt auf das Lernen wirken: Unterrichtsqualität, Lernaktivitäten, Schulklima: …", begriff: "Proximale Variablen", alias: ["proximal", "proximale Faktoren"] },
+    { satz: "Die Prozessdimension des Brandenburger Orientierungsrahmens hat vier davon: Führung, Lehren und Lernen, Lernort, lernende Organisation: …", begriff: "Qualitätsbereiche", alias: ["Qualitätsbereich", "QB"] },
     { satz: "Wirkung der Zusammensetzung einer Klasse auf die Leistung, über das Merkmal des einzelnen Kindes hinaus: …", begriff: "Kompositionseffekt", alias: ["Kompositionseffekte", "Komposition"] },
   ] },
   { thema: "Effektive Schulen", items: [
     { satz: "Idee, eine Schule am Mehrwert zu messen: Leistungszuwachs im Vergleich zu Schulen mit ähnlicher Schülerschaft: …", begriff: "Value-added-Ansatz", alias: ["Value added", "value-added", "Mehrwert-Ansatz"] },
-    { satz: "Einrichtung, deren Schüler sich stärker verbessern, als der familiäre Hintergrund erwarten lässt: …", begriff: "Effektive Schule", alias: ["effektiv", "effektive Schulen"] },
-    { satz: "Bezeichnung der OECD für die effektive Schule in herausfordernder Lage: …", begriff: "Advantaged schools", alias: ["advantaged", "advantaged school"] },
+    { satz: "Bei Holtappels hat eine Einrichtung mit anspruchsvoller Problemkonstellation, die hohe Anstrengungen abverlangt, eine …", begriff: "herausfordernde Lage", alias: ["herausfordernder Lage", "herausfordernd"] },
+    { satz: "Bezeichnung der OECD für den effektiven Typ, der in professionelle Entwicklung investiert: …", begriff: "Advantaged schools", alias: ["advantaged", "advantaged school"] },
   ] },
 ];
 
@@ -2813,12 +2814,11 @@ BEGRIFFE["sq-rahmen"] = [
   { thema: "Baumert et al. 2010", items: [
     { satz: "Faktoren, die vom Unterricht entfernt sind und nur indirekt wirken: Schulform, Ausstattung, Einzugsgebiet: …", begriff: "Distale Variablen", alias: ["distal", "distale Faktoren"] },
     { satz: "Faktoren, die das Lernen direkt beeinflussen: Unterrichtsqualität, Lernaktivitäten, Schulklima: …", begriff: "Proximale Variablen", alias: ["proximal", "proximale Faktoren"] },
-    { satz: "Ebene bei Baumert für Lernen und Unterricht: …", begriff: "Mikroebene", alias: ["Mikro"] },
-    { satz: "Ebene bei Baumert für die Systembindung der Schule: …", begriff: "Makroebene", alias: ["Makro"] },
+    { satz: "Ebene bei Baumert für die Bedingungen in Schule, Familie und Peergroup: …", begriff: "Mesoebene", alias: ["Meso"] },
   ] },
   { thema: "Vier Faktorengruppen", items: [
-    { satz: "Faktorengruppe auf Folie 19 für Bedingungen, die die Schule selbst nicht ändern kann, etwa das sozial-regionale Umfeld: …", begriff: "Kontext", alias: ["Kontextvariablen", "Kontextfaktoren"] },
-    { satz: "Faktorengruppe auf Folie 19 für Ausstattung und Lehrpläne: …", begriff: "Input", alias: ["Inputfaktoren", "Inputs"] },
+    { satz: "Faktorengruppe auf Folie 19 für Bedingungen, die die Schule selbst nicht ändern kann, etwa das sozial-regionale Umfeld: …", begriff: "Kontext", alias: [] },
+    { satz: "Faktorengruppe auf Folie 19 für Ausstattung und Lehrpläne: …", begriff: "Input", alias: ["Inputs"] },
     { satz: "Kritik von Folie 18: Die Forschung sieht Eingang und Ergebnis, aber nicht das Lernen dazwischen: …", begriff: "Black-box-Forschung", alias: ["black box", "Blackbox", "Black-box"] },
   ] },
 ];
@@ -2857,13 +2857,12 @@ BEGRIFFE["sq-effektiv"] = [
     { satz: "Bei Holtappels heißt eine Einrichtung mit anspruchsvoller Problemkonstellation, die hohe Anstrengungen abverlangt, …", begriff: "Schule in herausfordernder Lage", alias: ["herausfordernde Lage", "herausfordernder Lage", "herausfordernd"] },
   ] },
   { thema: "OECD 2012", items: [
-    { satz: "Typ, der effektiv mit der schwierigen Lage umgeht und in professionelle Entwicklung investiert: …", begriff: "Advantaged schools", alias: ["advantaged", "advantaged school"] },
-    { satz: "Typ dazwischen: durchmischt, selbststeuerungsfähig, braucht keine externe Unterstützung: …", begriff: "Mixed schools", alias: ["mixed", "mixed school"] },
     { satz: "Typ mit hoher sozialer Exklusion, großen Lernrückständen und Notwendigkeit externer Unterstützung: …", begriff: "Disadvantaged schools", alias: ["disadvantaged", "disadvantaged school"] },
+    { satz: "Typ dazwischen: durchmischt, selbststeuerungsfähig, braucht keine externe Unterstützung: …", begriff: "Mixed schools", alias: ["mixed", "mixed school"] },
   ] },
   { thema: "Fünf Qualitätsmerkmale", items: [
     { satz: "Merkmal 1: kooperativer Führungsstil, Transparenz, demokratische Entscheidungen, rechtzeitiges Eingreifen: …", begriff: "Schulleitungshandeln", alias: ["Schulleitung"] },
-    { satz: "Merkmal 2: regelmäßige Erfassung von Leistungen und deren Nutzung zur internen Evaluation: …", begriff: "Datengenerierung und Datennutzung", alias: ["Datennutzung", "Daten", "Datengenerierung"] },
+    { satz: "Merkmal 2: regelmäßige Erfassung von Leistungen und deren Nutzung zur internen Evaluation: …", begriff: "Datengenerierung und Datennutzung", alias: ["Daten", "Datengenerierung"] },
     { satz: "Merkmal 5, besonders wichtig für schwierige Lagen: Eltern einbinden, Schulnetzwerke, Außenkontakte: …", begriff: "Nutzung externer Unterstützungsstrukturen", alias: ["externe Unterstützung", "Unterstützungsstrukturen", "externe Unterstützungsstrukturen"] },
   ] },
 ];
@@ -2884,7 +2883,7 @@ BEGRIFFE["sq-bilanz"] = [
   { thema: "Nicht verwechseln", items: [
     { satz: "Wer sieben Kriterien guter Schulen hat, nicht fünf Faktoren: …", begriff: "Fend 2000", alias: ["Fend"] },
     { satz: "Schulform und Ausstattung sind nicht proximal, sondern …", begriff: "distal", alias: ["distale Variablen", "distale Faktoren"] },
-    { satz: "OECD-Typ, der externe Unterstützung braucht, nicht die mixed schools: …", begriff: "disadvantaged", alias: ["disadvantaged schools", "disadvantaged school"] },
+    { satz: "OECD-Typ, der keine externe Unterstützung braucht, weil selbststeuerungsfähig: …", begriff: "mixed", alias: ["mixed schools", "mixed school"] },
     { satz: "Ein Kompositionseffekt wirkt nicht über das einzelne Kind, sondern über …", begriff: "aggregierte Individualmerkmale", alias: ["aggregierte Merkmale", "aggregiert"] },
   ] },
 ];
@@ -3030,17 +3029,17 @@ BEGRIFFE["sr-zahlen"] = [
 BEGRIFFE["um-ueberblick"] = [
   { thema: "Begriff und Kontinuum", items: [
     { satz: "Heckhausen 1989: gedachter Begriff, der Richtung, Dauer und Intensität von Verhalten erklärt: …", begriff: "hypothetisches Konstrukt", alias: ["Konstrukt", "hypothetisch"] },
-    { satz: "Motivation aus eigenem Interesse, weil die Aufgabe Spaß macht: …", begriff: "intrinsisch", alias: ["intrinsische Motivation", "intrinsische"] },
+    { satz: "Motivation aus eigenem Interesse, weil die Aufgabe Spaß macht: …", begriff: "intrinsisch", alias: ["intrinsische"] },
     { satz: "Zustand ganz links auf dem Kontinuum: Ich lerne, aber ich finde es nicht spaßig oder sinnvoll: …", begriff: "Amotivation", alias: [] },
   ] },
   { thema: "Absinken und Grundbedürfnisse", items: [
     { satz: "Theorie von Eccles: mangelnde Passung zwischen Jugendlichem und Schule nach dem Übergang: …", begriff: "Stage-Environment-Fit", alias: ["Stage Environment Fit", "Stage-Environment-Fit Theory", "Passung"] },
-    { satz: "Deci und Ryan: drei Grundbedürfnisse und das Kontinuum gehören zur …", begriff: "Selbstbestimmungstheorie", alias: ["SDT", "Selbstbestimmungstheorie der Motivation"] },
+    { satz: "Deci und Ryan: drei Grundbedürfnisse und das Kontinuum gehören zur …", begriff: "Selbstbestimmungstheorie", alias: ["SDT"] },
     { satz: "Die drei Grundbedürfnisse: Autonomie, Kompetenz und …", begriff: "Eingebundenheit", alias: ["soziale Eingebundenheit", "Zugehörigkeit"] },
   ] },
   { thema: "Unterricht und Rückmeldung", items: [
     { satz: "Unterrichtsmerkmal: Bezug zur Lebenswelt, Aufgaben in Alltagskontexte einbetten: …", begriff: "Persönliche Relevanz", alias: ["Relevanz"] },
-    { satz: "Erste Rückmelde-Frage nach Hattie und Timperley: Was ist das Ziel? Das ist …", begriff: "feed up", alias: ["feedup", "feed-up"] },
+    { satz: "Unterrichtsmerkmal 3: zugewandtes, anteilnehmendes Verhalten, gemeinsame Klassenregeln: …", begriff: "Unterstützendes Klima", alias: ["Klima"] },
     { satz: "Ursachenzuschreibung für Erfolg und Misserfolg nach Weiner: …", begriff: "Attribution", alias: ["Attributionstheorie", "Attributionen"] },
   ] },
 ];
@@ -3060,9 +3059,8 @@ BEGRIFFE["um-begriff"] = [
 ];
 
 BEGRIFFE["um-kontinuum"] = [
-  { thema: "Zwei Pole und ein Nullpunkt", items: [
-    { satz: "Motivation, bei der die Tätigkeit selbst der Grund ist: hohe Leistung, Ausdauer, Wohlbefinden: …", begriff: "intrinsisch", alias: ["intrinsische Motivation", "intrinsische"] },
-    { satz: "Motivation, deren Grund außerhalb der Tätigkeit liegt, mit geringer Ausdauer und geringem Interesse: …", begriff: "extrinsisch", alias: ["extrinsische Motivation", "extrinsische"] },
+  { thema: "Pol und Nullpunkt", items: [
+    { satz: "Motivation, bei der die Tätigkeit selbst der Grund ist: hohe Leistung, Ausdauer, Wohlbefinden: …", begriff: "intrinsisch", alias: ["intrinsische"] },
     { satz: "Zustand außerhalb des Balkens: Ich lerne, aber ich finde es nicht spaßig oder sinnvoll: …", begriff: "Amotivation", alias: [] },
   ] },
   { thema: "Vier Stufen", items: [
@@ -3107,7 +3105,7 @@ BEGRIFFE["um-merkmale"] = [
     { satz: "Merkmal 4: Lebenswelt, Alltagskontexte, Stuckey et al. 2014: …", begriff: "Persönliche Relevanz", alias: ["Relevanz"] },
   ] },
   { thema: "Relevanz und ARCS", items: [
-    { satz: "Lernende schreiben kurze Texte über die Nützlichkeit eines Themas; das nennt die Folie …", begriff: "Relevanz-Intervention", alias: ["Relevanzintervention", "Intervention"] },
+    { satz: "Kurze Texte darüber, was ein Thema für das eigene Leben bringt, fördern laut Folie die …", begriff: "Nützlichkeitsüberzeugungen", alias: ["Nützlichkeitsüberzeugung", "Nützlichkeit"] },
     { satz: "Keller 1983 nennt vier Kriterien relevanten Unterrichts: authentische Situationen, Mischung aus Neuem und Vertrautem, Personalisieren, Spannung. Das ist das …", begriff: "ARCS-Modell", alias: ["ARCS"] },
     { satz: "Studie von 2014 im Mathematikunterricht: Praxisorientierung fördert den intrinsischen Wert: …", begriff: "Schreier et al. 2014", alias: ["Schreier", "Schreier 2014"] },
   ] },
@@ -3115,18 +3113,17 @@ BEGRIFFE["um-merkmale"] = [
 
 BEGRIFFE["um-feedback"] = [
   { thema: "Hattie und Timperley 2007", items: [
-    { satz: "Frage 1: Was ist das Ziel? Der Zielzustand muss beiden klar sein: …", begriff: "feed up", alias: ["feedup", "feed-up"] },
     { satz: "Frage 2: Wie geht es voran? Auskunft über den aktuellen Lernzustand: …", begriff: "feed back", alias: ["feedback"] },
     { satz: "Frage 3: Was kommt als Nächstes? Die weiteren Schritte zum Ziel: …", begriff: "feed forward", alias: ["feedforward", "feed-forward"] },
   ] },
   { thema: "Weiner", items: [
-    { satz: "Die Ursache für das Ergebnis liegt in mir: …", begriff: "internal", alias: ["internale Kontrollüberzeugung", "internale Ursache"] },
+    { satz: "Die Ursache für das Ergebnis liegt in mir: …", begriff: "internale Kontrollüberzeugung", alias: ["internal", "internale Ursache"] },
     { satz: "Die Ursache bleibt so, sie ist zeitlich überdauernd: …", begriff: "stabil", alias: ["stabile Ursache"] },
     { satz: "Die Ursache kann sich ändern: …", begriff: "variabel", alias: ["variable Ursache"] },
   ] },
   { thema: "Schuster 2017", items: [
-    { satz: "Fachwort für die Ursachenzuschreibung: Worauf führe ich mein Ergebnis zurück? …", begriff: "Attribution", alias: ["Attributionstheorie"] },
     { satz: "Ziel von Rückmeldung nach Schuster 2017: Erfolg internal, Misserfolg variabel sehen, das ist eine …", begriff: "Günstige Attribution", alias: ["günstig", "günstige Ursachenzuschreibung"] },
+    { satz: "Erfolg internal und variabel zuschreiben heißt: Der Grund ist die eigene …", begriff: "Anstrengung", alias: ["Lernen", "Anstrengung/Lernen"] },
   ] },
 ];
 
@@ -3897,6 +3894,12 @@ function aufgabenListe(info) {
 function aufgabenZeichnen(info, aufklappen) {
   const el = document.getElementById("pane-aufgaben"); if (!el || !info) return;
   const l = aufgabenListe(info); if (!l.length) { el.innerHTML = ""; return; }
+  // Liste steht schon (gleiche Aufgaben): nur die Haken nachziehen, nichts neu bauen, sonst gehen Eingaben verloren
+  const vorhanden = [...el.querySelectorAll("details")];
+  if (vorhanden.length === l.length && vorhanden.every((d, i) => d.dataset.key === l[i].key)) {
+    vorhanden.forEach((d, i) => { const fertig = erledigt(l[i].key); d.classList.toggle("fertig", fertig); const st = d.querySelector("summary .stand"); if (st) st.textContent = fertig ? "✓" : "○"; });
+    return;
+  }
   const zuVorher = new Set([...el.querySelectorAll("details:not([open])")].map((d) => d.dataset.key));
   el.innerHTML = `<h4>Aufgaben zu diesem Kapitel</h4>` + l.map((a) => {
     const auf = !erledigt(a.key) && !zuVorher.has(a.key);
@@ -4033,7 +4036,7 @@ async function ereignisseLaden() {
     const r = await fetch(`${evCfg().supabaseUrl}/rest/v1/karten_events?raum=eq.rose&select=art,ziel,punkte,von,ts&order=ts.asc`, { headers: evHdr() });
     if (!r.ok) return; let neu = false;
     for (const e of await r.json()) { if (bestanden(e.art, e.punkte, e.von)) { const k = e.art + ":" + e.ziel; if (!ERLEDIGT[k]) { ERLEDIGT[k] = Date.parse(e.ts); neu = true; } } }
-    if (neu) { speichern("erledigt", ERLEDIGT); route(); }
+    if (neu) { speichern("erledigt", ERLEDIGT); if (HP.info && modus() === "hoeren") { aufgabenZeichnen(HP.info, false); naechstesZeichnen(); } leisteZeichnen(); }
   } catch (e) {}
 }
 function naechsterTrack(id) { const l = trackListe(); const i = l.findIndex((x) => x.id === id); return l[i + 1] || null; }
@@ -4180,6 +4183,13 @@ function starteGquiz(t, idx) {
 
 // ============ Begriffe-Quiz je Hoerkapitel: Gruppen mit 2 bis 4 Saetzen, Begriff eintragen ============
 const begriffeFuer = (track) => BEGRIFFE[track] || [];
+// Paragrafen und Artikel: die Nummer muss stimmen ("§ 38" darf nicht fuer "§ 17" gelten), sonst der normale tolerante Abgleich
+function passtBegriff(v, it) {
+  if (!v) return false;
+  const num = (it.begriff.match(/\b(\d+)\b/) || [])[1];
+  if (num && /^(§|art\.?|artikel|paragraf)/i.test(it.begriff)) return (norm(v).match(/\b\d+\b/g) || []).includes(num);
+  return passt(v, [norm(it.begriff), ...(it.alias || []).map(norm)]) || (it.alias || []).map(norm).includes(norm(v));
+}
 function bquizHtml(track, gi) {
   const g = begriffeFuer(track)[gi]; if (!g) return "";
   const key = `begriffe:${track}:${gi}`;
@@ -4190,7 +4200,7 @@ document.addEventListener("submit", (e) => {
   const f = e.target.closest("form.bquiz"); if (!f) return; e.preventDefault();
   const track = f.dataset.track, gi = +f.dataset.gi; const g = begriffeFuer(track)[gi]; const key = `begriffe:${track}:${gi}`;
   let n = 0;
-  g.items.forEach((it, i) => { const inp = f.querySelector(`[name="b${i}"]`); const v = inp.value.trim(); const ok = passt(v, [norm(it.begriff), ...(it.alias || []).map(norm)]) || (v && (it.alias || []).map(norm).includes(norm(v))); inp.classList.toggle("falsch", !ok); if (ok) n++; });
+  g.items.forEach((it, i) => { const inp = f.querySelector(`[name="b${i}"]`); const v = inp.value.trim(); const ok = passtBegriff(v, it); inp.classList.toggle("falsch", !ok); if (ok) n++; });
   ereignis("begriffe", `${track}:${gi}`, n, g.items.length, null);
   if (n === g.items.length) {
     ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT);

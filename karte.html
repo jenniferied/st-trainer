@@ -251,7 +251,7 @@ td:first-child { font-weight: 700; white-space: nowrap; } td b { font-weight: 70
 .rechts .pane-kopf { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .rechts .klein { font-size: .82rem; color: var(--muted); }
 .rechts .stufe-kopf { margin-top: 0; } .rechts header.kopf { display: none; } .rechts .hoer-start, .rechts .schalter, .rechts .stand, .rechts .sprung { display: none; }
-.rechts form .sprung, .rechts .quiz-form .sprung, .rechts #quiz-ergebnis .sprung, .rechts .g-form .sprung { display: flex; }
+.rechts form .sprung, .rechts .quiz-form .sprung, .rechts #quiz-ergebnis .sprung, .rechts .g-form .sprung, .rechts .aufgabe .sprung, .rechts .karte .quiz-leiste { display: flex; }
 .verdeckt { display: grid; place-items: center; gap: 10px; text-align: center; padding: 40px 20px; border: 1.5px dashed var(--line); border-radius: 8px; color: var(--muted); }
 .verdeckt .ico { font-size: 2.4rem; color: var(--bc); } .verdeckt p { max-width: 40ch; }
 .verdeckt .knopf, .quiz-form button, .sprung button { text-decoration: none; padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
@@ -3812,12 +3812,13 @@ function paneStandard(info) {
   if (quizPflicht(info).some((k) => !erledigt(k)) && info.stufe !== 3) return { html: "", titel: "Aufgaben" };
   if (info.stufe === 1) return erledigt("quiz:gesamt") ? { karte: "gesamt", titel: "Gesamtkarte" } : { html: verdecktHtml("Die Karte bleibt verdeckt, bis das Kapitel zu Ende ist. Dann trägst du die Äste selbst ein.", null), titel: "Verdeckt" };
   if (info.stufe === 2) return erledigt("quiz:" + info.thema.id) ? { karte: info.thema.id, titel: info.thema.label } : { html: "", titel: "" };
-  return { path: `karte/${info.thema.id}/${info.karte.id}`, titel: info.karte.titel.split(":")[0] };
+  return { kartenHtml: karteHtml(info.thema, info.karte), titel: "Karte" };
 }
 function paneZeigen(info, was) {
   const el = document.getElementById("pane-inhalt"), tt = document.getElementById("pane-titel"), voll = document.getElementById("pane-voll");
   if (!el) return;
   if ("html" in was) { el.innerHTML = was.html; tt.textContent = was.titel || ""; voll.hidden = true; return; }   // auch leer = bewusst nichts
+  if (was.kartenHtml) { el.innerHTML = `<div class="karten">${was.kartenHtml}</div>`; tt.textContent = "Karte"; voll.hidden = false; voll.href = `#karte/${info.thema.id}/${info.karte.id}`; return; }
   if (was.karte) {   // nur die Karte (Gesamt oder Thema), ohne Grafikliste und Text
     el.innerHTML = `<div class="map"></div>`; const m = was.karte === "gesamt" ? mindmap(gesamtSpec(), { aria: "Gesamtkarte", chips: false }) : mindmap(themaSpec(thema(was.karte)), { aria: "Themenkarte", rootW: 200, chips: false });
     setzeMap(el.querySelector(".map"), m); tt.textContent = "Karte"; voll.hidden = false; voll.href = was.karte === "gesamt" ? "#gesamt" : "#thema/" + was.karte; return;
@@ -3869,7 +3870,7 @@ function syncTick(info, force) {
   if (!HP.folgen || HP.fertig === info.id) return;
   let m = null; for (let k = i; k >= 0; k--) { if (HP.paras[k] && HP.paras[k].marker) { m = HP.paras[k].marker; break; } }
   if (m && m.grafik != null) paneZeigen(info, { grafik: m.grafik });
-  else if (m && m.karte && info.thema) paneZeigen(info, { path: `karte/${info.thema.id}/${m.karte}`, titel: m.karte });
+  else if (m && m.karte && info.thema) { const k = info.thema.karten.find((x) => x.id === m.karte); if (k) paneZeigen(info, { kartenHtml: karteHtml(info.thema, k), titel: "Karte" }); }
   else paneZeigen(info, paneStandard(info));
 }
 
@@ -3919,7 +3920,7 @@ function aufgabenListe(info) {
   const begriffe = () => begriffeFuer(info.id).forEach((g, gi) => l.push({ key: `begriffe:${info.id}:${gi}`, titel: "Begriffe: " + g.thema, art: "bquiz", gi }));
   if (info.stufe === 1) { l.push({ key: "quiz:gesamt", titel: "Die sechs Äste eintragen", art: "quiz", ziel: "gesamt" }); begriffe(); }
   else if (info.stufe === 2) { const t = info.thema; l.push({ key: "quiz:" + t.id, titel: "Unterthemen von " + t.label + " eintragen", art: "quiz", ziel: t.id }); begriffe(); grafikenVon(info).forEach((i) => l.push({ key: `gquiz:${t.id}:${i}`, titel: "Grafik: " + t.grafiken[i].titel, art: "grafik", i })); }
-  else { begriffe(); grafikenVon(info).forEach((i) => l.push({ key: `gquiz:${info.thema.id}:${i}`, titel: "Grafik: " + info.thema.grafiken[i].titel, art: "grafik", i })); const kf = KARTEN_FRAGEN && KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id]; if (kf && kf.ids && kf.ids.length) l.push({ key: "fragen:" + info.thema.id + "/" + info.karte.id, titel: `${Math.min(5, kf.gruppen || kf.ids.length)} Klausurfragen im Trainer`, art: "fragen" }); }
+  else { begriffe(); grafikenVon(info).forEach((i) => l.push({ key: `gquiz:${info.thema.id}:${i}`, titel: "Grafik: " + info.thema.grafiken[i].titel, art: "grafik", i })); const kf = KARTEN_FRAGEN && KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id]; if (kf && kf.ids && kf.ids.length) l.push({ key: "fragen:" + info.thema.id + "/" + info.karte.id, titel: `Klausurfragen im Trainer (${Math.min(5, kf.gruppen || kf.ids.length)} zu dieser Karte)`, art: "fragen" }); }
   return l;
 }
 function aufgabenZeichnen(info, aufklappen) {

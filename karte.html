@@ -3896,9 +3896,13 @@ function grafikenVon(info) {
   return info.thema.grafiken.map((_, i) => i).filter((i) => selbst.has(i) || !belegt.has(i));
 }
 // Aeste-Quiz gemeistert: Info-Zeile mit den Aesten und Reset
-function quizFertigHtml(tid) {
-  const kand = quizKandidaten(tid);
-  return `<div class="bq-fertig"><div class="bq-kopf"><span class="stand">✓</span><span class="hint">Äste eingetragen</span><button type="button" class="rund klein reset q-reset" data-tid="${esc(tid)}" title="Nochmal abfragen (neue Sitzung)">↺</button></div><div class="kette">${kand.map((k) => `<a class="ok">${esc(k.label)}</a>`).join("")}</div></div>`;
+// Aeste-Quiz gemeistert: die volle Karte (Gesamt oder Thema) mit Reset, direkt im Aufgabenfeld
+function quizFertigIn(box, tid) {
+  if (!box) return;
+  box.innerHTML = `<div class="bq-fertig"><div class="bq-kopf"><span class="stand">✓</span><span class="hint">Äste eingetragen</span><button type="button" class="rund klein reset q-reset" data-tid="${esc(tid)}" title="Nochmal abfragen (neue Sitzung)">↺</button></div><div class="map"></div></div>`;
+  const el = box.querySelector(".map");
+  const m = tid === "gesamt" ? mindmap(gesamtSpec(), { aria: "Gesamtkarte", chips: false }) : mindmap(themaSpec(thema(tid)), { aria: "Themenkarte", rootW: 200, chips: false });
+  setzeMap(el, m);
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest(".q-reset"); if (!b) return;
@@ -3920,14 +3924,14 @@ function aufgabenZeichnen(info, aufklappen) {
   // Liste steht schon (gleiche Aufgaben): nur die Haken nachziehen, nichts neu bauen, sonst gehen Eingaben verloren
   const vorhanden = [...el.querySelectorAll(".aufgabe")];
   if (vorhanden.length === l.length && vorhanden.every((d, i) => d.dataset.key === l[i].key)) {
-    vorhanden.forEach((d, i) => { const fertig = erledigt(l[i].key); if (fertig && !d.classList.contains("fertig")) { d.classList.add("fertig"); const st = d.querySelector(".stand"); if (st) st.textContent = "✓"; if (l[i].art === "quiz") d.querySelector(".aufgabe-inhalt").innerHTML = quizFertigHtml(l[i].ziel); if (l[i].art === "fragen") d.querySelector(".aufgabe-inhalt").innerHTML = ""; } });
+    vorhanden.forEach((d, i) => { const fertig = erledigt(l[i].key); if (fertig && !d.classList.contains("fertig")) { d.classList.add("fertig"); const st = d.querySelector(".stand"); if (st) st.textContent = "✓"; if (l[i].art === "quiz") quizFertigIn(d.querySelector(".aufgabe-inhalt"), l[i].ziel); if (l[i].art === "fragen") d.querySelector(".aufgabe-inhalt").innerHTML = ""; } });
     return;
   }
   el.innerHTML = `<h4>Aufgaben zu diesem Kapitel</h4>` + l.map((a) => `<section class="aufgabe ${erledigt(a.key) ? "fertig" : ""}" data-key="${a.key}" data-art="${a.art}"><div class="aufgabe-kopf"><span class="stand">${erledigt(a.key) ? "✓" : "○"}</span> ${esc(a.titel)}</div><div class="aufgabe-inhalt"></div></section>`).join("");
   el.querySelectorAll(".aufgabe").forEach((d) => {
     const box = d.querySelector(".aufgabe-inhalt"); const a = l.find((x) => x.key === d.dataset.key);
     if (erledigt(a.key) && a.art === "fragen") return;   // Klausurfragen erledigt: nur die Kopfzeile
-    if (a.art === "quiz") { if (erledigt(a.key)) box.innerHTML = quizFertigHtml(a.ziel); else renderPath("quiz/" + a.ziel, box, { eingebettet: true }); }
+    if (a.art === "quiz") { if (erledigt(a.key)) quizFertigIn(box, a.ziel); else renderPath("quiz/" + a.ziel, box, { eingebettet: true }); }
     else if (a.art === "bquiz") box.innerHTML = bquizHtml(info.id, a.gi);
     else if (a.art === "grafik") box.innerHTML = grafikHtml(info.thema, a.i);
     else box.innerHTML = `<p class="hint">Fünf echte Klausurfragen zu dieser Karte, als geloggte Runde im Trainer. Das Ergebnis kommt hierher zurück.</p><div class="sprung"><a class="primaer" href="index.html#quiz/${info.thema.id}/${info.karte.id}?n=5">5 Fragen starten ›</a></div>`;
@@ -4125,7 +4129,7 @@ function starteQuiz(tid) {
     const fehlt = frei; const q = lesen("quiz", {}); q[tid] = { richtig: [...treffer.keys()], von: kand.length, datum: Date.now() }; speichern("quiz", q);
     ereignis("quiz", tid, treffer.size, kand.length, { getroffen: [...treffer.keys()] });
     if (!frei.length && el.closest("#map-haupt")) setTimeout(() => { MAP_KEY = null; route(); }, 1400);
-    if (!frei.length && el.closest("#pane-aufgaben")) setTimeout(() => { const sek = document.querySelector(`#pane-aufgaben .aufgabe[data-key="quiz:${tid}"]`); if (sek) { sek.classList.add("fertig"); const st = sek.querySelector(".stand"), box = sek.querySelector(".aufgabe-inhalt"); if (st) st.textContent = "✓"; if (box) box.innerHTML = quizFertigHtml(tid); } if (HP.info) paneZeigen(HP.info, paneStandard(HP.info)); }, 1600);
+    if (!frei.length && el.closest("#pane-aufgaben")) setTimeout(() => { const sek = document.querySelector(`#pane-aufgaben .aufgabe[data-key="quiz:${tid}"]`); if (sek) { sek.classList.add("fertig"); const st = sek.querySelector(".stand"), box = sek.querySelector(".aufgabe-inhalt"); if (st) st.textContent = "✓"; if (box) quizFertigIn(box, tid); } if (HP.info) paneZeigen(HP.info, paneStandard(HP.info)); }, 1600);
     const ok = !fehlt.length;
     const naechst = t ? naechsterTrack(trackId(t)) : naechsterTrack("gesamt");
     const weiter = ok

@@ -79,7 +79,9 @@ a { color: inherit; }
 .aufgabe .stand { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: .8rem; }
 .aufgabe.fertig .stand { background: var(--ok); color: #fff; } .aufgabe.fertig .aufgabe-kopf { color: var(--muted); }
 .aufgabe-inhalt { padding: 0 12px 12px; }
-.bq-fertig { color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; } .bq-fertig .reset { margin-left: auto; width: 26px; height: 26px; font-size: .75rem; } .bq-fertig .stand { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; font-size: .75rem; margin-right: 6px; }
+.bq-fertig { display: grid; gap: 8px; } .bq-kopf { display: flex; align-items: center; gap: 8px; } .bq-kopf .reset { margin-left: auto; width: 26px; height: 26px; font-size: .75rem; }
+.bq-begriffe { display: grid; gap: 6px; } .bq-begriff { display: grid; gap: 1px; padding: 8px 12px; border-left: 3px solid var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--card)); border-radius: 4px; }
+.bq-begriff b { font-family: Fraunces, serif; font-size: 1.2rem; color: var(--ink); } .bq-begriff small { color: var(--muted); font-size: .82rem; } .bq-fertig .stand { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; font-size: .75rem; margin-right: 6px; }
 .bq-fertig b { color: var(--ink); font-weight: 500; }
 .aufgabe.fertig .aufgabe-inhalt .feier { margin-top: 6px; }
 .aufgabe-inhalt .grafik { border: none; padding: 0; }
@@ -4057,9 +4059,11 @@ function passt(input, keys) {
   }
   return false;
 }
+// Ausgedachte Aeste (Take Home, Vergleich, Bilanz, Spickzettel, Leitfragen) sind keine Folienthemen: im Quiz vorab sichtbar, nicht abgefragt
+const astFrei = (a) => a.id === "takehome" || ["vergleich", "bilanz", "zahlen"].includes(a.karte) || /take home|vergleich|bilanz|spickzettel/i.test(a.label);
 function quizKandidaten(tid) {
   if (tid === "gesamt") return THEMEN.map((t) => ({ id: t.id, label: t.label, keys: [norm(t.label), norm(t.sub), norm(KURZ[t.id])] }));
-  const t = thema(tid); return t.aeste.map((a) => ({ id: a.id, label: a.label, keys: [norm(a.label), norm(a.sub.split("·")[0]), ...(a.chips || []).slice(0, 2).map(norm)] }));
+  const t = thema(tid); return t.aeste.filter((a) => !astFrei(a)).map((a) => ({ id: a.id, label: a.label, keys: [norm(a.label), norm(a.sub.split("·")[0]), ...(a.chips || []).slice(0, 2).map(norm)] }));
 }
 function viewQuiz(tid) {
   const t = tid === "gesamt" ? null : thema(tid); const kand = quizKandidaten(tid);
@@ -4080,8 +4084,8 @@ function quizSpec(tid, treffer, aufgedeckt) {
     const spec = gesamtSpec(); for (const b of [...spec.left, ...spec.right]) { b.kinder = []; b.sub = ""; if (treffer.has(b.id)) { b.hl = true; } else if (!aufgedeckt) { b.label = "?"; b.stub = true; } else { b.stub = true; } b.href = null; }
     return spec;
   }
-  const t = thema(tid); const spec = themaSpec(t);
-  for (const b of [...spec.left, ...spec.right]) { b.kinder = []; b.sub = ""; if (treffer.has(b.id)) b.hl = true; else if (!aufgedeckt) { b.label = "?"; b.stub = true; } else b.stub = true; b.href = null; }
+  const t = thema(tid); const spec = themaSpec(t); const frei = new Set(t.aeste.filter(astFrei).map((a) => a.id));
+  for (const b of [...spec.left, ...spec.right]) { b.kinder = []; b.sub = ""; if (frei.has(b.id)) { /* ausgedachter Ast: bleibt sichtbar */ } else if (treffer.has(b.id)) b.hl = true; else if (!aufgedeckt) { b.label = "?"; b.stub = true; } else b.stub = true; b.href = null; }
   return spec;
 }
 function starteQuiz(tid) {
@@ -4193,7 +4197,7 @@ function passtBegriff(v, it) {
 function bquizHtml(track, gi) {
   const g = begriffeFuer(track)[gi]; if (!g) return "";
   const key = `begriffe:${track}:${gi}`;
-  if (erledigt(key)) return `<div class="bq-fertig"><span class="stand">✓</span> ${g.items.map((it) => `<b>${esc(it.begriff)}</b>`).join(" · ")} <button type="button" class="rund klein reset bq-reset" data-track="${esc(track)}" data-gi="${gi}" title="Nochmal abfragen (neue Sitzung)">↺</button></div>`;
+  if (erledigt(key)) return `<div class="bq-fertig"><div class="bq-kopf"><span class="stand">✓</span><span class="hint">${esc(g.thema)}</span><button type="button" class="rund klein reset bq-reset" data-track="${esc(track)}" data-gi="${gi}" title="Nochmal abfragen (neue Sitzung)">↺</button></div><div class="bq-begriffe">${g.items.map((it) => `<div class="bq-begriff"><b>${esc(it.begriff)}</b><small>${esc(it.satz.replace(/\s*[:…]+\s*$/, ""))}</small></div>`).join("")}</div></div>`;
   return `<form class="quiz-form bquiz" data-track="${esc(track)}" data-gi="${gi}">${g.items.map((it, i) => `<label class="breit"><span>${esc(it.satz)}</span><input name="b${i}" autocomplete="off" autocapitalize="off" placeholder="…"></label>`).join("")}<div class="sprung"><button class="primaer" type="submit">Prüfen</button><span class="hint bq-hinweis"></span></div></form>`;
 }
 document.addEventListener("click", (e) => {

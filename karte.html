@@ -79,6 +79,9 @@ a { color: inherit; }
 .aufgabe .stand { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: .8rem; }
 .aufgabe.fertig .stand { background: var(--ok); color: #fff; } .aufgabe.fertig .aufgabe-kopf { color: var(--muted); }
 .aufgabe-inhalt { padding: 0 12px 12px; }
+/* In der Aufgabe traegt die Kopfzeile den Titel; innere Ueberschriften der eingebetteten Inhalte fallen weg */
+.aufgabe .grafik h3, .aufgabe .stufe-kopf, .aufgabe .grafik-kopf .f-tag { display: none; }
+.aufgabe .grafik { padding-top: 0; }
 .bq-fertig { display: grid; gap: 8px; } .bq-kopf { display: flex; align-items: center; gap: 8px; } .bq-kopf .reset { margin-left: auto; width: 26px; height: 26px; font-size: .75rem; }
 .bq-begriffe { display: grid; gap: 6px; } .bq-begriff { display: grid; gap: 1px; padding: 8px 12px; border-left: 3px solid var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--card)); border-radius: 4px; }
 .bq-begriff b { font-family: Fraunces, serif; font-size: 1.2rem; color: var(--ink); } .bq-begriff small { color: var(--muted); font-size: .82rem; } .bq-fertig .stand { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; font-size: .75rem; margin-right: 6px; }

@@ -49,6 +49,13 @@ a { color: inherit; }
 .zoom button + button { border-left: 1.5px solid var(--line); }
 .zoom button:hover { background: var(--soft); }
 .leiste { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; margin: 0 -16px; padding: 6px 12px; background: var(--ink); color: var(--paper); min-height: 52px; }
+.marke { text-decoration: none; color: var(--paper); font-family: Fraunces, serif; font-weight: 700; font-size: 1rem; white-space: nowrap; flex: 0 0 auto; }
+.marke .kurz { display: none; }
+@media (max-width: 900px) {
+  .leiste { flex-wrap: wrap; row-gap: 6px; }
+  .marke .voll { display: none; } .marke .kurz { display: inline; }
+  .widget { flex-basis: 100%; order: 3; }
+}
 .modi { display: inline-flex; background: color-mix(in srgb, var(--paper) 14%, transparent); border-radius: 999px; padding: 3px; flex: 0 0 auto; }
 .modi a { text-decoration: none; color: var(--paper); font-weight: 700; font-size: .85rem; padding: 6px 12px; border-radius: 999px; opacity: .75; transition: background .18s, opacity .18s; }
 .modi a.aktiv { background: var(--paper); color: var(--ink); opacity: 1; }
@@ -286,6 +293,7 @@ svg .plus:hover circle { fill: var(--um); stroke: var(--um); } svg .plus:hover t
 <script src="js/config.js"></script>
 <div class="wrap">
   <div class="leiste">
+    <a class="marke" href="#classic" title="Schultheorie-Trainer"><span class="voll">✏️ Schultheorie-Trainer</span><span class="kurz">✏️ ST</span></a>
     <nav class="modi" aria-label="Modus"><a data-modus="classic" href="#classic">Trainer</a><a data-modus="karte" href="#gesamt">Karte</a><a data-modus="hoeren" href="#hoeren/gesamt">Hören</a></nav>
     <div class="widget" id="widget"></div>
   </div>

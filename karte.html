@@ -4467,15 +4467,20 @@ async function route() {
   const sek = location.hash.split("/")[2]; if (sek === "grafiken") { const g = document.getElementById("grafiken"); if (g) g.scrollIntoView({ block: "start" }); } else window.scrollTo(0, 0);
   requestAnimationFrame(() => view.classList.remove("wechsel"));
 }
+let ZURUECK_HASH = null;   // wohin es nach den Klausurfragen zurueckgeht: die Ansicht, aus der sie gestartet wurden
 document.addEventListener("click", (e) => {
   const a = e.target.closest('a[href^="index.html"]'); if (!a) return;
-  e.preventDefault(); const cl = document.getElementById("classic"); cl.src = a.getAttribute("href"); location.hash = "#classic";
+  e.preventDefault(); ZURUECK_HASH = location.hash || "#gesamt"; const cl = document.getElementById("classic"); cl.src = a.getAttribute("href"); location.hash = "#classic";
 });
 // Der eingebettete Trainer meldet Sprünge zur Karte (statt die ganze Seite neu zu laden)
 addEventListener("message", (e) => {
   if (!e.data) return;
-  if (typeof e.data.karte === "string") location.hash = e.data.karte;
-  if (typeof e.data.quizFertig === "string") { ereignis("fragen", e.data.quizFertig, e.data.punkte || 0, e.data.max || 0, { pass: e.data.pass }); leisteZeichnen(); }
+  if (typeof e.data.karte === "string") { location.hash = ZURUECK_HASH || e.data.karte; ZURUECK_HASH = null; }
+  if (typeof e.data.quizFertig === "string") {
+    ereignis("fragen", e.data.quizFertig, e.data.punkte || 0, e.data.max || 0, { pass: e.data.pass }); leisteZeichnen();
+    // Ergebnis kurz stehen lassen, dann zurueck in die Ansicht, aus der die Fragen gestartet wurden; "Noch N" im Trainer bleibt moeglich
+    const ziel = ZURUECK_HASH; if (ziel) { const w = document.getElementById("widget"); w.insertAdjacentHTML("beforeend", `<a class="w-quiz" id="w-zurueck" href="${esc(ziel)}">‹ Zurück ${ziel.startsWith("#hoeren") ? "zum Hören" : "zur Karte"}</a>`); if (e.data.pass) setTimeout(() => { if (location.hash === "#classic" && ZURUECK_HASH === ziel) { location.hash = ziel; ZURUECK_HASH = null; } }, 6000); }
+  }
 });
 addEventListener("hashchange", () => { document.getElementById("kapitel-menu").hidden = true; route(); });
 notizenBinden();

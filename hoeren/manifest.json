@@ -1,186 +1,283 @@
 {
 "gesamt": {
 "dur": 691.48,
-"titel": "Die ganze Vorlesung in einem Kapitel."
+"titel": "Die ganze Vorlesung in einem Kapitel.",
+"grafiken": []
 },
 "sq-bilanz": {
 "dur": 290.62,
-"titel": "Schulqualität, Kapitel acht: Die Sitzung in einem Blick."
+"titel": "Schulqualität, Kapitel acht: Die Sitzung in einem Blick.",
+"grafiken": []
 },
 "sq-effektiv": {
 "dur": 366.92,
-"titel": "Schulqualität, Kapitel sechs: Effektive Schulen. Mehr Zuwachs, als die Herkunft erwarten lässt."
+"titel": "Schulqualität, Kapitel sechs: Effektive Schulen. Mehr Zuwachs, als die Herkunft erwarten lässt.",
+"grafiken": []
 },
 "sq-foerder": {
-"dur": null,
-"titel": "Schulqualität, Kapitel sieben: Förderprogramme. Fünf Namen, je ein Satz."
+"dur": 333.28,
+"titel": "Schulqualität, Kapitel sieben: Förderprogramme. Fünf Namen, je ein Satz.",
+"grafiken": []
 },
 "sq-komposition": {
 "dur": null,
-"titel": "Schulqualität, Kapitel fünf: Kompositionseffekte. Die Klasse wirkt mit, über das Kind hinaus."
+"titel": "Schulqualität, Kapitel fünf: Kompositionseffekte. Die Klasse wirkt mit, über das Kind hinaus.",
+"grafiken": [
+3
+]
 },
 "sq-orientierung": {
 "dur": null,
-"titel": "Schulqualität, Kapitel vier: Der Orientierungsrahmen Brandenburg. Drei Dimensionen, vier Qualitätsbereiche."
+"titel": "Schulqualität, Kapitel vier: Der Orientierungsrahmen Brandenburg. Drei Dimensionen, vier Qualitätsbereiche.",
+"grafiken": []
 },
 "sq-perspektiven": {
 "dur": null,
-"titel": "Schulqualität, Kapitel zwei: Vier Perspektiven. Es kommt darauf an, wen man fragt."
+"titel": "Schulqualität, Kapitel zwei: Vier Perspektiven. Es kommt darauf an, wen man fragt.",
+"grafiken": [
+0
+]
 },
 "sq-rahmen": {
 "dur": null,
-"titel": "Schulqualität, Kapitel drei: Rahmenmodelle. Was hineinwirkt und was herauskommt."
+"titel": "Schulqualität, Kapitel drei: Rahmenmodelle. Was hineinwirkt und was herauskommt.",
+"grafiken": [
+1,
+2
+]
 },
 "sq-ueberblick": {
 "dur": null,
-"titel": "Schulqualität, Kapitel eins: Was ist eine gute Schule? Der Überblick."
+"titel": "Schulqualität, Kapitel eins: Was ist eine gute Schule? Der Überblick.",
+"grafiken": []
 },
 "sr-lehrkraefte": {
 "dur": null,
-"titel": "Schulrecht, Kapitel sechs: Lehrkräfte. In eigener Verantwortung, aber mit Pflichten."
+"titel": "Schulrecht, Kapitel sechs: Lehrkräfte. In eigener Verantwortung, aber mit Pflichten.",
+"grafiken": []
 },
 "sr-neutral": {
 "dur": null,
-"titel": "Schulrecht, Kapitel sieben: Neutralität. Mäßigung ja, Schweigen nein."
+"titel": "Schulrecht, Kapitel sieben: Neutralität. Mäßigung ja, Schweigen nein.",
+"grafiken": []
 },
 "sr-pflicht": {
 "dur": null,
-"titel": "Schulrecht, Kapitel vier: Sechs Jahre Grundschule, zehn Jahre Schulpflicht."
+"titel": "Schulrecht, Kapitel vier: Sechs Jahre Grundschule, zehn Jahre Schulpflicht.",
+"grafiken": [
+1
+]
 },
 "sr-schule": {
 "dur": null,
-"titel": "Schulrecht, Kapitel drei: Die Schule. Anstalt des Schulträgers, selbstständig, und alle wirken mit."
+"titel": "Schulrecht, Kapitel drei: Die Schule. Anstalt des Schulträgers, selbstständig, und alle wirken mit.",
+"grafiken": [
+3
+]
 },
 "sr-staat": {
 "dur": null,
-"titel": "Schulrecht, Kapitel zwei: Der Staat setzt den Rahmen. Zwei Artikel und ein Satz."
+"titel": "Schulrecht, Kapitel zwei: Der Staat setzt den Rahmen. Zwei Artikel und ein Satz.",
+"grafiken": [
+0
+]
 },
 "sr-ueberblick": {
 "dur": null,
-"titel": "Schulrecht, Kapitel eins: Überblick. Wo steht, was Schule darf und muss."
+"titel": "Schulrecht, Kapitel eins: Überblick. Wo steht, was Schule darf und muss.",
+"grafiken": []
 },
 "sr-verhaeltnis": {
 "dur": null,
-"titel": "Schulrecht, Kapitel fünf: Das Schulverhältnis. Rechte, Pflichten, Zeugnisse und die Treppe der Ordnungsmaßnahmen."
+"titel": "Schulrecht, Kapitel fünf: Das Schulverhältnis. Rechte, Pflichten, Zeugnisse und die Treppe der Ordnungsmaßnahmen.",
+"grafiken": [
+2
+]
 },
 "sr-zahlen": {
 "dur": null,
-"titel": "Schulrecht, Kapitel acht: Der Spickzettel. Jede Zahl, jede Stelle."
+"titel": "Schulrecht, Kapitel acht: Der Spickzettel. Jede Zahl, jede Stelle.",
+"grafiken": []
 },
 "st1-bourdieu": {
 "dur": 354.26,
-"titel": "Schultheorie eins, Kapitel fünf: Bourdieu. Schule reproduziert soziale Ungleichheit."
+"titel": "Schultheorie eins, Kapitel fünf: Bourdieu. Schule reproduziert soziale Ungleichheit.",
+"grafiken": [
+2
+]
 },
 "st1-fend": {
 "dur": 363.75,
-"titel": "Schultheorie eins, Kapitel vier: Fend. Vier Funktionen, und das Individuum handelt."
+"titel": "Schultheorie eins, Kapitel vier: Fend. Vier Funktionen, und das Individuum handelt.",
+"grafiken": []
 },
 "st1-parsons": {
 "dur": 362.03,
-"titel": "Schultheorie eins, Kapitel drei: Parsons. Schule hält die Gesellschaft stabil."
+"titel": "Schultheorie eins, Kapitel drei: Parsons. Schule hält die Gesellschaft stabil.",
+"grafiken": [
+1
+]
 },
 "st1-ueberblick": {
 "dur": 374.13,
-"titel": "Schultheorie eins, Kapitel eins: Überblick. Was Schule für die Gesellschaft tut, und was die Gesellschaft mit der Schule macht."
+"titel": "Schultheorie eins, Kapitel eins: Überblick. Was Schule für die Gesellschaft tut, und was die Gesellschaft mit der Schule macht.",
+"grafiken": [
+0
+]
 },
 "st1-ungleich": {
 "dur": 356.81,
-"titel": "Schultheorie eins, Kapitel sechs: Bildungsungleichheit. Aus Theorie wird Zahl."
+"titel": "Schultheorie eins, Kapitel sechs: Bildungsungleichheit. Aus Theorie wird Zahl.",
+"grafiken": [
+3
+]
 },
 "st1-vergleich": {
 "dur": 308.91,
-"titel": "Schultheorie eins, Kapitel sieben: Die drei nebeneinander. Take Home."
+"titel": "Schultheorie eins, Kapitel sieben: Die drei nebeneinander. Take Home.",
+"grafiken": []
 },
 "st1-wozu": {
 "dur": 306.32,
-"titel": "Schultheorie eins, Kapitel zwei: Wozu Schultheorien? Brillen für den Blick auf Schule."
+"titel": "Schultheorie eins, Kapitel zwei: Wozu Schultheorien? Brillen für den Blick auf Schule.",
+"grafiken": [
+0
+]
 },
 "st2-foucault": {
 "dur": 352.66,
-"titel": "Schultheorie zwei, Kapitel drei: Foucault. Schule diszipliniert, sie befreit nicht."
+"titel": "Schultheorie zwei, Kapitel drei: Foucault. Schule diszipliniert, sie befreit nicht.",
+"grafiken": [
+1
+]
 },
 "st2-gwp": {
 "dur": 338.8,
-"titel": "Schultheorie zwei, Kapitel vier: Geisteswissenschaftliche Pädagogik. Sagen, wie Schule sein soll."
+"titel": "Schultheorie zwei, Kapitel vier: Geisteswissenschaftliche Pädagogik. Sagen, wie Schule sein soll.",
+"grafiken": []
 },
 "st2-hentig": {
 "dur": 365.38,
-"titel": "Schultheorie zwei, Kapitel fünf: von Hentig. Schule als polis, Demokratie im Kleinen."
+"titel": "Schultheorie zwei, Kapitel fünf: von Hentig. Schule als polis, Demokratie im Kleinen.",
+"grafiken": [
+2
+]
 },
 "st2-mead": {
 "dur": 350.05,
-"titel": "Schultheorie zwei, Kapitel sechs: Mead. Wer ich bin, erfahre ich in der Interaktion."
+"titel": "Schultheorie zwei, Kapitel sechs: Mead. Wer ich bin, erfahre ich in der Interaktion.",
+"grafiken": [
+0
+]
 },
 "st2-system": {
 "dur": 325.38,
-"titel": "Schultheorie zwei, Kapitel zwei: Systematisierung. Zwei Fragen, zwei Haltungen."
+"titel": "Schultheorie zwei, Kapitel zwei: Systematisierung. Zwei Fragen, zwei Haltungen.",
+"grafiken": []
 },
 "st2-ueberblick": {
 "dur": 367.08,
-"titel": "Schultheorie zwei, Kapitel eins: Überblick. Kritik und Binnenstruktur."
+"titel": "Schultheorie zwei, Kapitel eins: Überblick. Kritik und Binnenstruktur.",
+"grafiken": []
 },
 "st2-vergleich": {
 "dur": 299.86,
-"titel": "Schultheorie zwei, Kapitel sieben: Die drei nebeneinander. Take Home."
+"titel": "Schultheorie zwei, Kapitel sieben: Die drei nebeneinander. Take Home.",
+"grafiken": []
 },
 "st3-comenius": {
 "dur": 354.51,
-"titel": "Schultheorie drei, Kapitel drei: Comenius. Allen alles lehren, weil alle Ebenbild Gottes sind."
+"titel": "Schultheorie drei, Kapitel drei: Comenius. Allen alles lehren, weil alle Ebenbild Gottes sind.",
+"grafiken": [
+1
+]
 },
 "st3-herbart": {
 "dur": 351.2,
-"titel": "Schultheorie drei, Kapitel sechs: Herbart. Erziehender Unterricht für einen Menschen, der sich selbst bildet."
+"titel": "Schultheorie drei, Kapitel sechs: Herbart. Erziehender Unterricht für einen Menschen, der sich selbst bildet.",
+"grafiken": [
+3
+]
 },
 "st3-humboldt": {
 "dur": 343.31,
-"titel": "Schultheorie drei, Kapitel fünf: Humboldt. Schule als allgemeine Menschenbildung, nicht als Staatsdienst."
+"titel": "Schultheorie drei, Kapitel fünf: Humboldt. Schule als allgemeine Menschenbildung, nicht als Staatsdienst.",
+"grafiken": [
+2
+]
 },
 "st3-leitfragen": {
 "dur": 319.24,
-"titel": "Schultheorie drei, Kapitel zwei: Leitfragen. Drei Fragen an vier Klassiker."
+"titel": "Schultheorie drei, Kapitel zwei: Leitfragen. Drei Fragen an vier Klassiker.",
+"grafiken": [
+0
+]
 },
 "st3-rousseau": {
 "dur": 342.14,
-"titel": "Schultheorie drei, Kapitel vier: Rousseau. Erziehung soll die natürliche Entwicklung nicht stören."
+"titel": "Schultheorie drei, Kapitel vier: Rousseau. Erziehung soll die natürliche Entwicklung nicht stören.",
+"grafiken": [
+1
+]
 },
 "st3-ueberblick": {
 "dur": 371.69,
-"titel": "Schultheorie drei, Kapitel eins: Überblick. Vier Klassiker und eine Frage: Wem gehört die Schule?"
+"titel": "Schultheorie drei, Kapitel eins: Überblick. Vier Klassiker und eine Frage: Wem gehört die Schule?",
+"grafiken": []
 },
 "st3-vergleich": {
 "dur": 345.68,
-"titel": "Schultheorie drei, Kapitel sieben: Die vier nebeneinander."
+"titel": "Schultheorie drei, Kapitel sieben: Die vier nebeneinander.",
+"grafiken": []
 },
 "um-absinken": {
 "dur": 355.77,
-"titel": "Unterricht motivierend gestalten, Kapitel vier: Absinken. Motivation sinkt im Schulverlauf, und zwar aus zwei Gründen."
+"titel": "Unterricht motivierend gestalten, Kapitel vier: Absinken. Motivation sinkt im Schulverlauf, und zwar aus zwei Gründen.",
+"grafiken": [
+1
+]
 },
 "um-begriff": {
 "dur": 291.71,
-"titel": "Unterricht motivierend gestalten, Kapitel zwei: Motivation. Der Zustand, der Handeln antreibt."
+"titel": "Unterricht motivierend gestalten, Kapitel zwei: Motivation. Der Zustand, der Handeln antreibt.",
+"grafiken": []
 },
 "um-feedback": {
 "dur": 332.57,
-"titel": "Unterricht motivierend gestalten, Kapitel sieben: Feedback und Attribution. Drei Richtungen und die Kunst der günstigen Ursache."
+"titel": "Unterricht motivierend gestalten, Kapitel sieben: Feedback und Attribution. Drei Richtungen und die Kunst der günstigen Ursache.",
+"grafiken": [
+3
+]
 },
 "um-kontinuum": {
 "dur": 315.37,
-"titel": "Unterricht motivierend gestalten, Kapitel drei: Das Kontinuum. Intrinsisch, extrinsisch und die vier Stufen dazwischen."
+"titel": "Unterricht motivierend gestalten, Kapitel drei: Das Kontinuum. Intrinsisch, extrinsisch und die vier Stufen dazwischen.",
+"grafiken": [
+0
+]
 },
 "um-merkmale": {
 "dur": 381.13,
-"titel": "Unterricht motivierend gestalten, Kapitel sechs: Fünf Merkmale. Was motivationsförderlichen Unterricht ausmacht."
+"titel": "Unterricht motivierend gestalten, Kapitel sechs: Fünf Merkmale. Was motivationsförderlichen Unterricht ausmacht.",
+"grafiken": [
+2
+]
 },
 "um-sdt": {
 "dur": 333.49,
-"titel": "Unterricht motivierend gestalten, Kapitel fünf: Drei Grundbedürfnisse. Autonomie, Kompetenz, Eingebundenheit."
+"titel": "Unterricht motivierend gestalten, Kapitel fünf: Drei Grundbedürfnisse. Autonomie, Kompetenz, Eingebundenheit.",
+"grafiken": [
+2
+]
 },
 "um-ueberblick": {
 "dur": 723.6,
-"titel": "Unterricht motivierend gestalten, Kapitel eins: Überblick. Warum Motivation sinkt und was Unterricht dagegen tun kann."
+"titel": "Unterricht motivierend gestalten, Kapitel eins: Überblick. Warum Motivation sinkt und was Unterricht dagegen tun kann.",
+"grafiken": []
 },
 "um-vergleich": {
 "dur": 302.06,
-"titel": "Unterricht motivierend gestalten, Kapitel acht: Take Home. Absinken ist normal, Unterricht kann gegensteuern."
+"titel": "Unterricht motivierend gestalten, Kapitel acht: Take Home. Absinken ist normal, Unterricht kann gegensteuern.",
+"grafiken": []
 }
 }

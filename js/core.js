@@ -18,6 +18,15 @@ import { heuteBlock } from "./geteilt-tagesstand.js";
 let offenZaehler = null;
 export function setzeOffenZaehler(f) { offenZaehler = typeof f === "function" ? f : null; }
 
+/* Dasselbe Muster fuer die Schultheorie-Karte (15.09.2026): karte-stand.js
+   zaehlt, wie viele Karten-Einheiten (Kapitel gehoert, Aeste, Begriffe-Gruppe,
+   Grafik) heute geloest sind, und meldet sich hier an. tagesStand() rechnet die
+   Zahl ADDITIV dazu (nGesamt) — heuteAntworten() bleibt die reine
+   antwortLog-Zahl, weil snapshot() sie in den Querlink-Block schreibt und
+   nichts von der Karte in den Lernstand gehoert. Nicht angemeldet heisst 0. */
+let karteZaehler = null;
+export function setzeKarteZaehler(f) { karteZaehler = typeof f === "function" ? f : null; }
+
 export const THEMEN = {
   "schultheorie-1":        { name: "Schultheorie I",   kurz: "ST I",  color: "var(--c-st1)", hex: "#2f5d9e" },
   "schultheorie-2":        { name: "Schultheorie II",  kurz: "ST II", color: "var(--c-st2)", hex: "#7a4f9e" },
@@ -872,7 +881,14 @@ export function tagesStand() {
   const heute = new Date(); heute.setHours(0, 0, 0, 0);
   let tage = null;
   if (cfg.klausurTag) tage = Math.round((new Date(cfg.klausurTag + "T00:00:00") - heute) / 86400000);
-  return { n: heuteAntworten(), tage, ...tagesPlan(heute, tage) };
+  // n = Antworten aus dem antwortLog (das ist auch die Zahl im Sync-Block),
+  // karteN = heute geloeste Karten-Einheiten, nGesamt = beides. Die Zonen-Bar,
+  // die Herz-Marken und der Chat lesen nGesamt; wer nur den Trainer meint,
+  // liest weiter n.
+  const n = heuteAntworten();
+  let karteN = 0;
+  if (karteZaehler) { try { karteN = +karteZaehler() || 0; } catch { karteN = 0; } }
+  return { n, karteN, nGesamt: n + karteN, tage, ...tagesPlan(heute, tage) };
 }
 
 // Dynamischer Tagesplan (Jennifer 18.07.): drei Stufen statt fester Zahl.

@@ -3945,7 +3945,7 @@ function aufgabenZeichnen(info, aufklappen) {
     if (a.art === "quiz") { if (erledigt(a.key)) quizFertigIn(box, a.ziel); else renderPath("quiz/" + a.ziel, box, { eingebettet: true }); }
     else if (a.art === "bquiz") box.innerHTML = bquizHtml(info.id, a.gi);
     else if (a.art === "grafik") box.innerHTML = grafikHtml(info.thema, a.i);
-    else box.innerHTML = `<p class="hint">Fünf echte Klausurfragen zu dieser Karte, als geloggte Runde im Trainer. Das Ergebnis kommt hierher zurück.</p><div class="sprung"><a class="primaer" href="index.html#quiz/${info.thema.id}/${info.karte.id}?n=5">5 Fragen starten ›</a></div>`;
+    else { const kf = KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id]; const n = Math.min(5, kf.gruppen || kf.ids.length); box.innerHTML = `<p class="hint">${n === 1 ? "Eine echte Klausurfrage" : n + " echte Klausurfragen"} zu dieser Karte, als geloggte Runde im Trainer. Das Ergebnis kommt hierher zurück.</p><div class="sprung"><a class="primaer" href="index.html#quiz/${info.thema.id}/${info.karte.id}?n=${n}">${n === 1 ? "Frage starten" : n + " Fragen starten"} ›</a></div>`; }
   });
 }
 // Welches Quiz nach einem Kapitel dran ist

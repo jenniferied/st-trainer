@@ -2767,6 +2767,720 @@ BEGRIFFE["gesamt"] = [
   ] },
 ];
 
+// ---- begriffe-praxis.js ----
+// Begriffe-Quiz je Hoerkapitel, Teil "praxis": Schulqualitaet (sq), Schulrecht (sr), Unterricht motivierend gestalten (um).
+// Quelle ausschliesslich karte/daten-sq.js, daten-sr.js, daten-um.js. Schluessel = Track-Id des Hoerkapitels.
+
+// ---------------------------------------------------------------- Schulqualitaet
+
+BEGRIFFE["sq-ueberblick"] = [
+  { thema: "Perspektiven und Modelle", items: [
+    { satz: "Forschungsrichtung seit den 1970er Jahren, die Qualität als messbaren Effekt versteht: hohe Leistungen, geringe Abbruchquoten: …", begriff: "Schuleffektivitätsforschung", alias: ["Schuleffektivität", "Effektivitätsforschung"] },
+    { satz: "Forschungsrichtung, die in Deutschland lange dominant war und gute Schule normativ über soziale Integration, Schulleben und pädagogische Zuwendung bestimmt: …", begriff: "Schulklimaforschung", alias: ["Schulklima", "Klimaforschung"] },
+    { satz: "Name der Liste mit fünf Faktoren von Scheerens 2004, unter anderem effektive Schulleitung und angemessene Leistungserwartungen: …", begriff: "Five Factor Model", alias: ["Five Factor", "Fünf-Faktoren-Modell", "5-Faktoren-Modell"] },
+  ] },
+  { thema: "Rahmen und Komposition", items: [
+    { satz: "Faktoren, die weit weg vom Unterricht liegen und nur indirekt auf Leistungen wirken, etwa Schulform und Ausstattung: …", begriff: "Distale Variablen", alias: ["distal", "distale Faktoren", "distale Bedingungen"] },
+    { satz: "Faktoren nah am Kind, die direkt auf das Lernen wirken: Unterrichtsqualität, Lernaktivitäten, Schulklima: …", begriff: "Proximale Variablen", alias: ["proximal", "proximale Faktoren"] },
+    { satz: "Wirkung der Zusammensetzung einer Klasse auf die Leistung, über das Merkmal des einzelnen Kindes hinaus: …", begriff: "Kompositionseffekt", alias: ["Kompositionseffekte", "Komposition"] },
+  ] },
+  { thema: "Effektive Schulen", items: [
+    { satz: "Idee, eine Schule am Mehrwert zu messen: Leistungszuwachs im Vergleich zu Schulen mit ähnlicher Schülerschaft: …", begriff: "Value-added-Ansatz", alias: ["Value added", "value-added", "Mehrwert-Ansatz"] },
+    { satz: "Einrichtung, deren Schüler sich stärker verbessern, als der familiäre Hintergrund erwarten lässt: …", begriff: "Effektive Schule", alias: ["effektiv", "effektive Schulen"] },
+    { satz: "Bezeichnung der OECD für die effektive Schule in herausfordernder Lage: …", begriff: "Advantaged schools", alias: ["advantaged", "advantaged school"] },
+  ] },
+];
+
+BEGRIFFE["sq-perspektiven"] = [
+  { thema: "Vier Perspektiven", items: [
+    { satz: "Perspektive, die Qualität an messbaren Effekten erkennt: gute Schülerleistungen, geringe Abbruchquoten: …", begriff: "Schuleffektivitätsforschung", alias: ["Schuleffektivität", "Effektivitätsforschung"] },
+    { satz: "Perspektive mit normativem Verständnis: soziale Integration, Reichhaltigkeit des Schullebens, Arbeitszufriedenheit des Kollegiums, Fend 1998: …", begriff: "Schulklimaforschung", alias: ["Schulklima", "Klimaforschung"] },
+    { satz: "Perspektive, nach der gute Schulen Funktionen für die Gesellschaft erfüllen und für Kohärenz und Kontinuität sorgen: …", begriff: "Systemtheoretisch", alias: ["systemtheoretische Perspektive", "strukturfunktionalistisch", "Systemtheorie"] },
+    { satz: "Perspektive, die Schulqualität als Steuerungsinteresse der Verwaltung versteht und gute Schulen an normativen Rahmenkonzepten misst: …", begriff: "Bildungspolitisch", alias: ["bildungspolitische Perspektive", "Bildungspolitik"] },
+  ] },
+  { thema: "Fünf gegen sieben", items: [
+    { satz: "Name der Liste mit fünf Faktoren, Scheerens 2004: …", begriff: "Five Factor Model", alias: ["Five Factor", "Fünf-Faktoren-Modell", "5-Faktoren-Modell"] },
+    { satz: "Fend 2000 nennt sieben davon, unter anderem bestmögliche Zeitnutzung und förderliche Beziehungen: …", begriff: "Kriterien guter Schulen", alias: ["Kriterien", "sieben Kriterien", "Fend 2000"] },
+    { satz: "Forscher, der 2016 sagt, dass Leistung und Wohlbefinden meist zusammenhängen und ein umfassendes Verständnis guter Schulen nötig ist: …", begriff: "Klieme 2016", alias: ["Klieme"] },
+  ] },
+];
+
+BEGRIFFE["sq-rahmen"] = [
+  { thema: "Ditton 2000", items: [
+    { satz: "Sicht bei Ditton 2000, die Schule als Mehrebenensystem versteht, eine Ebene steckt in der nächsten: …", begriff: "Strukturelle Dimension", alias: ["strukturell"] },
+    { satz: "Sicht bei Ditton 2000, die Prozesse betrachtet: Eingangsbedingungen werden in Ergebnisse verwandelt, die Produktionsfunktion: …", begriff: "Dynamische Dimension", alias: ["dynamisch"] },
+  ] },
+  { thema: "Baumert et al. 2010", items: [
+    { satz: "Faktoren, die vom Unterricht entfernt sind und nur indirekt wirken: Schulform, Ausstattung, Einzugsgebiet: …", begriff: "Distale Variablen", alias: ["distal", "distale Faktoren"] },
+    { satz: "Faktoren, die das Lernen direkt beeinflussen: Unterrichtsqualität, Lernaktivitäten, Schulklima: …", begriff: "Proximale Variablen", alias: ["proximal", "proximale Faktoren"] },
+    { satz: "Ebene bei Baumert für Lernen und Unterricht: …", begriff: "Mikroebene", alias: ["Mikro"] },
+    { satz: "Ebene bei Baumert für die Systembindung der Schule: …", begriff: "Makroebene", alias: ["Makro"] },
+  ] },
+  { thema: "Vier Faktorengruppen", items: [
+    { satz: "Faktorengruppe auf Folie 19 für Bedingungen, die die Schule selbst nicht ändern kann, etwa das sozial-regionale Umfeld: …", begriff: "Kontext", alias: ["Kontextvariablen", "Kontextfaktoren"] },
+    { satz: "Faktorengruppe auf Folie 19 für Ausstattung und Lehrpläne: …", begriff: "Input", alias: ["Inputfaktoren", "Inputs"] },
+    { satz: "Kritik von Folie 18: Die Forschung sieht Eingang und Ergebnis, aber nicht das Lernen dazwischen: …", begriff: "Black-box-Forschung", alias: ["black box", "Blackbox", "Black-box"] },
+  ] },
+];
+
+BEGRIFFE["sq-orientierung"] = [
+  { thema: "Drei Dimensionen", items: [
+    { satz: "Dimension im Brandenburger Modell, auf die die Schule keinen grundsätzlichen Einfluss hat, Aufgabe von Politik und Verwaltung: …", begriff: "Rahmenbedingungen", alias: ["Rahmenbedingung"] },
+    { satz: "Teil des Brandenburger Modells mit den vier Qualitätsbereichen: …", begriff: "Prozessdimension", alias: ["Prozesse", "Prozess"] },
+    { satz: "Dimension mit den vier Kategorien Kompetenzen, Übergänge, Teilhabe, Zufriedenheit: …", begriff: "Ergebnisse und Wirkungen", alias: ["Ergebnisse", "Ergebnisdimension", "Wirkungen"] },
+  ] },
+  { thema: "Vier Qualitätsbereiche", items: [
+    { satz: "Qualitätsbereich 1 mit Unterrichtsorganisation, Personalentwicklung und Qualitätsmanagement: …", begriff: "Führung und Verantwortung", alias: ["Führung", "QB 1"] },
+    { satz: "Qualitätsbereich 2 mit Individualisierung und Kompetenzorientierung: …", begriff: "Lehren und Lernen", alias: ["QB 2"] },
+    { satz: "Qualitätsbereich 3, zu dem demokratische Kultur, Partizipation und Gesundheit gehören: …", begriff: "Schule als Lern-, Lebens- und Arbeitsort", alias: ["Lern-, Lebens- und Arbeitsort", "Lern- Lebens- und Arbeitsort", "Lebensort", "QB 3"] },
+    { satz: "Qualitätsbereich 4 mit Datennutzung, Reflexion und Professionalisierung: …", begriff: "Schule als lernende Organisation", alias: ["lernende Organisation", "QB 4"] },
+  ] },
+];
+
+BEGRIFFE["sq-komposition"] = [
+  { thema: "Definition", items: [
+    { satz: "Wenn die Zusammensetzung einer Klasse über das Individualmerkmal hinaus die Leistungsentwicklung beeinflusst, spricht man von einem …", begriff: "Kompositionseffekt", alias: ["Kompositionseffekte"] },
+    { satz: "Über die Gruppe zusammengerechnete Werte wie Klassendurchschnitt oder sozioökonomischer Status heißen …", begriff: "aggregierte Individualmerkmale", alias: ["aggregiert", "aggregierte Merkmale"] },
+    { satz: "Die beiden Forscher, von denen die Definition von 2004 stammt: …", begriff: "Harker und Tymms 2004", alias: ["Harker und Tymms", "Harker & Tymms", "Harker"] },
+  ] },
+  { thema: "Folgen", items: [
+    { satz: "Der Kreis von niedrigem Sozialindex über geringe Leistungen und schlechtes Image bis zum Lehrkräftemangel heißt auf Folie 35 …", begriff: "Wirkungskreislauf", alias: ["Kreislauf", "problematischer Wirkungskreislauf"] },
+    { satz: "Streuung der Ergebnisse, die laut Folie 30 vor allem durch die Schulform erklärt wird: …", begriff: "Varianz", alias: ["Varianz der Leistungen"] },
+    { satz: "Forscher, der 2006 sechs ungünstige Kompositionsmerkmale nennt, etwa hohe Wiederholerzahlen und bildungsferne Familien: …", begriff: "Baumert 2006", alias: ["Baumert", "Baumert et al. 2006"] },
+  ] },
+];
+
+BEGRIFFE["sq-effektiv"] = [
+  { thema: "Begriffe", items: [
+    { satz: "Eine Einrichtung, deren Schüler sich stärker verbessern, als der familiäre Hintergrund erwarten lässt, Creemers 1989: …", begriff: "Effektive Schule", alias: ["effektiv", "effektive Schulen"] },
+    { satz: "Idee nach Sammons 2007: Mehrwert im Vergleich zu Schulen mit ähnlicher Schülerschaft: …", begriff: "Value-added-Ansatz", alias: ["Value added", "value-added", "Mehrwert-Ansatz"] },
+    { satz: "Bei Holtappels heißt eine Einrichtung mit anspruchsvoller Problemkonstellation, die hohe Anstrengungen abverlangt, …", begriff: "Schule in herausfordernder Lage", alias: ["herausfordernde Lage", "herausfordernder Lage", "herausfordernd"] },
+  ] },
+  { thema: "OECD 2012", items: [
+    { satz: "Typ, der effektiv mit der schwierigen Lage umgeht und in professionelle Entwicklung investiert: …", begriff: "Advantaged schools", alias: ["advantaged", "advantaged school"] },
+    { satz: "Typ dazwischen: durchmischt, selbststeuerungsfähig, braucht keine externe Unterstützung: …", begriff: "Mixed schools", alias: ["mixed", "mixed school"] },
+    { satz: "Typ mit hoher sozialer Exklusion, großen Lernrückständen und Notwendigkeit externer Unterstützung: …", begriff: "Disadvantaged schools", alias: ["disadvantaged", "disadvantaged school"] },
+  ] },
+  { thema: "Fünf Qualitätsmerkmale", items: [
+    { satz: "Merkmal 1: kooperativer Führungsstil, Transparenz, demokratische Entscheidungen, rechtzeitiges Eingreifen: …", begriff: "Schulleitungshandeln", alias: ["Schulleitung"] },
+    { satz: "Merkmal 2: regelmäßige Erfassung von Leistungen und deren Nutzung zur internen Evaluation: …", begriff: "Datengenerierung und Datennutzung", alias: ["Datennutzung", "Daten", "Datengenerierung"] },
+    { satz: "Merkmal 5, besonders wichtig für schwierige Lagen: Eltern einbinden, Schulnetzwerke, Außenkontakte: …", begriff: "Nutzung externer Unterstützungsstrukturen", alias: ["externe Unterstützung", "Unterstützungsstrukturen", "externe Unterstützungsstrukturen"] },
+  ] },
+];
+
+BEGRIFFE["sq-foerder"] = [
+  { thema: "Für disadvantaged schools", items: [
+    { satz: "Berliner Pilotprojekt der Robert-Bosch-Stiftung mit zehn Schulen über vier Jahre und externen Prozessbegleitern: …", begriff: "School Turnaround", alias: ["Turnaround"] },
+    { satz: "Bund-Länder-Initiative, fünfjährig, drei Bildungsetappen, Leseförderung und Diagnostik: …", begriff: "BISS-Sprachbildung", alias: ["BISS", "Bildung durch Sprache und Schrift"] },
+    { satz: "Größtes Bildungsprogramm des Bundes: rund 4000 Schulen, ab 2024/25, zehn Jahre, Lesen, Schreiben, Rechnen: …", begriff: "Startchancen-Programm", alias: ["Startchancen"] },
+  ] },
+  { thema: "Für den Umgang mit Verhaltensstörungen", items: [
+    { satz: "Broschüre Was tun wenn aus Berlin und Brandenburg mit dem SMOB-Fragebogen und 93 Fragen: …", begriff: "Anti-Mobbing-Fibel", alias: ["Mobbing-Fibel", "Fibel", "Anti Mobbing Fibel"] },
+    { satz: "Programm mit dem Motto Aufeinander achten, Füreinander da sein, Miteinander Lernen und der Methode Mind Sync: …", begriff: "buddY-Programm", alias: ["buddY", "buddy"] },
+  ] },
+];
+
+BEGRIFFE["sq-bilanz"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Wer sieben Kriterien guter Schulen hat, nicht fünf Faktoren: …", begriff: "Fend 2000", alias: ["Fend"] },
+    { satz: "Schulform und Ausstattung sind nicht proximal, sondern …", begriff: "distal", alias: ["distale Variablen", "distale Faktoren"] },
+    { satz: "OECD-Typ, der externe Unterstützung braucht, nicht die mixed schools: …", begriff: "disadvantaged", alias: ["disadvantaged schools", "disadvantaged school"] },
+    { satz: "Ein Kompositionseffekt wirkt nicht über das einzelne Kind, sondern über …", begriff: "aggregierte Individualmerkmale", alias: ["aggregierte Merkmale", "aggregiert"] },
+  ] },
+];
+
+// ---------------------------------------------------------------- Schulrecht
+
+BEGRIFFE["sr-ueberblick"] = [
+  { thema: "Grundgesetz", items: [
+    { satz: "Artikel des Grundgesetzes, nach dem Pflege und Erziehung das natürliche Recht der Eltern sind: …", begriff: "Art. 6 Abs. 2 GG", alias: ["Art. 6", "Artikel 6", "6", "Art. 6 GG"] },
+    { satz: "Artikel des Grundgesetzes, nach dem das gesamte Schulwesen unter der Aufsicht des Staates steht: …", begriff: "Art. 7 Abs. 1 GG", alias: ["Art. 7", "Artikel 7", "7", "Art. 7 GG"] },
+    { satz: "Merksatz von Folie 13, der erklärt, warum in Brandenburg ein eigenes Schulgesetz gilt: …", begriff: "Bildung ist Ländersache", alias: ["Ländersache"] },
+  ] },
+  { thema: "Schulpflicht", items: [
+    { satz: "Paragraf im Brandenburger Schulgesetz mit den Grundsätzen: wer in Brandenburg wohnt, lebt oder arbeitet: …", begriff: "§ 36 BbgSchulG", alias: ["36", "Paragraf 36", "§ 36"] },
+    { satz: "Paragraf im Brandenburger Schulgesetz zum Beginn: Stichtag 30. September, Start 1. August: …", begriff: "§ 37 BbgSchulG", alias: ["37", "Paragraf 37", "§ 37"] },
+    { satz: "Paragraf im Brandenburger Schulgesetz zur Dauer: zehn Jahre Vollzeit: …", begriff: "§ 38 BbgSchulG", alias: ["38", "Paragraf 38", "§ 38"] },
+  ] },
+  { thema: "Schulverhältnis, Lehrkräfte, Neutralität", items: [
+    { satz: "Paragraf mit den sechs Ordnungsmaßnahmen und den zuständigen Stellen: …", begriff: "§ 64 BbgSchulG", alias: ["64", "Paragraf 64", "§ 64"] },
+    { satz: "Paragraf, nach dem Lehrkräfte in eigener Verantwortung unterrichten und erziehen und sich ständig fortbilden: …", begriff: "§ 67 BbgSchulG", alias: ["67", "Paragraf 67", "§ 67"] },
+    { satz: "Paragraf mit dem Ziel der Mitwirkung: die Selbstständigkeit jeder Schule fördern: …", begriff: "§ 74 BbgSchulG", alias: ["74", "Paragraf 74", "§ 74"] },
+    { satz: "Didaktisches Grundprinzip von 1976 mit Überwältigungsverbot, Kontroversitätsgebot und Schülerorientierung: …", begriff: "Beutelsbacher Konsens", alias: ["Beutelsbach"] },
+  ] },
+];
+
+BEGRIFFE["sr-staat"] = [
+  { thema: "Schule im Grundgesetz", items: [
+    { satz: "Das Grundgesetz hat zwei Teile: Staatsorganisationsrecht und die für Schulen besonders wichtigen …", begriff: "Grundrechte", alias: ["Grundrecht"] },
+    { satz: "Artikel, nach dem Pflege und Erziehung das natürliche Recht der Eltern sind und die staatliche Gemeinschaft darüber wacht: …", begriff: "Art. 6 Abs. 2 GG", alias: ["Art. 6", "Artikel 6", "6", "Art. 6 GG"] },
+    { satz: "Artikel, aus dem Schulpflicht und Unparteilichkeitsgebot hergeleitet werden, auf der Folie rot hinterlegt: …", begriff: "Art. 7 Abs. 1 GG", alias: ["Art. 7", "Artikel 7", "7", "Art. 7 GG"] },
+  ] },
+  { thema: "Schulpflicht und Länder", items: [
+    { satz: "Merksatz von Folie 13: Deshalb gilt in Brandenburg ein eigenes Schulgesetz: …", begriff: "Bildung ist Ländersache", alias: ["Ländersache"] },
+    { satz: "Das Beispiel auf Folie 12 für einen Schulpflichtbeginn im Gesetz, Paragraf 42, kommt aus dem Bundesland …", begriff: "Berlin", alias: ["Berliner Schulgesetz", "SchulG Berlin"] },
+  ] },
+  { thema: "Schulaufsicht", items: [
+    { satz: "Oberste Schulaufsicht in Brandenburg, Abkürzung des Ministeriums: …", begriff: "MBJS", alias: ["Ministerium für Bildung, Jugend und Sport", "Ministerium"] },
+    { satz: "Untere Schulaufsicht in Brandenburg, es gibt vier davon: …", begriff: "staatliche Schulämter", alias: ["Schulamt", "Schulämter", "staatliches Schulamt"] },
+    { satz: "Was Schulräte über Förderschulen, Gymnasien und andere Schulen führen, ein Wort: …", begriff: "Fachaufsicht", alias: [] },
+    { satz: "Die Leiter der Schulämter sind für Lehrkräfte und Schulleitungen die …", begriff: "Dienstvorgesetzte", alias: ["Dienstvorgesetzter", "Dienstvorgesetzten"] },
+  ] },
+];
+
+BEGRIFFE["sr-schule"] = [
+  { thema: "Stellung der Schule", items: [
+    { satz: "Paragraf, nach dem Schulen nichtrechtsfähige öffentliche Anstalten des Schulträgers sind: …", begriff: "§ 6 BbgSchulG", alias: ["6", "Paragraf 6", "§ 6"] },
+    { satz: "Paragraf zur Selbstständigkeit der Schule: Schulprofil, Schulprogramm, interne und externe Evaluation: …", begriff: "§ 7 BbgSchulG", alias: ["7", "Paragraf 7", "§ 7"] },
+    { satz: "Rechtliche Form der Schule: keine eigene juristische Person, sie gehört zum Schulträger: …", begriff: "nichtrechtsfähige öffentliche Anstalt", alias: ["nichtrechtsfähige Anstalt", "Anstalt", "öffentliche Anstalt"] },
+    { satz: "Wer bei Grundschulen Schulträger ist: …", begriff: "Gemeinde", alias: ["die Gemeinde"] },
+  ] },
+  { thema: "Mitwirkung", items: [
+    { satz: "Paragraf, dessen Ziel es ist, die Selbstständigkeit jeder Schule zu fördern; Eltern, Schüler und Lehrkräfte gestalten in Gremien mit: …", begriff: "§ 74 BbgSchulG", alias: ["74", "Paragraf 74", "§ 74"] },
+    { satz: "Paragraf zur Elternversammlung: zwei Vertreter, dreimal im Jahr, entscheidet über Lerninfos statt Noten: …", begriff: "§ 81 BbgSchulG", alias: ["81", "Paragraf 81", "§ 81"] },
+    { satz: "Paragraf zu Klassensprechern: ab Jahrgang 4, zwei gewählt, zwei Stunden je Schulmonat frei: …", begriff: "§ 83 BbgSchulG", alias: ["83", "Paragraf 83", "§ 83"] },
+    { satz: "Der Anteil der Eltern, der eine Elternversammlung wünschen muss, damit sie stattfindet: …", begriff: "Fünftel", alias: ["ein Fünftel", "einem Fünftel", "1/5"] },
+  ] },
+];
+
+BEGRIFFE["sr-pflicht"] = [
+  { thema: "Schulstruktur", items: [
+    { satz: "Paragraf zur äußeren Organisation: Schulstufen und Jahrgangsstufen: …", begriff: "§ 16 BbgSchulG", alias: ["16", "Paragraf 16", "§ 16"] },
+    { satz: "Jahrgänge 1 bis 6 heißen in Brandenburg …", begriff: "Primarstufe", alias: ["Primar"] },
+    { satz: "Jahrgänge 7 bis 10 heißen …", begriff: "Sekundarstufe I", alias: ["Sek I", "Sekundarstufe 1", "Sek 1"] },
+    { satz: "Paragraf mit den Abschlüssen und Berechtigungen, von der Berufsbildungsreife bis zum Abitur: …", begriff: "§ 17 BbgSchulG", alias: ["17", "Paragraf 17", "§ 17"] },
+  ] },
+  { thema: "Schulpflicht: Paragrafen", items: [
+    { satz: "Paragraf mit den Grundsätzen: Wohnung, gewöhnlicher Aufenthalt oder Arbeitsstätte in Brandenburg, auch bei Asyl und Duldung: …", begriff: "§ 36 BbgSchulG", alias: ["36", "Paragraf 36", "§ 36"] },
+    { satz: "Paragraf zum Beginn: sechs Jahre bis zum 30. September, Start am 1. August: …", begriff: "§ 37 BbgSchulG", alias: ["37", "Paragraf 37", "§ 37"] },
+    { satz: "Paragraf zur Dauer: zehn Jahre, Befreiung nach Jahrgangsstufe 8 und neun Schulbesuchsjahren: …", begriff: "§ 38 BbgSchulG", alias: ["38", "Paragraf 38", "§ 38"] },
+  ] },
+  { thema: "Schulpflicht: Begriffe", items: [
+    { satz: "Zwei Pflichten vor dem ersten Schultag: Sprachstandsfeststellung und die … durch das Gesundheitsamt", begriff: "schulärztliche Untersuchung", alias: ["schulärztlich", "Untersuchung"] },
+    { satz: "Kinder, die vom 1. Oktober bis 31. Dezember sechs werden und nur auf Wunsch der Eltern aufgenommen werden, heißen …", begriff: "Antragskinder", alias: ["Antragskind"] },
+    { satz: "Grundschule plus ein Bildungsgang der Sekundarstufe I ergibt zehn Jahre …", begriff: "Vollzeitschulpflicht", alias: ["Vollzeit"] },
+  ] },
+];
+
+BEGRIFFE["sr-verhaeltnis"] = [
+  { thema: "Rechte und Pflichten", items: [
+    { satz: "Paragraf mit dem Anspruch auf Unterricht und Ferien und der Pflicht, regelmäßig teilzunehmen und Hausaufgaben zu machen: …", begriff: "§ 44 BbgSchulG", alias: ["44", "Paragraf 44", "§ 44"] },
+    { satz: "Paragraf mit dem Recht der Eltern auf Information, Beratung und Unterrichtsbesuch nach Anmeldung: …", begriff: "§ 46 BbgSchulG", alias: ["46", "Paragraf 46", "§ 46"] },
+    { satz: "Paragraf zur Meinungsfreiheit der Schüler, Verbot politischer Werbung, Sponsoring erlaubt: …", begriff: "§ 47 BbgSchulG", alias: ["47", "Paragraf 47", "§ 47"] },
+    { satz: "Spenden mit dem Ziel der Werbung, die Schulen laut Absatz 4 annehmen dürfen: …", begriff: "Sponsoring", alias: [] },
+  ] },
+  { thema: "Zeugnisse", items: [
+    { satz: "Wer einen Bildungsgang nach Erfüllung der Schulpflicht ohne Abschluss verlässt, bekommt ein …", begriff: "Abgangszeugnis", alias: ["Abgang"] },
+    { satz: "Beim Schulwechsel innerhalb einer Schulstufe gibt es ein …", begriff: "Überweisungszeugnis", alias: ["Überweisung"] },
+    { satz: "Wer einen Bildungsgang erfolgreich beendet, aber nicht in der Grundschule, bekommt ein …", begriff: "Abschlusszeugnis", alias: ["Abschluss"] },
+  ] },
+  { thema: "Ordnungsmaßnahmen", items: [
+    { satz: "Paragraf mit den Grundsätzen: Erziehung geht vor, Züchtigung verboten, vorher anhören: …", begriff: "§ 63 BbgSchulG", alias: ["63", "Paragraf 63", "§ 63"] },
+    { satz: "Paragraf mit den sechs Stufen vom schriftlichen Verweis bis zur Verweisung von allen Schulen: …", begriff: "§ 64 BbgSchulG", alias: ["64", "Paragraf 64", "§ 64"] },
+    { satz: "Maßnahmen, die sich an die Einsicht richten und in der Regel vorgehen: …", begriff: "Erziehungsmaßnahmen", alias: ["Erziehungsmaßnahme"] },
+    { satz: "Wer über den Ausschluss vom Unterricht bis zu zwei Wochen entscheidet: …", begriff: "Klassenkonferenz", alias: [] },
+  ] },
+];
+
+BEGRIFFE["sr-lehrkraefte"] = [
+  { thema: "Rechte und Pflichten", items: [
+    { satz: "Paragraf zu Rechten und Dienstpflichten der Lehrkräfte: eigene Verantwortung, ständige Fortbildung: …", begriff: "§ 67 BbgSchulG", alias: ["67", "Paragraf 67", "§ 67"] },
+    { satz: "Was laut Absatz 2 nicht unnötig oder unzumutbar eingeschränkt werden darf: …", begriff: "pädagogische Freiheit", alias: ["Freiheit"] },
+    { satz: "Gesetz, dessen Paragraf 9 sagt: Fortbildung erhält, festigt und erweitert Kenntnisse: …", begriff: "BbgLeBiG", alias: ["Brandenburgisches Lehrerbildungsgesetz", "Lehrerbildungsgesetz", "BbgLeBiG § 9"] },
+  ] },
+  { thema: "Fortbildung in den Ländern", items: [
+    { satz: "Bundesland mit 30 Stunden pro Jahr und Nachweis als Portfolio: …", begriff: "Hamburg", alias: ["HH"] },
+    { satz: "Bundesland mit 12 Tagen über 4 Jahre: …", begriff: "Bayern", alias: ["BY"] },
+    { satz: "Form des Nachweises, die nur Hamburg vorschreibt: …", begriff: "Portfolio", alias: [] },
+  ] },
+  { thema: "Aufsichtspflicht", items: [
+    { satz: "Paragraf, auf dem die VV-Aufsicht steht, mit der Fürsorge- und Aufsichtspflicht: …", begriff: "§ 146 BbgSchulG", alias: ["146", "Paragraf 146", "§ 146"] },
+    { satz: "Strecke zwischen zwei Orten schulischer Veranstaltungen, auf der Aufsicht gilt: …", begriff: "Unterrichtsweg", alias: [] },
+    { satz: "Strecke von zu Hause oder vom Hort zum Unterricht, auf der grundsätzlich keine Aufsicht gilt: …", begriff: "Schulweg", alias: [] },
+    { satz: "Im Radiergummi-Fall von 1972 hat laut BGH seine Pflicht verletzt: der …", begriff: "Schulleiter", alias: ["Schulleitung"] },
+  ] },
+];
+
+BEGRIFFE["sr-neutral"] = [
+  { thema: "Beamtenrecht", items: [
+    { satz: "Gesetz und Paragraf, aus dem Mäßigung und Unparteilichkeit der Lehrkräfte folgen: …", begriff: "BeamtStG § 33", alias: ["§ 33 BeamtStG", "33", "Paragraf 33", "§ 33", "BeamtStG"] },
+    { satz: "Gebot aus Absatz 2: Meinung nicht verbergen, aber bei politischer Betätigung zurückhalten: …", begriff: "Mäßigung", alias: ["Mäßigung und Zurückhaltung", "Mäßigungsgebot"] },
+    { satz: "Gebot aus Absatz 1: dem ganzen Volk dienen und die Aufgaben gerecht erfüllen, gilt auch für angestellte Lehrkräfte: …", begriff: "Unparteilichkeit", alias: ["unparteiisch", "Unparteilichkeitsgebot"] },
+    { satz: "Der Rechtswissenschaftler Joachim Wieland nennt die völlige Neutralitätspflicht einen …", begriff: "Mythos", alias: ["Mythos Neutralität", "Mythos Neutralitätsgebot"] },
+  ] },
+  { thema: "Beutelsbacher Konsens", items: [
+    { satz: "Prinzip 1: Lernende dürfen nicht im Sinne erwünschter Meinungen überrumpelt werden, keine Indoktrination: …", begriff: "Überwältigungsverbot", alias: ["Überwältigung"] },
+    { satz: "Prinzip 2: Was in Wissenschaft und Politik strittig ist, muss im Unterricht auch so dargestellt werden: …", begriff: "Kontroversitätsgebot", alias: ["Kontroversität", "Kontroversgebot"] },
+    { satz: "Prinzip 3: Lernende sollen die eigene Interessenlage analysieren und Einfluss nehmen können: …", begriff: "Schülerorientierung", alias: ["Lernendenorientierung"] },
+    { satz: "Der Beutelsbacher Konsens ist kein Gesetz, sondern ein …", begriff: "didaktisches Grundprinzip", alias: ["Grundprinzip", "didaktisches Prinzip"] },
+  ] },
+];
+
+BEGRIFFE["sr-zahlen"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Stichtag für das sechste Lebensjahr ist nicht der 1. August, sondern der …", begriff: "30. September", alias: ["30.9.", "30.09.", "30. 9."] },
+    { satz: "Über den Ausschluss bis zu zwei Wochen entscheidet nicht die Konferenz der Lehrkräfte, sondern die …", begriff: "Klassenkonferenz", alias: [] },
+    { satz: "Das Erziehungsrecht der Eltern steht nicht in Artikel 7, sondern in …", begriff: "Art. 6 Abs. 2 GG", alias: ["Art. 6", "Artikel 6", "6", "Art. 6 GG"] },
+    { satz: "Die Aufsichtspflicht steht nicht in Paragraf 67, sondern in …", begriff: "§ 146 BbgSchulG", alias: ["146", "Paragraf 146", "§ 146"] },
+  ] },
+];
+
+// ---------------------------------------------------------------- Unterricht motivierend gestalten
+
+BEGRIFFE["um-ueberblick"] = [
+  { thema: "Begriff und Kontinuum", items: [
+    { satz: "Heckhausen 1989: gedachter Begriff, der Richtung, Dauer und Intensität von Verhalten erklärt: …", begriff: "hypothetisches Konstrukt", alias: ["Konstrukt", "hypothetisch"] },
+    { satz: "Motivation aus eigenem Interesse, weil die Aufgabe Spaß macht: …", begriff: "intrinsisch", alias: ["intrinsische Motivation", "intrinsische"] },
+    { satz: "Zustand ganz links auf dem Kontinuum: Ich lerne, aber ich finde es nicht spaßig oder sinnvoll: …", begriff: "Amotivation", alias: [] },
+  ] },
+  { thema: "Absinken und Grundbedürfnisse", items: [
+    { satz: "Theorie von Eccles: mangelnde Passung zwischen Jugendlichem und Schule nach dem Übergang: …", begriff: "Stage-Environment-Fit", alias: ["Stage Environment Fit", "Stage-Environment-Fit Theory", "Passung"] },
+    { satz: "Deci und Ryan: drei Grundbedürfnisse und das Kontinuum gehören zur …", begriff: "Selbstbestimmungstheorie", alias: ["SDT", "Selbstbestimmungstheorie der Motivation"] },
+    { satz: "Die drei Grundbedürfnisse: Autonomie, Kompetenz und …", begriff: "Eingebundenheit", alias: ["soziale Eingebundenheit", "Zugehörigkeit"] },
+  ] },
+  { thema: "Unterricht und Rückmeldung", items: [
+    { satz: "Unterrichtsmerkmal: Bezug zur Lebenswelt, Aufgaben in Alltagskontexte einbetten: …", begriff: "Persönliche Relevanz", alias: ["Relevanz"] },
+    { satz: "Erste Rückmelde-Frage nach Hattie und Timperley: Was ist das Ziel? Das ist …", begriff: "feed up", alias: ["feedup", "feed-up"] },
+    { satz: "Ursachenzuschreibung für Erfolg und Misserfolg nach Weiner: …", begriff: "Attribution", alias: ["Attributionstheorie", "Attributionen"] },
+  ] },
+];
+
+BEGRIFFE["um-begriff"] = [
+  { thema: "Definition", items: [
+    { satz: "Heckhausen 1989: gedachter Begriff, mit dem man erklärt, was jemand tut, wie lange und wie stark: …", begriff: "hypothetisches Konstrukt", alias: ["Konstrukt", "hypothetisch"] },
+    { satz: "Die drei Dinge, die Motivation laut Heckhausen erklärt: Richtung, Dauer und …", begriff: "Intensität", alias: ["Intensität von Verhalten"] },
+    { satz: "Motivation ist ein Zustand, der Verhalten aktiviert und aufrechterhält; der Pfeil auf der Folie zeigt von Motivation zur …", begriff: "Handlung", alias: [] },
+  ] },
+  { thema: "Lernmotivation und Einflussgrößen", items: [
+    { satz: "Spinath 2015: Sammelbegriff für Konstrukte, die erklären, was eine Person antreibt: …", begriff: "Lernmotivation", alias: [] },
+    { satz: "Einflussgröße von Folie 8: angenommene Gründe für Erfolg oder Misserfolg: …", begriff: "Attributionen", alias: ["Attribution", "Erfolgserwartungen und Attributionen"] },
+    { satz: "Einflussgröße von Folie 8: erwarteter Nutzen für die Person: …", begriff: "Wertüberzeugungen", alias: ["Wertüberzeugung"] },
+    { satz: "Einflussgröße von Folie 8: Fähigkeiten demonstrieren und erweitern: …", begriff: "Zielorientierung", alias: ["Ziele"] },
+  ] },
+];
+
+BEGRIFFE["um-kontinuum"] = [
+  { thema: "Zwei Pole und ein Nullpunkt", items: [
+    { satz: "Motivation, bei der die Tätigkeit selbst der Grund ist: hohe Leistung, Ausdauer, Wohlbefinden: …", begriff: "intrinsisch", alias: ["intrinsische Motivation", "intrinsische"] },
+    { satz: "Motivation, deren Grund außerhalb der Tätigkeit liegt, mit geringer Ausdauer und geringem Interesse: …", begriff: "extrinsisch", alias: ["extrinsische Motivation", "extrinsische"] },
+    { satz: "Zustand außerhalb des Balkens: Ich lerne, aber ich finde es nicht spaßig oder sinnvoll: …", begriff: "Amotivation", alias: [] },
+  ] },
+  { thema: "Vier Stufen", items: [
+    { satz: "Stufe 1: Ich mache diese Aufgabe, weil man das so von mir erwartet: …", begriff: "External", alias: ["externale Regulation"] },
+    { satz: "Stufe 2: Ich erledige das, weil es eben dazugehört: …", begriff: "Introjiziert", alias: ["introjizierte Regulation"] },
+    { satz: "Stufe 3: Ich lerne, weil ich einen Abschluss machen möchte: …", begriff: "Identifiziert", alias: ["identifizierte Regulation"] },
+    { satz: "Stufe 4: Ich arbeite an dieser Aufgabe, weil ich es wichtig finde: …", begriff: "Integriert", alias: ["integrierte Regulation"] },
+  ] },
+];
+
+BEGRIFFE["um-absinken"] = [
+  { thema: "Befund", items: [
+    { satz: "Forscherpaar 2002: Grundschulkinder sind oft intrinsisch motiviert, das nimmt im Laufe der Jahre ab: …", begriff: "Fredricks & Eccles 2002", alias: ["Fredricks und Eccles", "Fredricks", "Fredricks & Eccles"] },
+    { satz: "Altersphase, in der das Absinken besonders stark ist: …", begriff: "Jugendalter", alias: ["Adoleszenz", "Jugend"] },
+  ] },
+  { thema: "Zwei Erklärungen", items: [
+    { satz: "Havighurst 1972: Autonomie, Peerbeziehungen, Identitätsfindung und Werte sind die … der Adoleszenz", begriff: "Entwicklungsaufgaben", alias: ["Entwicklungsaufgabe"] },
+    { satz: "Eccles et al. 1993: Der Jugendliche will mehr Freiheit, die Schule gibt gleichzeitig weniger, mangelnde Passung: …", begriff: "Stage-Environment-Fit", alias: ["Stage Environment Fit", "Stage-Environment-Fit Theory", "Passung"] },
+    { satz: "Etikett für die Erklärung nach Havighurst: …", begriff: "entwicklungspsychologisch", alias: ["Entwicklungspsychologie"] },
+    { satz: "Etikett für die Erklärung nach Eccles: …", begriff: "sozialkognitiv", alias: ["sozial-kognitiv"] },
+  ] },
+];
+
+BEGRIFFE["um-sdt"] = [
+  { thema: "Drei Grundbedürfnisse", items: [
+    { satz: "Bedürfnis nach dem Gefühl, selbst Ursprung des Handelns zu sein: …", begriff: "Autonomie", alias: ["Bedürfnis nach Autonomie"] },
+    { satz: "Bedürfnis, das eigene Können in Situationen zeigen zu dürfen: …", begriff: "Kompetenz", alias: ["Bedürfnis nach Kompetenz", "Kompetenzerleben"] },
+    { satz: "Bedürfnis nach Zugehörigkeit, Interesse an der eigenen Person erfahren: …", begriff: "Eingebundenheit", alias: ["soziale Eingebundenheit", "Bedürfnis nach Eingebundenheit"] },
+  ] },
+  { thema: "Theorie und Folge", items: [
+    { satz: "Deci und Ryan: die Grundlage hinter Folie 18 heißt …", begriff: "Selbstbestimmungstheorie", alias: ["SDT", "Selbstbestimmungstheorie der Motivation"] },
+    { satz: "Was die Befriedigung der drei Grundbedürfnisse laut Folie 18 fördert: …", begriff: "intrinsische Motivation", alias: ["intrinsisch"] },
+    { satz: "Unterrichtsmerkmal für das dritte Bedürfnis, Folie 22: …", begriff: "Unterstützendes Klima", alias: ["Klima"] },
+  ] },
+];
+
+BEGRIFFE["um-merkmale"] = [
+  { thema: "Fünf Merkmale", items: [
+    { satz: "Merkmal 1: Mitbestimmung, Projektunterricht, freie Aufgabenwahl, Schiefele 2015: …", begriff: "Autonomie", alias: ["Autonomieförderung"] },
+    { satz: "Merkmal 2: aufgabenbezogene Rückmeldung, Lerntagebuch, Portfolio, Aufgabenklarheit: …", begriff: "Kompetenz", alias: ["Kompetenzerleben"] },
+    { satz: "Merkmal 3: zugewandt, anteilnehmend, gemeinsame Klassenregeln: …", begriff: "Unterstützendes Klima", alias: ["Klima"] },
+    { satz: "Merkmal 4: Lebenswelt, Alltagskontexte, Stuckey et al. 2014: …", begriff: "Persönliche Relevanz", alias: ["Relevanz"] },
+  ] },
+  { thema: "Relevanz und ARCS", items: [
+    { satz: "Lernende schreiben kurze Texte über die Nützlichkeit eines Themas; das nennt die Folie …", begriff: "Relevanz-Intervention", alias: ["Relevanzintervention", "Intervention"] },
+    { satz: "Keller 1983 nennt vier Kriterien relevanten Unterrichts: authentische Situationen, Mischung aus Neuem und Vertrautem, Personalisieren, Spannung. Das ist das …", begriff: "ARCS-Modell", alias: ["ARCS"] },
+    { satz: "Studie von 2014 im Mathematikunterricht: Praxisorientierung fördert den intrinsischen Wert: …", begriff: "Schreier et al. 2014", alias: ["Schreier", "Schreier 2014"] },
+  ] },
+];
+
+BEGRIFFE["um-feedback"] = [
+  { thema: "Hattie und Timperley 2007", items: [
+    { satz: "Frage 1: Was ist das Ziel? Der Zielzustand muss beiden klar sein: …", begriff: "feed up", alias: ["feedup", "feed-up"] },
+    { satz: "Frage 2: Wie geht es voran? Auskunft über den aktuellen Lernzustand: …", begriff: "feed back", alias: ["feedback"] },
+    { satz: "Frage 3: Was kommt als Nächstes? Die weiteren Schritte zum Ziel: …", begriff: "feed forward", alias: ["feedforward", "feed-forward"] },
+  ] },
+  { thema: "Weiner", items: [
+    { satz: "Die Ursache für das Ergebnis liegt in mir: …", begriff: "internal", alias: ["internale Kontrollüberzeugung", "internale Ursache"] },
+    { satz: "Die Ursache bleibt so, sie ist zeitlich überdauernd: …", begriff: "stabil", alias: ["stabile Ursache"] },
+    { satz: "Die Ursache kann sich ändern: …", begriff: "variabel", alias: ["variable Ursache"] },
+  ] },
+  { thema: "Schuster 2017", items: [
+    { satz: "Fachwort für die Ursachenzuschreibung: Worauf führe ich mein Ergebnis zurück? …", begriff: "Attribution", alias: ["Attributionstheorie"] },
+    { satz: "Ziel von Rückmeldung nach Schuster 2017: Erfolg internal, Misserfolg variabel sehen, das ist eine …", begriff: "Günstige Attribution", alias: ["günstig", "günstige Ursachenzuschreibung"] },
+  ] },
+];
+
+BEGRIFFE["um-vergleich"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Kollaborative Lernformen stehen nicht in der Fünferliste von Folie 28, sondern nur im … von Folie 38", begriff: "Take Home", alias: ["Take-Home", "Takehome"] },
+    { satz: "Lebensweltbezug hängt nicht an einem Grundbedürfnis, sondern am …", begriff: "Erwartungs-Wert-Modell", alias: ["Erwartungs-Wert", "Erwartungs Wert Modell"] },
+    { satz: "Das Unterrichtsmerkmal zur Eingebundenheit heißt nicht Eingebundenheit, sondern …", begriff: "Unterstützendes Klima", alias: ["Klima"] },
+    { satz: "Zu Mitbestimmung und Partizipation gehört das Grundbedürfnis …", begriff: "Autonomie", alias: [] },
+  ] },
+];
+
+// ---- begriffe-theorie.js ----
+// Begriffe-Quiz je Hoerkapitel: Schultheorie I, II, III.
+// Quelle ausschliesslich karte/daten-st1.js, daten-st2.js, daten-st3.js.
+// Schluessel = Track-Id (<thema>-ueberblick, <thema>-<karten-id>).
+
+// ===================== Schultheorie I =====================
+
+BEGRIFFE["st1-ueberblick"] = [
+  { thema: "Die drei Theoretiker", items: [
+    { satz: "Der Theoretiker, der Schule als Subsystem sieht, das die Gesellschaft stabil hält, mit zwei Funktionen: …", begriff: "Parsons", alias: ["talcott parsons"] },
+    { satz: "Der Theoretiker mit vier Funktionen der Schule, der das handelnde Individuum ins Bild holt: …", begriff: "Fend", alias: ["helmut fend"] },
+    { satz: "Der französische Soziologe, für den Schule soziale Ungleichheit reproduziert, mit drei Kapitalarten: …", begriff: "Bourdieu", alias: ["pierre bourdieu"] },
+  ] },
+  { thema: "Zwei Blickrichtungen", items: [
+    { satz: "Die Richtung von Parsons und Fend, die fragt, was das Bildungssystem für die Gesellschaft tut: …", begriff: "Strukturfunktionalismus", alias: ["strukturfunktionalistisch", "strukturfunktionalistische theorie"] },
+    { satz: "Bourdieus Richtung, die zeigt, wie Schule Ordnung und Ungleichheit verfestigt: …", begriff: "sozialisationstheoretischer Ansatz", alias: ["sozialisationstheorie", "sozialisationstheoretisch", "sozialisationstheoretische sicht"] },
+  ] },
+  { thema: "Empirie", items: [
+    { satz: "Boudons Effekt: Die Herkunft wirkt auf die Leistung selbst: …", begriff: "Primäre Herkunftseffekte", alias: ["primär", "primaer", "primäre", "primärer herkunftseffekt"] },
+    { satz: "Boudons Effekt: Die Herkunft wirkt auf die Bildungsentscheidung, auch bei gleicher Leistung: …", begriff: "Sekundäre Herkunftseffekte", alias: ["sekundär", "sekundaer", "sekundäre", "sekundärer herkunftseffekt"] },
+  ] },
+];
+
+BEGRIFFE["st1-wozu"] = [
+  { thema: "Wozu Schultheorien dienen", items: [
+    { satz: "Alle Sachverhalte rund um Schule bekommen einen Platz. Schultheorien schaffen einen …", begriff: "Ordnungszusammenhang", alias: ["ordnung", "ordnen"] },
+    { satz: "Schultheorien fragen gegenüber Schulpraxis und Bildungspolitik, was Schule leisten kann. Das ist ihre …", begriff: "Kritische Funktion", alias: ["kritik", "kritisch"] },
+    { satz: "Schultheorien begründen, welche Funktionen Schule in der Gesellschaft hat, und damit das … der Lehrkräfte", begriff: "Berufsethos", alias: ["ethos"] },
+  ] },
+  { thema: "Nutzen für die Praxis", items: [
+    { satz: "Schultheorien sind die Basis für quantitative und qualitative Studien darüber, wie soziale Ungleichheit im Bildungssystem entsteht: …", begriff: "Grundlage der Schulforschung", alias: ["schulforschung", "forschung"] },
+    { satz: "Lehrkräfte sollen bedenken, welchen Anteil sie selbst an der Reproduktion von Bildungsungerechtigkeit haben: …", begriff: "Eigene Rolle reflektieren", alias: ["rolle reflektieren", "reflexion", "reflektieren"] },
+  ] },
+];
+
+BEGRIFFE["st1-parsons"] = [
+  { thema: "Zwei Funktionen", items: [
+    { satz: "Parsons' Funktion, bei der die Schule Werte und Normen weitergibt, gegenüber dem politischen System: …", begriff: "Sozialisations-/Integrationsfunktion", alias: ["sozialisation", "sozialisationsfunktion", "integration", "integrationsfunktion"] },
+    { satz: "Parsons' Funktion, bei der Lernende gemäß ihrer Fähigkeiten auf Positionen verteilt werden, gegenüber dem ökonomischen System: …", begriff: "Selektionsfunktion", alias: ["selektion"] },
+  ] },
+  { thema: "System und Schema", items: [
+    { satz: "Parsons' Begriff für Schule als Teil des sozialen Systems Gesellschaft, im Austausch mit Politik und Wirtschaft: …", begriff: "Subsystem", alias: ["subsystem der gesellschaft"] },
+    { satz: "Parsons' Kürzel für die vier Grundfunktionen, die jedes soziale System erfüllen muss: …", begriff: "AGIL-Schema", alias: ["agil"] },
+    { satz: "Die vierte AGIL-Funktion, die das Erziehungssystem vor allem übernimmt: gesellschaftlich adaptive Werte werden verinnerlicht: …", begriff: "Normerhaltung", alias: ["latent pattern maintenance", "latent"] },
+  ] },
+  { thema: "Gesetz und Kritik", items: [
+    { satz: "Der Paragraf im Brandenburger Schulgesetz, der zu Parsons' Sozialisation und Integration passt, Ziele und Grundsätze der Erziehung und Bildung: …", begriff: "§ 4 BbgSchulG", alias: ["4", "paragraf 4", "§ 4"] },
+    { satz: "Der Paragraf zur Aufnahme in eine weiterführende Schule, der zu Parsons' Selektion passt: …", begriff: "§ 53 BbgSchulG", alias: ["53", "paragraf 53", "§ 53"] },
+    { satz: "Die Studie, die zeigt, dass die Auswahl nicht rein nach Leistung läuft, weil die familiäre Herkunft bei der Beurteilung mitspielt: …", begriff: "PISA", alias: ["pisa studie"] },
+  ] },
+];
+
+BEGRIFFE["st1-fend"] = [
+  { thema: "Vier Funktionen", items: [
+    { satz: "Fends Funktion: Kenntnisse für den Beruf, Fleiß, Lernbereitschaft, Mobilität, dazu das humane Recht auf Bildung: …", begriff: "Qualifikationsfunktion", alias: ["qualifikation"] },
+    { satz: "Fends Funktion, bei der Leistung statt Geburt entscheidet, welche Position jemand bekommt: …", begriff: "Selektions- und Allokationsfunktion", alias: ["selektion und allokation", "selektion", "allokation", "selektionsfunktion"] },
+    { satz: "Fends Funktion, bei der durch hundertfaches Erbringen von Prüfungen die Normen der Leistungsgesellschaft als richtig anerkannt werden: …", begriff: "Integrations- und Legitimationsfunktion", alias: ["integration und legitimation", "legitimation", "integration", "legitimationsfunktion"] },
+    { satz: "Fends Funktion: Weitergabe der Kultur, Wertorientierungen, Symbolsysteme, gemeinsame Geschichte: …", begriff: "Enkulturationsfunktion", alias: ["enkulturation"] },
+  ] },
+  { thema: "Einordnung", items: [
+    { satz: "Fends Ansatz, der Struktur und handelndes Individuum zusammen betrachtet: …", begriff: "Mehrebenenanalyse", alias: ["mehrebenen"] },
+    { satz: "Was Fend 2006 ergänzt, weil bei Parsons die Akteure hinter die Strukturen treten: …", begriff: "handlungsorientierte Sichtweise", alias: ["handlungsorientiert", "handlungsorientierung"] },
+    { satz: "Fends Buch von 1980, 2006 weiterentwickelt zur Neuen …", begriff: "Theorie der Schule", alias: ["neue theorie der schule"] },
+  ] },
+  { thema: "Fends Kritik", items: [
+    { satz: "Fends Einwand gegen die Selektion: Intelligenz und Herkunft bestimmen mit, das verstärkt ungleiche Anlage und Umwelt: …", begriff: "Chancenungleichheit", alias: ["chancen ungleichheit", "ungleiche chancen"] },
+    { satz: "Was Fend der Herkunftswirkung entgegensetzt: der Wert, den das eigene geistige Bemühen für sich hat: …", begriff: "Selbstwert des intellektuellen Strebens", alias: ["selbstwert", "intellektuelles streben"] },
+  ] },
+];
+
+BEGRIFFE["st1-bourdieu"] = [
+  { thema: "Drei Kapitalarten", items: [
+    { satz: "Bourdieus Ressource aus Geld und Eigentum, entstanden durch Ansammeln von Arbeitserträgen: …", begriff: "ökonomisches Kapital", alias: ["ökonomisch", "oekonomisch", "ökonomische"] },
+    { satz: "Bourdieus Ressource aus Kenntnissen und Fähigkeiten, in die Geld und Zeit investiert wurden; erklärt Bildungsungleichheit trotz formaler Chancengleichheit: …", begriff: "kulturelles Kapital", alias: ["kulturell", "kulturelle"] },
+    { satz: "Bourdieus Ressource aus Beziehungsarbeit, ein Netzwerk gegenseitigen Kennens und Anerkennens: …", begriff: "soziales Kapital", alias: ["sozial", "soziale", "sozialkapital"] },
+  ] },
+  { thema: "Drei Formen des kulturellen Kapitals", items: [
+    { satz: "Kulturelles Kapital im Körper, etwa Sprechweisen; die Zeit zum Erwerb muss persönlich investiert werden: …", begriff: "inkorporiert", alias: ["inkorporiertes kapital", "inkorporiertes kulturelles kapital"] },
+    { satz: "Kulturelles Kapital als Gegenstand, Bücher, Instrumente, Kunstwerke, mit Geld kaufbar: …", begriff: "objektiviert", alias: ["objektiviertes kapital", "objektiviertes kulturelles kapital"] },
+    { satz: "Kulturelles Kapital als Titel, Abschlüsse und Zeugnisse, auf dem Arbeitsmarkt in Geld umwandelbar: …", begriff: "institutionalisiert", alias: ["institutionalisiertes kapital", "institutionalisiertes kulturelles kapital"] },
+  ] },
+  { thema: "Habitus und Reproduktion", items: [
+    { satz: "Bourdieus Begriff für die erworbene Haltung, den Lebensstil, den Geschmack bei Kleidung und Restaurants: …", begriff: "Habitus", alias: ["habitualisierung"] },
+    { satz: "Bourdieus These: Weil Kapital ungleich verteilt ist, trägt das Bildungswesen bei zur … sozialer Ungleichheit", begriff: "Reproduktion", alias: ["reproduktion sozialer ungleichheit", "reproduzieren"] },
+    { satz: "Bourdieus Wort für die Beziehungen der Akteure zueinander, wer wo in der Gesellschaft steht: …", begriff: "Positionierung im sozialen Raum", alias: ["sozialer raum", "positionierung", "position"] },
+  ] },
+];
+
+BEGRIFFE["st1-ungleich"] = [
+  { thema: "Boudons Erklärung", items: [
+    { satz: "Boudons Effekt: Die Ressourcen der Familie wirken auf die schulische Leistung des Kindes: …", begriff: "Primäre Herkunftseffekte", alias: ["primär", "primaer", "primäre", "primärer herkunftseffekt"] },
+    { satz: "Boudons Effekt: Die Familie entscheidet bei gleicher Leistung anders über den Bildungsweg: …", begriff: "Sekundäre Herkunftseffekte", alias: ["sekundär", "sekundaer", "sekundäre", "sekundärer herkunftseffekt"] },
+  ] },
+  { thema: "Drei sekundäre Effekte in der Schule", items: [
+    { satz: "Kinder aus niedrigeren Schichten bekommen bei gleichen Testergebnissen schlechtere Noten. Sekundärer Effekt der …", begriff: "Leistungsbeurteilung", alias: ["beurteilung"] },
+    { satz: "Kinder aus höheren Schichten bekommen bei vergleichbarer Leistung eher den Rat fürs Gymnasium. Sekundärer Effekt der …", begriff: "Schullaufbahnempfehlung", alias: ["empfehlung", "gymnasialempfehlung", "laufbahnempfehlung"] },
+    { satz: "Kinder aus niedrigen Schichten folgen den Schullaufbahnwünschen der Eltern. Sekundärer Effekt des …", begriff: "Übergangsverhalten", alias: ["übergang", "uebergang", "übergangsverhaltens", "uebergangsverhalten"] },
+    { satz: "Lehrkräfte schreiben Kindern aus bildungsnahen Familien manchmal mehr Leistungsfähigkeit zu. Dumonts Erklärung: …", begriff: "Beurteilungsverzerrungen", alias: ["beurteilungsverzerrung", "verzerrung", "verzerrungen"] },
+  ] },
+  { thema: "Befund", items: [
+    { satz: "Der Begriff aus dem ersten PISA-Bericht für die Trennung der Schüler nach Herkunft durch die frühe Verteilung auf Bildungsgänge: …", begriff: "soziale Segregation", alias: ["segregation"] },
+    { satz: "Die Studie von 2005: höhere Wahrscheinlichkeit eines Gymnasialbesuchs bei gleichen Leistungen für Kinder aus privilegierten Familien: …", begriff: "Ditton et al. 2005", alias: ["ditton", "ditton 2005"] },
+  ] },
+];
+
+BEGRIFFE["st1-vergleich"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Der Theoretiker mit genau zwei Funktionen der Schule: …", begriff: "Parsons", alias: ["talcott parsons"] },
+    { satz: "Der Theoretiker, bei dem die Selektionsfunktion immer den Zusatz und Allokation trägt: …", begriff: "Fend", alias: ["helmut fend"] },
+    { satz: "Der Theoretiker, für den Begabung weniger zählt als die Affinität zur Schulkultur: …", begriff: "Bourdieu", alias: ["pierre bourdieu"] },
+    { satz: "Das Schlüsselwort aus vier Buchstaben, das nur zu Parsons gehört: …", begriff: "AGIL", alias: ["agil schema"] },
+  ] },
+];
+
+// ===================== Schultheorie II =====================
+
+BEGRIFFE["st2-ueberblick"] = [
+  { thema: "Wer steht wo im Regal", items: [
+    { satz: "Der Philosoph, der Schule als Disziplinarmacht sieht: …", begriff: "Foucault", alias: ["michel foucault"] },
+    { satz: "Der Pädagoge, der Schule zur polis machen will: …", begriff: "von Hentig", alias: ["hentig", "hartmut von hentig"] },
+    { satz: "Der Soziologe, für den Identität in der Interaktion mit der Lehrperson entsteht: …", begriff: "Mead", alias: ["george herbert mead"] },
+  ] },
+  { thema: "Zwei Haltungen", items: [
+    { satz: "Theorien, die beschreiben, wie Schule ist: …", begriff: "empirisch-analytisch", alias: ["empirisch", "empirisch analytisch", "analytisch"] },
+    { satz: "Theorien, die sagen, wie Schule sein soll: …", begriff: "normativ", alias: ["normativ orientiert", "normative"] },
+    { satz: "Die zweite Frage des Regals: nicht das Verhältnis zur Gesellschaft, sondern das Innere der Schule, Unterricht, Beziehungen, Regeln: …", begriff: "Binnenstrukturen", alias: ["binnenstruktur", "binnenstrukturen der schule"] },
+  ] },
+  { thema: "Schlüsselwörter", items: [
+    { satz: "Meads Theorie, bei der Handeln immer ein sinnhaftes Miteinander mehrerer Personen ist: …", begriff: "Symbolischer Interaktionismus", alias: ["symbolisch", "interaktionismus"] },
+    { satz: "Die Richtung von Nohl, Spranger, Wilhelm und von Hentig, die Ziele formuliert: …", begriff: "Geisteswissenschaftliche Pädagogik", alias: ["geisteswissenschaftlich", "gwp"] },
+  ] },
+];
+
+BEGRIFFE["st2-system"] = [
+  { thema: "Das Regal", items: [
+    { satz: "Regal-Frage Nummer eins: Was hat Schule mit der Welt außerhalb zu tun: …", begriff: "Verhältnis Schule und Gesellschaft", alias: ["schule und gesellschaft", "verhältnis schule gesellschaft", "schule gesellschaft"] },
+    { satz: "Regal-Frage Nummer zwei: Was passiert im Inneren der Schule, Unterricht, Beziehungen, Regeln: …", begriff: "Binnenstrukturen", alias: ["binnenstruktur", "binnenstrukturen der schule"] },
+  ] },
+  { thema: "Einordnung", items: [
+    { satz: "Foucaults Haltung im Regal, obwohl er historisch arbeitet: …", begriff: "normativ", alias: ["normativ orientiert", "normative"] },
+    { satz: "Meads Haltung im Regal, er beschreibt, wie Interaktion abläuft: …", begriff: "empirisch-analytisch", alias: ["empirisch", "empirisch analytisch", "analytisch"] },
+    { satz: "Wer auf Folie 25 im linken Kasten fehlt, weil dort nur Parsons und Fend als Strukturfunktionalisten stehen: …", begriff: "Bourdieu", alias: ["pierre bourdieu"] },
+  ] },
+];
+
+BEGRIFFE["st2-foucault"] = [
+  { thema: "Macht und Wissen", items: [
+    { satz: "Foucaults Bild von Schule: Sie vermittelt Wissen, um Machtstrukturen zu festigen: Schule als …", begriff: "Disziplinarmacht", alias: ["disziplinar macht"] },
+    { satz: "Foucaults Begriff für die ganze Anordnung aus Orten, Regeln, Hierarchien und Wissensregimen: …", begriff: "Dispositiv der Macht", alias: ["dispositiv"] },
+    { satz: "Foucaults Kritik an der Didaktik: Lehrstoff wird in einfachste Elemente zerlegt, Schule wird zum …", begriff: "Lernapparat", alias: ["lern apparat"] },
+    { satz: "Was laut Foucault das Ziel von Schule ist, nicht Freiheit und Mündigkeit: …", begriff: "Disziplinierung", alias: ["disziplin"] },
+  ] },
+  { thema: "Übung, Prüfung, Selektion", items: [
+    { satz: "Die zwei Techniken, die laut Foucault das Unterrichtsgeschehen beherrschen: …", begriff: "Übung und Prüfung", alias: ["übung", "prüfung", "uebung und pruefung", "übung prüfung"] },
+    { satz: "Was Wissensvermittlung laut Foucault wird, wenn sie mit Macht verknüpft ist und ihren aufklärerischen Anspruch verliert: …", begriff: "Selektionsprozess", alias: ["selektion"] },
+    { satz: "Das Machtgefälle: Nur Lehrkräfte können bewerten, auszeichnen und strafen. Diese Ungleichheit heißt Ungleichheit der …", begriff: "Sanktionierungsgewalt", alias: ["sanktionierung", "sanktion"] },
+  ] },
+  { thema: "Umgang mit Macht", items: [
+    { satz: "Drei Wege, damit Schule demokratische Werte vertreten kann: Raum für kritische Reflexion, hohe Transparenz und … von Schülern und Eltern", begriff: "Mitwirkung", alias: ["mit wirkung"] },
+    { satz: "Folie 9 nennt keinen Einwand gegen Foucault, nur den Nutzen: Mechanismen erkennen und … aufzeigen und ihnen entgegenwirken", begriff: "Machtdeformationen", alias: ["machtdeformation", "deformationen"] },
+  ] },
+];
+
+BEGRIFFE["st2-gwp"] = [
+  { thema: "Einordnung", items: [
+    { satz: "Die Richtung, die in der Weimarer Republik und bis ca. 1960 dominierte und sagt, wie Schule sein soll: …", begriff: "Geisteswissenschaftliche Pädagogik", alias: ["geisteswissenschaftlich", "gwp"] },
+    { satz: "Die drei historischen Vertreter dieser Richtung: …", begriff: "Nohl, Spranger, Wilhelm", alias: ["nohl", "spranger", "wilhelm", "nohl spranger wilhelm"] },
+    { satz: "Bis wann diese Richtung in der alten Bundesrepublik dominierte: bis ca. …", begriff: "1960", alias: ["1960"] },
+  ] },
+  { thema: "Aufgabe und Ziel", items: [
+    { satz: "Nohls Aufgabe der Schule: das Kind aus der Gebundenheit an die Familie überführen in die … des öffentlichen Lebens", begriff: "Willensform", alias: ["willensform des öffentlichen lebens"] },
+    { satz: "Ziel der Institution Schule laut Blömeke: Entwicklung des Kindes im Sinne der … aller seiner Möglichkeiten", begriff: "optimalen Entfaltung", alias: ["optimale entfaltung", "entfaltung"] },
+  ] },
+  { thema: "Exkurs Nohl", items: [
+    { satz: "Das Jahr, in dem Nohl die NS-Machtübernahme begrüßte: …", begriff: "1933", alias: ["1933"] },
+    { satz: "Das Jahr, in dem Nohl von den Nationalsozialisten zwangsemeritiert wurde: …", begriff: "1937", alias: ["1937"] },
+    { satz: "Nohls Prinzip: Erziehung soll unabhängig von anderen Kultursystemen sein: …", begriff: "Autonomie der Erziehung", alias: ["autonomie"] },
+  ] },
+];
+
+BEGRIFFE["st2-hentig"] = [
+  { thema: "Bildung und polis", items: [
+    { satz: "Von Hentigs Bild: Schule als überschaubarer Raum, in dem Demokratie im Kleinen eingeübt wird, wie die griechische Stadtgemeinschaft: …", begriff: "polis", alias: ["schule als polis"] },
+    { satz: "Die Denkrichtung, in der von Hentig steht: Bildung macht den Menschen zu einer sich selbst bestimmenden Individualität: …", begriff: "Neuhumanistische Tradition", alias: ["neuhumanismus", "neuhumanistisch"] },
+    { satz: "Von Hentigs Wort für Schule als Ort, an dem man lebt und etwas erlebt, nicht nur Kenntnisse bekommt: …", begriff: "Lebens- und Erfahrungsraum", alias: ["lebensraum", "erfahrungsraum", "lebens und erfahrungsraum"] },
+  ] },
+  { thema: "Seine Kritik", items: [
+    { satz: "Die Funktion der Schule nach Fend, die von Hentig kritisiert: …", begriff: "Qualifikationsfunktion", alias: ["qualifikation"] },
+    { satz: "Was Schule laut von Hentig wird, wenn sie keine emanzipatorische Institution ist: ein sozialpädagogisches Heim und eine …", begriff: "Berufsvorbereitungsanstalt", alias: ["berufsvorbereitung"] },
+    { satz: "Von Hentigs Anspruch an Schule: sich aus Abhängigkeit befreien: …", begriff: "emanzipatorisch", alias: ["emanzipation", "emanzipatorische institution"] },
+  ] },
+  { thema: "Fünf Merkmale", items: [
+    { satz: "Merkmal 1: Schule als … fördert Kreativität und Emotionen", begriff: "Lebensraum", alias: ["lebens raum"] },
+    { satz: "Merkmal 4: Unterricht ist … angelegt und behandelt auch alltagswichtige Gegenstände", begriff: "fächerübergreifend", alias: ["faecheruebergreifend", "fächerübergreifender unterricht"] },
+    { satz: "Merkmal 5: Schule zwischen der Privatwelt der Familie und der öffentlichen Welt der Gesellschaft: …", begriff: "Brücke", alias: ["bruecke"] },
+    { satz: "Wo von Hentig seine Prinzipien praktisch umgesetzt hat: …", begriff: "Bielefelder Laborschule", alias: ["laborschule", "bielefeld"] },
+  ] },
+];
+
+BEGRIFFE["st2-mead"] = [
+  { thema: "Phasen des Selbst", items: [
+    { satz: "Meads Begriff für die Erwartungen der Gesellschaft, die ich in mir trage, die Me-Phase: …", begriff: "Generalisierter Anderer", alias: ["generalisierte andere", "der generalisierte andere"] },
+    { satz: "Meads dritte Phase, die aus dem Zusammenspiel von I und Me entsteht: …", begriff: "Self", alias: ["selbst", "das selbst"] },
+    { satz: "Meads Sammelbegriff für I, Me und Self, deren Zusammenspiel die Handlungen prägt: …", begriff: "Phasen des Selbst", alias: ["phasen"] },
+  ] },
+  { thema: "Perspektive", items: [
+    { satz: "Meads Theorie: Handeln ist immer ein sinnhaftes Miteinander mehrerer Personen in sozialen Situationen: …", begriff: "Symbolischer Interaktionismus", alias: ["symbolisch", "interaktionismus"] },
+    { satz: "Die Ebene, auf die Mead schaut: das Gespräch im Klassenraum, die Beziehung zwischen Lehrkraft und Lernenden: …", begriff: "Mikroebene", alias: ["mikro", "mikro ebene", "mikrosoziologisch", "mikrosoziologische perspektive"] },
+    { satz: "Mead: Dauerhaft etablierte Erwartungen gelten als …", begriff: "Institutionen", alias: ["institution"] },
+  ] },
+  { thema: "Kritik", items: [
+    { satz: "Folie 32: Lernende mit Verhaltensproblemen als störend abstempeln und daraus Konsequenzen ableiten: …", begriff: "Etikettierungsprozesse", alias: ["etikettierung", "etikettieren", "etikettierungsprozess"] },
+    { satz: "Wohin solches Abstempeln laut Kritik rückt, wenn es sich als funktional erweist: in die Nähe …", begriff: "moralischer Legitimation", alias: ["moralische legitimation", "legitimation"] },
+  ] },
+];
+
+BEGRIFFE["st2-vergleich"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Der Einzige der drei, der im Regal beim Verhältnis Schule und Gesellschaft steht: …", begriff: "Foucault", alias: ["michel foucault"] },
+    { satz: "Der Einzige der drei, der empirisch-analytisch arbeitet: …", begriff: "Mead", alias: ["george herbert mead"] },
+    { satz: "Zu wem polis, Brücke und Laborschule gehören: …", begriff: "von Hentig", alias: ["hentig", "hartmut von hentig"] },
+    { satz: "Die Funktion, die von Hentig kritisiert, nicht Enkulturation und nicht Selektion: …", begriff: "Qualifikationsfunktion", alias: ["qualifikation"] },
+  ] },
+];
+
+// ===================== Schultheorie III =====================
+
+BEGRIFFE["st3-ueberblick"] = [
+  { thema: "Vier Klassiker", items: [
+    { satz: "Der Klassiker des 17. Jahrhunderts, Didactica Magna, allen alles lehren: …", begriff: "Comenius", alias: ["jan amos comenius"] },
+    { satz: "Der Klassiker des 18. Jahrhunderts, Émile, negative Erziehung: …", begriff: "Rousseau", alias: ["jean jacques rousseau"] },
+    { satz: "Der preußische Bildungsreformer mit vier Kräften und drei Stadien: …", begriff: "Humboldt", alias: ["wilhelm von humboldt", "von humboldt"] },
+    { satz: "Der Klassiker mit erziehendem Unterricht und vier Formalstufen: …", begriff: "Herbart", alias: ["johann friedrich herbart"] },
+  ] },
+  { thema: "Leitfragen und Take Home", items: [
+    { satz: "Die drei Mächte, in deren Spannungsfeld die Klassiker die Schule verorten: …", begriff: "Kirche, Staat und Ökonomie", alias: ["kirche staat ökonomie", "kirche", "staat", "ökonomie"] },
+    { satz: "Was alle vier Klassiker meinen: Bildung des ganzen Menschen, nicht Ausbildung für Beruf oder Stand: …", begriff: "Allgemeine Menschenbildung", alias: ["menschenbildung"] },
+    { satz: "Das Gegenstück zu Bildung auf Folie 35, berufs- oder standesspezifisch: …", begriff: "Ausbildung", alias: ["berufsausbildung"] },
+    { satz: "Der Vorwurf auf Folie 35 an Rousseau und Humboldt: Bildungsansprüche werden von der Realität abgekoppelt, eine …", begriff: "pädagogische Sonderwelt", alias: ["sonderwelt", "paedagogische sonderwelt"] },
+  ] },
+];
+
+BEGRIFFE["st3-leitfragen"] = [
+  { thema: "Drei Fragen", items: [
+    { satz: "Wer darf bestimmen, was Schule tut? Die Klassiker verorten Schule im Spannungsfeld von …", begriff: "Kirche, Staat und Ökonomie", alias: ["kirche staat ökonomie", "kirche", "staat", "ökonomie"] },
+    { satz: "Frage 2: Was verstehen die Klassiker unter …, der Bildung des ganzen Menschen", begriff: "Allgemeine Menschenbildung", alias: ["menschenbildung"] },
+    { satz: "Frage 3 fragt nach der … der Klassiker für heutige Überlegungen zu Schule", begriff: "Relevanz für die Gegenwart", alias: ["relevanz", "gegenwart", "relevanz heute"] },
+  ] },
+  { thema: "Zeitfolge", items: [
+    { satz: "Das Jahrhundert von Comenius: …", begriff: "17. Jahrhundert", alias: ["17", "17 jh", "17. jh."] },
+    { satz: "Das Jahrhundert von Humboldt und Herbart: …", begriff: "19. Jahrhundert", alias: ["19", "19 jh", "19. jh."] },
+  ] },
+];
+
+BEGRIFFE["st3-comenius"] = [
+  { thema: "Menschenbild und Werk", items: [
+    { satz: "Comenius' Hauptwerk von 1657: …", begriff: "Didactica Magna", alias: ["didactica"] },
+    { satz: "Comenius: Alle Menschen bedürfen Bildung, weil alle … sind", begriff: "Ebenbild Gottes", alias: ["ebenbild"] },
+    { satz: "Comenius' Definition: die vollständige Kunst, allen Menschen alles zu lehren: …", begriff: "Allgemeine Didaktik", alias: ["didaktik"] },
+    { satz: "Comenius' Bild für Schulen, die bewirken, dass der Mensch Mensch werde: …", begriff: "Werkstätten der Menschlichkeit", alias: ["werkstätten", "werkstaetten der menschlichkeit", "werkstatt der menschlichkeit"] },
+  ] },
+  { thema: "Stufen und Ziele", items: [
+    { satz: "Comenius' erste Stufe, Schärfung der äußeren Sinne: …", begriff: "Mutterschule", alias: [] },
+    { satz: "Comenius' dritte Stufe, klassische Sprachen und Wissenschaften: …", begriff: "Lateinschule", alias: ["latein"] },
+    { satz: "Wie lange jede der vier Stufen bei Comenius dauert: … Jahre", begriff: "sechs", alias: ["6", "6 jahre", "sechs jahre"] },
+    { satz: "Comenius' drei Ziele von Bildung: gelehrige Bildung, Bildung zu Sittlichkeit und Tugend und Bildung der …", begriff: "Frömmigkeit", alias: ["froemmigkeit", "glaube"] },
+  ] },
+  { thema: "Wissensvermittlung", items: [
+    { satz: "Comenius' Bild vom Gehirn, in das Abbilder der Dinge eingedrückt werden: …", begriff: "Wachs-Metapher", alias: ["wachs", "wachs metapher"] },
+    { satz: "Bildung ist bei Comenius kein Selbstkonstruieren, sondern ein …", begriff: "Gebildet-Werden", alias: ["gebildet werden"] },
+    { satz: "Comenius' Unterrichtsform: nur ein Lehrer steht einer Klasse vor und spricht zu allen: …", begriff: "Frontalunterricht", alias: ["frontal"] },
+  ] },
+];
+
+BEGRIFFE["st3-rousseau"] = [
+  { thema: "Negative Erziehung", items: [
+    { satz: "Rousseaus Erziehung ohne gesetzte Ziele, die nur die natürliche Entwicklung nicht behindern will: …", begriff: "negative Erziehung", alias: ["negativ"] },
+    { satz: "Rousseau: Der Erzieher bleibt Herr der Lage, erhält dem Zögling aber den …", begriff: "Schein der Freiheit", alias: ["schein"] },
+    { satz: "Rousseaus Erziehungsroman von 1762: …", begriff: "Émile", alias: ["emile", "emil"] },
+  ] },
+  { thema: "Menschenbild und Schulkritik", items: [
+    { satz: "Rousseaus Wort für die Gesellschaft, die Eigennutz, Eitelkeit und Habsucht befördert: …", begriff: "korrumpiert", alias: ["korrumpierte gesellschaft", "korrumpierten gesellschaft", "verdorben"] },
+    { satz: "Rousseaus Schulkritik: Schüler sprechen Worte aus, die sie nicht verstehen, im …", begriff: "Katechismusunterricht", alias: ["katechismus"] },
+    { satz: "Rousseaus Menschenbild in drei Worten: …", begriff: "frei, empfindsam und vernünftig", alias: ["frei empfindsam vernünftig", "frei", "empfindsam", "vernünftig"] },
+  ] },
+  { thema: "Vier Phasen und Unterricht", items: [
+    { satz: "Rousseaus Phase 1 bis zum 5. Lebensjahr, im Vordergrund steht der …", begriff: "Körper", alias: ["koerper"] },
+    { satz: "Rousseaus Phase 2 bis zum 12. Lebensjahr, im Vordergrund stehen die …", begriff: "Sinne", alias: [] },
+    { satz: "Bis zu welchem Lebensjahr bei Rousseau die Phase der geistigen Fähigkeiten geht: …", begriff: "15", alias: ["15"] },
+    { satz: "Was Schüler laut Rousseau selbst tun müssen, statt Zwang zu bekommen: den Nutzen und Wert des Gegenstands …", begriff: "entdecken", alias: ["entdeckendes lernen", "selbst entdecken"] },
+  ] },
+];
+
+BEGRIFFE["st3-humboldt"] = [
+  { thema: "Bildungsbegriff", items: [
+    { satz: "Humboldts Kern: Der Mensch bildet seine Kräfte ohne äußeren Zweck: …", begriff: "Allgemeine Menschenbildung", alias: ["menschenbildung"] },
+    { satz: "Humboldts Kraft für formale Denkstrukturen und Logik: …", begriff: "Denkkraft", alias: [] },
+    { satz: "Humboldts Kraft, mit der man die äußere Welt in sich abbildet und ein konsistentes Bild von der Welt erlangt: …", begriff: "Einbildungskraft", alias: ["einbildung"] },
+    { satz: "Humboldts Kraft, sich von reizbedingten Reaktionen zu distanzieren und reflektiert zu handeln: …", begriff: "Moralische Kraft", alias: ["moralisch"] },
+  ] },
+  { thema: "Schulkritik und Schulpläne", items: [
+    { satz: "Humboldts Kritik: Die Herkunft bestimmt, ob man in die Ritterakademie oder die Dorfschule geht. Dieses System heißt …", begriff: "Ständewesen", alias: ["stände", "staendewesen", "stand"] },
+    { satz: "Humboldts Vorwurf: Der Staat erziehe zum …, nicht zum Menschen", begriff: "Bürger", alias: ["buerger"] },
+    { satz: "Humboldts Schulpläne von 1809 für Königsberg und Litauen entwerfen eine Schule, die nicht nach Ständen trennt: …", begriff: "gegliederte Einheitsschule", alias: ["einheitsschule"] },
+    { satz: "Woran Humboldts Schule sich nicht ausrichten darf: das, was Staat und Wirtschaft von den Abgängern brauchen: …", begriff: "Abnehmerinteressen", alias: ["abnehmer"] },
+  ] },
+  { thema: "Drei Stadien und Kritik", items: [
+    { satz: "Humboldts erstes Stadium, in dem die grundlegenden Kulturtechniken vermittelt werden: …", begriff: "Elementarunterricht", alias: ["elementar"] },
+    { satz: "Humboldts drittes Stadium mit Einheit von Forschung und Lehre: …", begriff: "Universitätsunterricht", alias: ["universität", "universitaet"] },
+    { satz: "Kritik an Humboldt: Die Abtrennung schulischer Bildungsgüter von späterer Verwendbarkeit, eine …", begriff: "fiktive Innerlichkeit", alias: ["innerlichkeit"] },
+  ] },
+];
+
+BEGRIFFE["st3-herbart"] = [
+  { thema: "Menschenbild", items: [
+    { satz: "Herbart: nicht tun zu müssen, wozu man geneigt ist, sondern bewusst entscheiden können: …", begriff: "innere Freiheit", alias: ["freiheit"] },
+    { satz: "Herbarts erstes moralisches Prinzip: das Gegenüber stets auf Augenhöhe sehen: …", begriff: "Rechtlichkeit", alias: [] },
+    { satz: "Herbarts zweites moralisches Prinzip: dem Gegenüber mit Wohlwollen begegnen: …", begriff: "Güte", alias: ["guete"] },
+    { satz: "Herbarts Konzept: Entwicklung ist weder durch Anlagen noch durch Umfeld allein bestimmt, der Mensch bildet sich: …", begriff: "Bildsamkeit", alias: [] },
+  ] },
+  { thema: "Erziehender Unterricht", items: [
+    { satz: "Herbarts Unterrichtskonzept, mit dem Allgemeine Menschenbildung erreicht werden soll: …", begriff: "erziehender Unterricht", alias: ["erziehend"] },
+    { satz: "Herbarts Wort für alles, was jemand denkt und weiß; Unterricht soll ihn erweitern und ordnen: …", begriff: "Gedankenkreis", alias: ["gedanken kreis"] },
+    { satz: "Herbarts Prinzip, dass Zusammenhänge zwischen Erkenntnisgegenständen bewusst werden, statt unverbunden nebeneinander zu stehen: …", begriff: "Ästhetische Darstellung der Welt", alias: ["ästhetische darstellung", "aesthetische darstellung"] },
+  ] },
+  { thema: "Formalstufen und Schule", items: [
+    { satz: "Herbarts Theorie mit den Stufen Klarheit, Assoziation, System, Methode: …", begriff: "Formalstufentheorie", alias: ["formalstufen"] },
+    { satz: "Herbarts Stufe 2: neue Begriffe entstehen aus Anschauung und vorhandenen Begriffen: …", begriff: "Assoziation", alias: [] },
+    { satz: "Herbarts Stufe 4: Anwendung des veränderten Begriffsumfangs: …", begriff: "Methode", alias: [] },
+    { satz: "Herbarts schulkritische Formel gegen politische und ökonomische Einflussnahme: Schule heißt …", begriff: "Muße", alias: ["musse", "muse"] },
+  ] },
+];
+
+BEGRIFFE["st3-vergleich"] = [
+  { thema: "Nicht verwechseln", items: [
+    { satz: "Wer vier Stufen à sechs Jahre hat, mit Mutterschule und Lateinschule: …", begriff: "Comenius", alias: ["jan amos comenius"] },
+    { satz: "Wer vier Phasen mit den Altersgrenzen 5, 12, 15, 20 hat: …", begriff: "Rousseau", alias: ["jean jacques rousseau"] },
+    { satz: "Wer vier Kräfte und drei Stadien hat: …", begriff: "Humboldt", alias: ["wilhelm von humboldt", "von humboldt"] },
+    { satz: "Wer vier Formalstufen und zwei Prinzipien hat: …", begriff: "Herbart", alias: ["johann friedrich herbart"] },
+  ] },
+];
+
 </script>
 <script>
 // ============ Hilfen ============

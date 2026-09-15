@@ -3589,7 +3589,7 @@ function setzeMap(el, m) {
   // Die Karte wird so weit herausgezoomt, dass sie in die Breite passt (Jennifer, 15.09.).
   // Nur wenn das unter 45 Prozent Groesse waere (Handy), bleibt sie in Originalgroesse und scrollt.
   const svg = el.querySelector("svg");
-  if (svg && el.clientWidth && el.clientWidth / m.W >= 0.45) {
+  if (svg && el.clientWidth >= 480) {   // immer einpassen; nur auf sehr schmalen Handys bleibt Originalgroesse mit Scrollen
     svg.removeAttribute("width"); svg.style.width = Math.round(100 * (el.zoom || 1)) + "%"; el.classList.toggle("passt", (el.zoom || 1) <= 1);
     if ((el.zoom || 1) > 1) { el.scrollLeft = Math.max(0, (m.hlX ?? m.cx) / m.W * el.scrollWidth - el.clientWidth / 2); }
     return;

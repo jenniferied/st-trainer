@@ -3385,10 +3385,12 @@ function passtLocker(input, begriff) {
 function gquizVorbereiten(svgHtml) {
   const box = document.createElement("div"); box.innerHTML = svgHtml; const svg = box.querySelector("svg");
   const gruppen = []; const gesehen = new Set();
-  for (const txt of svg.querySelectorAll("text.bt")) {
+  // Grafiken ohne fette Beschriftungen (z. B. Baumert-Kaesten in .kt) nehmen die normalen Kastentexte
+  const klasse = svg.querySelectorAll("text.bt").length >= 3 ? "bt" : "kt";
+  for (const txt of svg.querySelectorAll(`text.${klasse}`)) {
     if (gesehen.has(txt)) continue;
     const teile = [txt]; let n = txt.nextElementSibling;
-    while (n && n.tagName === "text" && n.classList.contains("bt")) { teile.push(n); gesehen.add(n); n = n.nextElementSibling; }
+    while (n && n.tagName === "text" && n.classList.contains(klasse)) { teile.push(n); gesehen.add(n); n = n.nextElementSibling; }
     const begriff = teile.map((x) => x.textContent.trim()).join(" ").replace(/\s+/g, " ");
     if (begriff.length < 3 || /^[\d\s.,:;–-]+$/.test(begriff)) continue;
     gruppen.push({ begriff, teile });
@@ -3558,7 +3560,7 @@ function notizenBinden() {
 // Die Hauptkarte ueber dem Inhalt: bleibt ueber alle Stufen stehen, wechselt weich zwischen
 // Gesamtkarte und Themenkarte und markiert auf Stufe 3 den Ast der aktuellen Karte.
 let MAP_KEY = null;
-let mapZu = lesen("mapZu", {});   // je Ebene: { karte: bool, sonst: bool }; Vorgabe: auf einer Karte eingeklappt
+let mapZu = lesen("mapZu", {}); if (!mapZu || typeof mapZu !== "object") mapZu = {};   // alter Wert (true/false) aus einer frueheren Fassung   // je Ebene: { karte: bool, sonst: bool }; Vorgabe: auf einer Karte eingeklappt
 function zeigeHauptkarte(key, titel, baue) {
   const sec = document.getElementById("karte-bereich"), el = document.getElementById("map-haupt"), tg = document.getElementById("map-toggle");
   const cs = document.getElementById("chips-schalter"), cb = document.getElementById("chips");

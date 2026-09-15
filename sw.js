@@ -49,8 +49,11 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   // Nur eigene GET-Requests cachen — Supabase & Fremd-Hosts (Fonts) unangetastet durchlassen
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
+  // GitHub Pages sendet max-age=600: ohne "no-cache" liefert fetch() bis zu zehn Minuten die alte
+  // Fassung aus dem HTTP-Cache, obwohl laengst deployt ist (15.09.2026, Karte). Mit no-cache wird per
+  // ETag nachgefragt; unveraendertes kommt als 304 zurueck, das kostet praktisch nichts.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-cache" })
       .then((resp) => {
         if (resp.ok) {
           const copy = resp.clone();

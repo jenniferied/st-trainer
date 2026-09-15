@@ -48,6 +48,36 @@ a { color: inherit; }
 .zoom button { font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: transparent; border: none; padding: 4px 10px; cursor: pointer; min-width: 34px; }
 .zoom button + button { border-left: 1.5px solid var(--line); }
 .zoom button:hover { background: var(--soft); }
+.leiste { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; margin: 0 -16px; padding: 6px 12px; background: var(--ink); color: var(--paper); min-height: 52px; }
+.modi { display: inline-flex; background: color-mix(in srgb, var(--paper) 14%, transparent); border-radius: 999px; padding: 3px; flex: 0 0 auto; }
+.modi a { text-decoration: none; color: var(--paper); font-weight: 700; font-size: .85rem; padding: 6px 12px; border-radius: 999px; opacity: .75; transition: background .18s, opacity .18s; }
+.modi a.aktiv { background: var(--paper); color: var(--ink); opacity: 1; }
+.widget { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.widget.fertig { --w: var(--ok); }
+.w-kn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--paper); color: var(--ink); font-weight: 900; cursor: pointer; flex: 0 0 auto; font: inherit; font-size: .95rem; }
+.w-kn.klein { width: auto; padding: 0 8px; height: 28px; border-radius: 999px; font-size: .72rem; background: color-mix(in srgb, var(--paper) 18%, transparent); color: var(--paper); }
+.w-titel { display: grid; min-width: 0; text-decoration: none; color: inherit; flex: 0 1 220px; }
+.w-titel b { font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .w-titel small { opacity: .7; font-variant-numeric: tabular-nums; font-size: .72rem; }
+.widget input[type="range"] { flex: 1 1 80px; min-width: 40px; accent-color: var(--paper); }
+.widget select { font: inherit; font-size: .78rem; padding: 3px 4px; border-radius: 6px; border: none; background: color-mix(in srgb, var(--paper) 18%, transparent); color: var(--paper); }
+.widget.fertig .w-kn:first-child { background: var(--ok); color: #fff; }
+.w-kn.menu { margin-left: auto; font-size: 1rem; }
+.kapitel-menu { position: sticky; top: 52px; z-index: 6; margin: 0 -16px; padding: 10px 16px 14px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 60vh; overflow: auto; }
+.kapitel-menu h4 { margin: 8px 0 4px; }
+.naechstes { margin-top: 26px; display: grid; gap: 6px; justify-items: start; }
+.btn-next { text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; background: var(--bc, var(--st1)); color: var(--paper); }
+.btn-next.gesperrt { background: var(--soft); color: var(--muted); pointer-events: none; }
+.btn-next.frei { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bc, var(--st1)) 30%, transparent); }
+.quiz-form label.breit { grid-column: 1 / -1; text-transform: none; letter-spacing: 0; font-size: .95rem; color: var(--ink); font-weight: 500; }
+.w-quiz { background: var(--ok); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 700; text-decoration: none; white-space: nowrap; font-size: .82rem; animation: puls 1.2s ease-in-out infinite; }
+@media (max-width: 640px) { .widget .w-kn.klein, .widget select { display: none; } .modi a { padding: 6px 9px; font-size: .78rem; } }
+#classic { width: 100vw; height: calc(100vh - 52px); border: none; display: block; margin: 0 -16px; }
+body:has(#classic:not([hidden])) .wrap { padding-bottom: 0; max-width: none; }
+.grafik-kopf .rund.klein { background: var(--soft); color: var(--ink); } .grafik-kopf .rund.klein.an { background: var(--bc, var(--st1)); color: var(--paper); }
+.grafik.geloest { border-color: var(--ok); } .grafik .haken.statisch, .mit-quiz .haken.statisch { position: static; display: inline-grid; width: 22px; height: 22px; font-size: .8rem; }
+.grafik .haken { position: static; display: inline-grid; width: 22px; height: 22px; font-size: .8rem; }
+.grafik .feier { background: color-mix(in srgb, var(--ok) 18%, var(--card)); color: var(--ink); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; font-weight: 700; }
+.quiz-form input.falsch { border-color: #c8362a; background: var(--warn-bg); }
 .pfad .zurueck { flex: 0 0 auto; text-decoration: none; font-weight: 700; font-size: .85rem; color: var(--ink); padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card); white-space: nowrap; }
 .pfad .map-toggle { margin-left: auto; flex: 0 0 auto; font: inherit; font-size: .8rem; font-weight: 700; color: var(--muted); background: transparent; border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
 #view, .map { transition: opacity .18s ease; }
@@ -147,10 +177,8 @@ td:first-child { font-weight: 700; white-space: nowrap; } td b { font-weight: 70
 .sprung a { text-decoration: none; padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-weight: 700; font-size: .9rem; }
 .sprung a.primaer { background: var(--bc, var(--st1)); color: var(--paper); border-color: transparent; }
 .themen-liste { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); margin-top: 18px; }
-@media (min-width: 560px) { .themen-liste { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-.themen-liste a { display: grid; gap: 2px; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--bc); border-radius: 6px; padding: 10px 12px; }
-.themen-liste a b { font-family: Fraunces, serif; font-size: 1.05rem; }
-.themen-liste a small { color: var(--muted); }
+.themen-liste .kachel .titel small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+
 .stand { font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line); margin-top: 40px; padding-top: 14px; max-width: 62ch; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 
@@ -216,21 +244,63 @@ body:has(#mini:not([hidden])) .wrap { padding-bottom: 120px; }
 .quiz-form input:focus-visible { outline: 2px solid var(--bc, var(--st1)); outline-offset: 1px; }
 .kette a.ok { background: color-mix(in srgb, var(--ok) 22%, var(--card)); } .kette a.ok small { color: var(--muted); }
 .kette a.fehl { background: var(--warn-bg); color: var(--warn); }
+/* Runde Aktionsknoepfe, Haken, Hervorhebung */
+.aktionen { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+.rund { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bc, var(--st1)); color: var(--paper); text-decoration: none; font-weight: 900; font-size: 1rem; border: none; flex: 0 0 auto; }
+.rund.klein { width: 30px; height: 30px; font-size: .8rem; }
+.rund.aus { opacity: .35; pointer-events: none; } .rund.leer { background: transparent; }
+.rund .haken, .kachel .haken { position: absolute; right: -4px; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--ok); color: #fff; font-style: normal; font-size: .65rem; font-weight: 900; display: grid; place-items: center; border: 2px solid var(--paper); }
+.rund.leuchtet { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bc, var(--st1)) 35%, transparent); animation: puls 1.2s ease-in-out infinite; }
+@keyframes puls { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--bc, var(--st1)) 30%, transparent); } 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--bc, var(--st1)) 10%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .rund.leuchtet { animation: none; } }
+.themen-liste .kachel { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--bc); border-radius: 6px; padding: 10px 12px; min-height: 68px; }
+.themen-liste .kachel.gesamt { grid-column: 1 / -1; }
+.themen-liste .kachel .titel { display: grid; gap: 2px; text-decoration: none; color: var(--ink); min-width: 0; }
+.themen-liste .kachel .titel b { font-family: Fraunces, serif; font-size: 1.05rem; } .themen-liste .kachel .titel small { color: var(--muted); }
+.mit-quiz { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.grafik-kopf { float: right; display: flex; gap: 8px; align-items: center; }
+.player.fertig { border-color: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+.player #pl-msg a.primaer { display: inline-block; background: var(--ok); color: #fff; padding: 4px 10px; border-radius: 999px; text-decoration: none; font-weight: 700; }
+#mini.fertig { background: var(--ok); } #mini .mini-quiz { margin-left: auto; background: var(--paper); color: var(--ink); padding: 6px 12px; border-radius: 999px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.karte.bestanden { border-top-color: var(--ok); }
+svg text.luecke { fill: var(--um); font-weight: 900; }
 svg .hl .box { stroke-width: 2.4; }
+/* Notizen: eigene Schicht ueber der Karte */
+.map { position: relative; }
+svg .plus { cursor: pointer; } svg .plus circle { fill: var(--card); stroke: var(--muted); stroke-width: 1.2; } svg .plus text { font-size: 13px; font-weight: 700; fill: var(--muted); }
+svg .plus:hover circle { fill: var(--um); stroke: var(--um); } svg .plus:hover text { fill: var(--paper); }
+.notiz-schicht { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
+.notiz { position: absolute; width: 190px; pointer-events: auto; background: #fff7c2; color: #2a2410; border: 1px solid #e0c96a; border-radius: 6px; box-shadow: 0 3px 10px rgba(0,0,0,.14); font-size: .82rem; line-height: 1.35; }
+:root[data-theme="dark"] .notiz { background: #4a4020; color: #f5ecc8; border-color: #8a7a3a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .notiz { background: #4a4020; color: #f5ecc8; border-color: #8a7a3a; } }
+.notiz .griff { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; cursor: grab; font-size: .7rem; opacity: .7; border-bottom: 1px dashed currentColor; user-select: none; touch-action: none; }
+.notiz .griff:active { cursor: grabbing; }
+.notiz .griff button { border: none; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; padding: 0 2px; }
+.notiz .txt { padding: 6px 8px; min-height: 2.2em; outline: none; white-space: pre-wrap; word-break: break-word; }
+.notiz .txt:empty::before { content: "Notiz …"; opacity: .5; }
+.notiz .faden { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #e0c96a; left: -5px; top: -5px; }
+.notiz-liste { margin-top: 8px; display: grid; gap: 6px; }
+.notiz-liste .n { font-size: .85rem; background: var(--card); border-left: 3px solid #e0c96a; padding: 6px 10px; border-radius: 4px; color: var(--muted); } .notiz-liste .n b { color: var(--ink); }
 </style>
 
+<script src="js/config.js"></script>
 <div class="wrap">
+  <div class="leiste">
+    <nav class="modi" aria-label="Modus"><a data-modus="classic" href="#classic">Trainer</a><a data-modus="karte" href="#gesamt">Karte</a><a data-modus="hoeren" href="#hoeren/gesamt">Hören</a></nav>
+    <div class="widget" id="widget"></div>
+  </div>
+  <div class="kapitel-menu" id="kapitel-menu" hidden></div>
   <nav class="pfad" aria-label="Pfad">
-    <a class="zurueck" href="index.html" title="Zurück zum ST-Trainer">‹ ST-Trainer</a>
     <a class="hoch" id="hoch" href="#" aria-label="Eine Ebene hoch" hidden>↑</a>
     <ol id="pfad"></ol>
     <button class="map-toggle" id="map-toggle" type="button" hidden>Karte ausblenden</button>
   </nav>
   <section id="karte-bereich" hidden>
-    <div class="map-kopf"><span class="eyebrow" id="map-titel"></span><div class="map-werkzeuge"><label class="schalter" id="chips-schalter" hidden><input type="checkbox" id="chips"> Schlüsselbegriffe</label><span class="zoom" role="group" aria-label="Zoom"><button type="button" id="zoom-minus" title="Kleiner">−</button><button type="button" id="zoom-plus" title="Größer">+</button><button type="button" id="zoom-fit" title="In die Breite einpassen">⤢ Einpassen</button></span></div></div>
+    <div class="map-kopf"><span class="eyebrow" id="map-titel"></span><div class="map-werkzeuge"><label class="schalter" id="chips-schalter" hidden><input type="checkbox" id="chips"> Schlüsselbegriffe</label><label class="schalter"><input type="checkbox" id="notizen-an"> Notizen</label><span class="zoom" role="group" aria-label="Zoom"><button type="button" id="zoom-minus" title="Kleiner">−</button><button type="button" id="zoom-plus" title="Größer">+</button><button type="button" id="zoom-fit" title="In die Breite einpassen">⤢ Einpassen</button></span></div></div>
     <div class="map" id="map-haupt"></div>
   </section>
   <main id="view"></main>
+  <iframe id="classic" title="ST-Trainer" hidden></iframe>
 </div>
 
 <script>
@@ -248,55 +318,55 @@ THEMEN.push({
     { id: "wozu", label: "Wozu Schultheorien?", sub: "F 3 bis 7", seite: "left", karte: "wozu",
       chips: ["Ordnung", "Analyse", "Kritik", "Berufsethos"],
       kinder: [
-        { label: "Fünf Leitfragen", gloss: "Was ist Schule, wie wurde sie so, wozu, wie reformieren · F 3" },
-        { label: "Ordnung und Analyse", gloss: "Sachverhalte ordnen, gute Schule analysieren · F 4" },
-        { label: "Kritische Funktion", gloss: "gegenüber Schulpraxis und Bildungspolitik · F 5" },
-        { label: "Berufsethos, Forschung", gloss: "begründen das Ethos, Grundlage der Schulforschung · F 5" },
+        { label: "Fünf Leitfragen", gloss: "Was ist Schule, wie wurde sie so, wozu, wie reformieren · F 3", chips: ["Was ist Schule?", "Institution, Prozesse, Produkte", "Funktionen und Aufgaben", "reformiert werden"] },
+        { label: "Ordnung und Analyse", gloss: "Sachverhalte ordnen, gute Schule analysieren · F 4", chips: ["Ordnungszusammenhang", "gute Schule", "Schulqualität", "Lehrkräftehandeln"] },
+        { label: "Kritische Funktion", gloss: "gegenüber Schulpraxis und Bildungspolitik · F 5", chips: ["Schulpraxis", "Bildungspolitik", "was kann Schule leisten"] },
+        { label: "Berufsethos, Forschung", gloss: "begründen das Ethos, Grundlage der Schulforschung · F 5", chips: ["Funktionen in der Gesellschaft", "quantitativ und qualitativ", "soziale Ungleichheit"] },
       ] },
     { id: "parsons", label: "Parsons", sub: "Strukturfunktionalismus · F 9 bis 19", seite: "left", karte: "parsons",
       chips: ["Subsystem", "AGIL", "Sozialisation/Integration", "Selektion", "§ 4 · § 53"],
       kinder: [
-        { label: "Schule als Subsystem", gloss: "tauscht mit Politik und Wirtschaft · F 9, 10" },
-        { label: "AGIL-Schema", gloss: "Anpassung, Ziel, Integration, Normerhaltung · F 12" },
-        { label: "Sozialisations-/Integrationsfunktion", gloss: "Werte verinnerlichen → politisches System · F 14" },
-        { label: "Selektionsfunktion", gloss: "nach Fähigkeit verteilen → ökonomisches System · F 14" },
-        { label: "§ 4 und § 53 BbgSchulG", gloss: "die zwei Funktionen im Gesetz · F 15 bis 17" },
-        { label: "Kritik", gloss: "Selektion nicht rein nach Leistung (PISA); Normen nicht naturgegeben (Fend) · F 18, 19" },
+        { label: "Schule als Subsystem", gloss: "tauscht mit Politik und Wirtschaft · F 9, 10", chips: ["politisches System", "Wirtschaftssystem", "rechtliche Rahmenbedingungen", "Werte und Normen", "Vorauswahl nach Leistung"] },
+        { label: "AGIL-Schema", gloss: "Anpassung, Ziel, Integration, Normerhaltung · F 12", chips: ["Adaption", "Goal attainment", "Integration", "Normerhaltung"] },
+        { label: "Sozialisations-/Integrationsfunktion", gloss: "Werte verinnerlichen → politisches System · F 14", chips: ["Erwachsenenrolle", "Parsons 1959", "Stabilisierung von Werten", "politisches System"] },
+        { label: "Selektionsfunktion", gloss: "nach Fähigkeit verteilen → ökonomisches System · F 14", chips: ["gemäß ihrer Fähigkeiten", "Rollenstruktur", "Vorauswahl", "ökonomisches System"] },
+        { label: "§ 4 und § 53 BbgSchulG", gloss: "die zwei Funktionen im Gesetz · F 15 bis 17", chips: ["§ 4 Sozialisation/Integration", "§ 53 Selektion", "Ziele und Grundsätze", "Aufnahme weiterführende Schule"] },
+        { label: "Kritik", gloss: "Selektion nicht rein nach Leistung (PISA); Normen nicht naturgegeben (Fend) · F 18, 19", chips: ["nicht rein nach Leistung", "PISA", "Normen nicht naturgegeben"] },
       ] },
     { id: "ungleich", label: "Bildungsungleichheit", sub: "Empirie · F 43 bis 46", seite: "left", karte: "ungleich", color: "var(--sq)",
       chips: ["primär", "sekundär", "Beurteilungsverzerrung"],
       kinder: [
-        { label: "Deutschland im Vergleich", gloss: "starke Ungleichheit; Gymnasium bei gleicher Leistung · F 43" },
-        { label: "Primäre Herkunftseffekte", gloss: "Herkunft → Leistung · Boudon · F 44" },
-        { label: "Sekundäre Herkunftseffekte", gloss: "Herkunft → Bildungsentscheidung · F 44" },
-        { label: "Drei sekundäre Effekte in der Schule", gloss: "Beurteilung, Empfehlung, Übergang · Dumont · F 46" },
+        { label: "Deutschland im Vergleich", gloss: "starke Ungleichheit; Gymnasium bei gleicher Leistung · F 43", chips: ["Dumont et al. 2014", "Ditton et al. 2005", "soziale Segregation", "Erster PISA-Bericht"] },
+        { label: "Primäre Herkunftseffekte", gloss: "Herkunft → Leistung · Boudon · F 44", chips: ["Ressourcen", "Kapital nach Bourdieu", "schulische Leistung"] },
+        { label: "Sekundäre Herkunftseffekte", gloss: "Herkunft → Bildungsentscheidung · F 44", chips: ["Bildungsentscheidungen", "Unterstützungsmöglichkeiten", "höhere Kosten", "Maaz et al. 2006"] },
+        { label: "Drei sekundäre Effekte in der Schule", gloss: "Beurteilung, Empfehlung, Übergang · Dumont · F 46", chips: ["Leistungsbeurteilung", "Schullaufbahnempfehlung", "Übergangsverhalten", "Beurteilungsverzerrungen"] },
       ] },
     { id: "fend", label: "Fend", sub: "Theorie der Schule · F 21 bis 30", seite: "right", karte: "fend",
       chips: ["Mehrebenen", "Qualifikation", "Selektion/Allokation", "Integration/Legitimation", "Enkulturation"],
       kinder: [
-        { label: "1980 und 2006", gloss: "Theorie der Schule → Neue Theorie der Schule · F 21" },
-        { label: "Mehrebenenanalyse", gloss: "Struktur und handelndes Individuum · F 22, 23" },
-        { label: "Qualifikation", gloss: "Kenntnisse, Fleiß, Lernbereitschaft, Mobilität · F 24" },
-        { label: "Selektion und Allokation", gloss: "Leistung statt Geburt als Verteilungsprinzip · F 26" },
-        { label: "Integration und Legitimation", gloss: "Normen der Leistungsgesellschaft anerkennen · F 27" },
-        { label: "Enkulturation", gloss: "Kultur weitergeben · F 28" },
-        { label: "Würdigung", gloss: "handlungsorientierend, Wirkungsanalyse + Praxis · F 30" },
+        { label: "1980 und 2006", gloss: "Theorie der Schule → Neue Theorie der Schule · F 21", chips: ["Theorie der Schule", "Neue Theorie der Schule", "1980: Legitimation, Enkulturation", "2006: handlungsorientierte Sichtweise"] },
+        { label: "Mehrebenenanalyse", gloss: "Struktur und handelndes Individuum · F 22, 23", chips: ["Akteure hinter den Strukturen", "handlungsorientierte Sichtweise", "Individuum ist handelnd"] },
+        { label: "Qualifikation", gloss: "Kenntnisse, Fleiß, Lernbereitschaft, Mobilität · F 24", chips: ["Kenntnisse für den Beruf", "Fleiß", "Lernbereitschaft", "Mobilität", "humanes Recht auf Bildung"] },
+        { label: "Selektion und Allokation", gloss: "Leistung statt Geburt als Verteilungsprinzip · F 26", chips: ["Geburt in einen Stand", "schulische Leistung", "Zuweisung auf Positionen", "unabhängig von der Herkunft"] },
+        { label: "Integration und Legitimation", gloss: "Normen der Leistungsgesellschaft anerkennen · F 27", chips: ["Werte und Normen", "Prüfungen und Leistungen", "Leistungsgesellschaft", "knappe Güter", "Zustimmung zum politischen Regelsystem"] },
+        { label: "Enkulturation", gloss: "Kultur weitergeben · F 28", chips: ["Wertorientierungen", "Symbolsysteme", "gemeinsame Geschichte", "Sinnformen"] },
+        { label: "Würdigung", gloss: "handlungsorientierend, Wirkungsanalyse + Praxis · F 30", chips: ["individuumzentriert", "gesellschaftsorientiert", "Wirkungsanalysen", "praktisch relevant"] },
       ] },
     { id: "bourdieu", label: "Bourdieu", sub: "Sozialisationstheorie · F 34 bis 42", seite: "right", karte: "bourdieu",
       chips: ["3 Kapitalarten", "Habitus", "inkorporiert", "objektiviert", "institutionalisiert"],
       kinder: [
-        { label: "Kapital ungleich verteilt", gloss: "darum ist Alltag nicht zufällig · F 34" },
-        { label: "Sozialisation = Kapital + Position + Habitus", gloss: "→ Reproduktion der Positionierung · F 35" },
-        { label: "Drei Kapitalarten", gloss: "ökonomisch, kulturell, sozial · F 38" },
-        { label: "Drei Formen kulturellen Kapitals", gloss: "inkorporiert, objektiviert, institutionalisiert · F 39 bis 41" },
-        { label: "Kritik", gloss: "kaum Aussagen, wie Veränderung möglich wäre · F 42" },
+        { label: "Kapital ungleich verteilt", gloss: "darum ist Alltag nicht zufällig · F 34", chips: ["systematischer Grund", "nicht zufällige Gesetze", "Reproduktion sozialer Ungleichheit"] },
+        { label: "Sozialisation = Kapital + Position + Habitus", gloss: "→ Reproduktion der Positionierung · F 35", chips: ["Erwerb von Kapital", "Positionierung im sozialen Raum", "Habitualisierung", "Reproduktion gesellschaftlicher Positionierung"] },
+        { label: "Drei Kapitalarten", gloss: "ökonomisch, kulturell, sozial · F 38", chips: ["ökonomisch", "kulturell", "sozial"] },
+        { label: "Drei Formen kulturellen Kapitals", gloss: "inkorporiert, objektiviert, institutionalisiert · F 39 bis 41", chips: ["inkorporiert", "objektiviert", "institutionalisiert"] },
+        { label: "Kritik", gloss: "kaum Aussagen, wie Veränderung möglich wäre · F 42", chips: ["wie Veränderungen möglich wären", "Kreislauf", "Würdigung: Stereotypisierungsprozesse"] },
       ] },
     { id: "takehome", label: "Take Home", sub: "F 48", seite: "right", karte: "vergleich", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Schule = Subsystem in Austausch", gloss: "stabilisiert Gesellschaft durch Sozialisation" },
-        { label: "Strukturfunktionalismus", gloss: "Funktion des Bildungssystems für die Gesellschaft" },
-        { label: "Sozialisationstheorie", gloss: "Schule verfestigt Ordnung und Ungleichheit" },
+        { label: "Schule = Subsystem in Austausch", gloss: "stabilisiert Gesellschaft durch Sozialisation", chips: [] },
+        { label: "Strukturfunktionalismus", gloss: "Funktion des Bildungssystems für die Gesellschaft", chips: [] },
+        { label: "Sozialisationstheorie", gloss: "Schule verfestigt Ordnung und Ungleichheit", chips: [] },
       ] },
   ],
   grafiken: [
@@ -576,60 +646,60 @@ THEMEN.push({
     { id: "system", label: "Systematisierung", sub: "Das Regal · F 2, 12, 25", seite: "left", karte: "system",
       chips: ["2 Fragen", "empirisch vs. normativ", "Foucault: normativ", "Mead ↔ von Hentig"],
       kinder: [
-        { label: "Zwei Fragen", gloss: "Verhältnis Schule und Gesellschaft oder Binnenstrukturen der Schule · F 2" },
-        { label: "Zwei Haltungen", gloss: "empirisch-analytisch (wie es ist) oder normativ (wie es sein soll) · F 2" },
-        { label: "Foucault", gloss: "Verhältnis Schule und Gesellschaft, normativ · F 2" },
-        { label: "Mead", gloss: "Binnenstrukturen, empirisch-analytisch · F 2" },
-        { label: "von Hentig", gloss: "Binnenstrukturen, normativ · F 2" },
-        { label: "Folie 25 ist kürzer", gloss: "Parsons und Fend in einem Kasten, Bourdieu fehlt dort · F 25" },
+        { label: "Zwei Fragen", gloss: "Verhältnis Schule und Gesellschaft oder Binnenstrukturen der Schule · F 2", chips: ["Schule und Gesellschaft", "Binnenstrukturen der Schule", "Unterricht, Beziehungen, Regeln"] },
+        { label: "Zwei Haltungen", gloss: "empirisch-analytisch (wie es ist) oder normativ (wie es sein soll) · F 2", chips: ["empirisch-analytisch", "wie Schule ist", "normativ", "wie Schule sein soll"] },
+        { label: "Foucault", gloss: "Verhältnis Schule und Gesellschaft, normativ · F 2", chips: ["gesellschaftskritische Schultheorien", "Schule und Gesellschaft", "normativ orientiert"] },
+        { label: "Mead", gloss: "Binnenstrukturen, empirisch-analytisch · F 2", chips: ["Symbolischer Interaktionismus", "Sozialpsychologie", "Binnenstrukturen", "empirisch-analytisch"] },
+        { label: "von Hentig", gloss: "Binnenstrukturen, normativ · F 2", chips: ["Geisteswissenschaftliche Pädagogik", "Binnenstrukturen", "normativ orientiert"] },
+        { label: "Folie 25 ist kürzer", gloss: "Parsons und Fend in einem Kasten, Bourdieu fehlt dort · F 25", chips: ["rot gerahmt: Mead", "Strukturfunktionalistische Theorie der Schule", "Kurzfassung", "keine neue Einordnung"] },
       ] },
     { id: "foucault", label: "Foucault", sub: "Gesellschaftskritische Schultheorie · F 3 bis 11", seite: "left", karte: "foucault",
       chips: ["Macht und Wissen", "Disziplinarmacht", "Dispositiv", "Lernapparat", "Machtgefälle"],
       kinder: [
-        { label: "Macht und Wissen", gloss: "Wissen ist mit Machtstrategien verknüpft · F 3" },
-        { label: "Übung und Prüfung", gloss: "Wissensvermittlung wird zum Selektionsprozess · F 5" },
-        { label: "Dispositiv der Macht", gloss: "Orte, Regeln, Hierarchien, Wissensregime; Schule spiegelt Machtkonfigurationen · F 6" },
-        { label: "Aufklärung erfand die Disziplinen", gloss: "Schule wird zum Lernapparat · F 7" },
-        { label: "Disziplinierung als Ziel", gloss: "nicht Freiheit und Mündigkeit; Schule als Machtverhältnis · F 8" },
-        { label: "Würdigung", gloss: "Machtdeformationen erkennen und ihnen entgegenwirken · F 9" },
-        { label: "Machtgefälle", gloss: "Rechte, Kompetenzen, Sanktionierungsgewalt · F 11" },
+        { label: "Macht und Wissen", gloss: "Wissen ist mit Machtstrategien verknüpft · F 3", chips: ["Disziplinarmacht", "Machtstrukturen festigen", "Kreislauf", "gegen ökonomisch motivierte Bildungspolitik"] },
+        { label: "Übung und Prüfung", gloss: "Wissensvermittlung wird zum Selektionsprozess · F 5", chips: ["aufklärerischer Anspruch", "Selektionsprozess", "durchstrukturierte Institution"] },
+        { label: "Dispositiv der Macht", gloss: "Orte, Regeln, Hierarchien, Wissensregime; Schule spiegelt Machtkonfigurationen · F 6", chips: ["spezifische Orte", "eigene Regelungen", "hierarchische Strukturen", "Wissensregime", "keine Logik der Emanzipation"] },
+        { label: "Aufklärung erfand die Disziplinen", gloss: "Schule wird zum Lernapparat · F 7", chips: ["Foucault 1977", "Kräfte üben statt Stoff pauken", "Alte Sprachen am Gymnasium", "Disziplinargesellschaft", "elementarisiert"] },
+        { label: "Disziplinierung als Ziel", gloss: "nicht Freiheit und Mündigkeit; Schule als Machtverhältnis · F 8", chips: ["Schule als Disziplinarmacht", "Schule als Machtverhältnis", "von innen heraus", "verändertes Verhältnis zu sich"] },
+        { label: "Würdigung", gloss: "Machtdeformationen erkennen und ihnen entgegenwirken · F 9", chips: ["Spiegelbild von Machtdynamiken", "aufdecken und abweisen", "Machtdeformationen aufzeigen", "kein Einwand, nur Nutzen"] },
+        { label: "Machtgefälle", gloss: "Rechte, Kompetenzen, Sanktionierungsgewalt · F 11", chips: ["Volljährige vs. Minderjährige", "Expert:innen vs. Schüler:innen", "Sanktionierungsgewalt: nur Lehrkräfte", "kritische Reflexion", "Transparenz, Mitwirkung"] },
       ] },
     { id: "gwp", label: "Geisteswiss. Pädagogik", sub: "Kontext und Nohl · F 13 bis 16", seite: "left", karte: "gwp",
       chips: ["Weimar bis ca. 1960", "Nohl, Spranger, Wilhelm", "wie Schule sein soll"],
       kinder: [
-        { label: "Zeit und Vertreter", gloss: "Weimarer Republik und alte Bundesrepublik bis ca. 1960; Nohl, Spranger, Wilhelm · F 13" },
-        { label: "Normative Ausrichtung", gloss: "formuliert Ziele, „wie Schule sein soll\" · F 13" },
-        { label: "Aufgabe der Schule", gloss: "Kind aus der Familie in die Willensform des öffentlichen Lebens überführen · F 14" },
-        { label: "Ziel", gloss: "optimale Entfaltung aller Möglichkeiten des Kindes · F 14" },
-        { label: "Exkurs Nohl", gloss: "1933 Begrüßung der NS-Machtübernahme, 1937 Zwangsemeritierung · F 15, 16" },
+        { label: "Zeit und Vertreter", gloss: "Weimarer Republik und alte Bundesrepublik bis ca. 1960; Nohl, Spranger, Wilhelm · F 13", chips: ["dominierende pädagogische Richtung", "Weimarer Republik", "nach 1945 bis ca. 1960", "Nohl, Spranger, Wilhelm"] },
+        { label: "Normative Ausrichtung", gloss: "formuliert Ziele, „wie Schule sein soll\" · F 13", chips: ["Formulierung von Zielen", "wie Schule sein soll"] },
+        { label: "Aufgabe der Schule", gloss: "Kind aus der Familie in die Willensform des öffentlichen Lebens überführen · F 14", chips: ["Gebundenheit an die Familie", "Willensform des öffentlichen Lebens", "Kräfte entwickeln", "Nohl 1963"] },
+        { label: "Ziel", gloss: "optimale Entfaltung aller Möglichkeiten des Kindes · F 14", chips: ["optimale Entfaltung", "aller seiner Möglichkeiten", "Blömeke et al. 2009"] },
+        { label: "Exkurs Nohl", gloss: "1933 Begrüßung der NS-Machtübernahme, 1937 Zwangsemeritierung · F 15, 16", chips: ["1879 bis 1960", "völkische Pädagogik", "1937 Zwangsemeritierung", "1945 Rückkehr", "Autonomie der Erziehung"] },
       ] },
     { id: "hentig", label: "von Hentig", sub: "Geisteswissenschaftliche Pädagogik · F 17 bis 22", seite: "right", karte: "hentig",
       chips: ["polis", "Lebens- und Erfahrungsraum", "Brücke", "5 Merkmale", "gegen Qualifikationsfunktion"],
       kinder: [
-        { label: "Bildungsbegriff", gloss: "„sich selbst bestimmende Individualität\", neuhumanistisch · F 18" },
-        { label: "Emanzipatorisch gedacht", gloss: "sonst Heim und Berufsvorbereitungsanstalt; kritisiert Qualifikationsfunktion · F 19" },
-        { label: "Schule zur polis machen", gloss: "Demokratie im Kleinen erleben und einüben · F 20" },
-        { label: "Lebens- und Erfahrungsraum", gloss: "nicht nur Kenntnisse und Fertigkeiten vermitteln · F 21" },
-        { label: "Fünf Merkmale", gloss: "Lebensraum, individualisiert, Polis, fächerübergreifend, Brücke · F 22" },
-        { label: "Bielefelder Laborschule", gloss: "praktische Umsetzung der Prinzipien · F 22" },
+        { label: "Bildungsbegriff", gloss: "„sich selbst bestimmende Individualität\", neuhumanistisch · F 18", chips: ["Bildung ist ein Prozess", "die Menschheit bereichert", "Neuhumanistische Tradition", "Geschichtlichkeit der eigenen Existenz", "Gefühls- und Meinungsausstattung"] },
+        { label: "Emanzipatorisch gedacht", gloss: "sonst Heim und Berufsvorbereitungsanstalt; kritisiert Qualifikationsfunktion · F 19", chips: ["sozialpädagogisches Heim", "Berufsvorbereitungsanstalt", "Kritisiert die Qualifikationsfunktion", "aus Abhängigkeit befreien"] },
+        { label: "Schule zur polis machen", gloss: "Demokratie im Kleinen erleben und einüben · F 20", chips: ["Gemeinschaftsleben", "Demokratie im Kleinen", "kritisches Denken", "Wissen um seiner selbst willen", "Kulturtechniken"] },
+        { label: "Lebens- und Erfahrungsraum", gloss: "nicht nur Kenntnisse und Fertigkeiten vermitteln · F 21", chips: ["Schonraum", "Erziehung", "gesellschaftliche Verteilung von Berechtigungen"] },
+        { label: "Fünf Merkmale", gloss: "Lebensraum, individualisiert, Polis, fächerübergreifend, Brücke · F 22", chips: ["Lebensraum", "Individualisierter Unterricht", "Polis", "Fächerübergreifend", "Brücke"] },
+        { label: "Bielefelder Laborschule", gloss: "praktische Umsetzung der Prinzipien · F 22", chips: ["Praktische Umsetzung", "ab 1968 Bielefeld"] },
       ] },
     { id: "mead", label: "Mead", sub: "Symbolischer Interaktionismus · F 26 bis 33", seite: "right", karte: "mead",
       chips: ["Mikroebene", "sinnhafte Interaktion", "I / Me / Self", "identitätsstiftend", "Etikettierung"],
       kinder: [
-        { label: "Mikro-soziologische Perspektive", gloss: "Beziehung und Kommunikation zwischen Lehrkräften und Lernenden · F 26" },
-        { label: "Handeln = Interaktion", gloss: "sinnhaft, zwischen mehreren Personen, in sozialen Situationen · F 27" },
-        { label: "Identität entsteht in Interaktion", gloss: "Lehrperson attestiert Können, ich erfahre mich als begabt · F 28" },
-        { label: "I / Me / Self", gloss: "spontane Reaktion / Erwartungen anderer / Zusammenspiel · F 30" },
-        { label: "Schule als Institution", gloss: "dauerhaft etablierte Erwartungen; identitätsstiftend · F 31" },
-        { label: "Kritik", gloss: "was sich als funktional durchsetzt, gilt; Etikettierung als „störend\" · F 32" },
+        { label: "Mikro-soziologische Perspektive", gloss: "Beziehung und Kommunikation zwischen Lehrkräften und Lernenden · F 26", chips: ["Sozialisationspersonen", "Kommunikation", "Interaktionspartner", "schulische Binnenstrukturen"] },
+        { label: "Handeln = Interaktion", gloss: "sinnhaft, zwischen mehreren Personen, in sozialen Situationen · F 27", chips: ["Symbolischer Interaktionismus", "sinnhaft", "soziale Situationen", "agierende Individuen"] },
+        { label: "Identität entsteht in Interaktion", gloss: "Lehrperson attestiert Können, ich erfahre mich als begabt · F 28", chips: ["Können attestiert", "als begabt", "Kommunikation", "Phasen des Selbst"] },
+        { label: "I / Me / Self", gloss: "spontane Reaktion / Erwartungen anderer / Zusammenspiel · F 30", chips: ["I: Reaktion des Organismus", "Me: Generalisierter Anderer", "Self: Selbstbewusstsein"] },
+        { label: "Schule als Institution", gloss: "dauerhaft etablierte Erwartungen; identitätsstiftend · F 31", chips: ["Erwartungen, Normen und Regeln", "Dauerhaft etablierte Erwartungen", "identitätsstiftende Institution", "interaktionale Geschehen"] },
+        { label: "Kritik", gloss: "was sich als funktional durchsetzt, gilt; Etikettierung als „störend\" · F 32", chips: ["Alles ist verhandelbar", "Es gilt, was sich durchsetzt", "Etikettierungsprozesse", "moralischer Legitimation", "Würdigung: Mikroebene"] },
       ] },
     { id: "takehome", label: "Take Home", sub: "F 34", seite: "right", karte: "vergleich", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Foucault", gloss: "Schule als Disziplinarmacht und Machtverhältnis, Disziplinierung als Ziel" },
-        { label: "von Hentig", gloss: "Lebens- und Erfahrungsraum, Demokratie im Kleinen, Kulturtechniken" },
-        { label: "Mead", gloss: "interaktionales Geschehen, Schule als identitätsstiftende Institution" },
-        { label: "Warum mehrere Brillen", gloss: "Machtstrukturen und identitätsbildende Prozesse zugleich sehen" },
+        { label: "Foucault", gloss: "Schule als Disziplinarmacht und Machtverhältnis, Disziplinierung als Ziel", chips: [] },
+        { label: "von Hentig", gloss: "Lebens- und Erfahrungsraum, Demokratie im Kleinen, Kulturtechniken", chips: [] },
+        { label: "Mead", gloss: "interaktionales Geschehen, Schule als identitätsstiftende Institution", chips: [] },
+        { label: "Warum mehrere Brillen", gloss: "Machtstrukturen und identitätsbildende Prozesse zugleich sehen", chips: [] },
       ] },
   ],
   grafiken: [
@@ -910,60 +980,60 @@ THEMEN.push({
     { id: "leitfragen", label: "Leitfragen", sub: "Einstieg · F 2", seite: "left", karte: "leitfragen", color: "var(--ink)",
       chips: ["Kirche, Staat, Ökonomie", "Menschenbildung", "Gegenwart"],
       kinder: [
-        { label: "Spannungsfeld der Mächte", gloss: "Wie verorten die Klassiker Schule zwischen Kirche, Staat und Ökonomie? · F 2" },
-        { label: "Allgemeine Menschenbildung", gloss: "Was verstehen die Klassiker darunter? · F 2" },
-        { label: "Relevanz heute", gloss: "Inwiefern sind sie für Überlegungen zu Schule heute relevant? · F 2" },
+        { label: "Spannungsfeld der Mächte", gloss: "Wie verorten die Klassiker Schule zwischen Kirche, Staat und Ökonomie? · F 2", chips: ["Kirche", "Staat", "Ökonomie", "wer darf bestimmen"] },
+        { label: "Allgemeine Menschenbildung", gloss: "Was verstehen die Klassiker darunter? · F 2", chips: ["Bildung des ganzen Menschen", "nicht Ausbildung", "nicht Beruf oder Stand"] },
+        { label: "Relevanz heute", gloss: "Inwiefern sind sie für Überlegungen zu Schule heute relevant? · F 2", chips: ["Kritische Würdigung", "heutige Überlegungen"] },
       ] },
     { id: "comenius", label: "Comenius", sub: "17. Jh. · Allen alles lehren · F 3 bis 9", seite: "left", karte: "comenius",
       chips: ["Didactica Magna 1657", "Werkstätten der Menschlichkeit", "4 Stufen à 6 Jahre", "3 Ziele", "Docht entzünden"],
       kinder: [
-        { label: "Ebenbild Gottes", gloss: "alle Menschen haben die gleiche Natur, alle sollen die Schule besuchen · F 4" },
-        { label: "Allen alles lehren", gloss: "Allgemeine Didaktik: alle Menschen, alles, auf sichere Art · F 4" },
-        { label: "Werkstätten der Menschlichkeit", gloss: "Schule bewirkt, dass der Mensch Mensch wird; Frontalunterricht · F 5" },
-        { label: "Vier Stufen des Unterrichts", gloss: "Mutterschule, Muttersprachenschule, Lateinschule, Universität, je 6 Jahre · F 6" },
-        { label: "Drei Ziele von Bildung", gloss: "gelehrige Bildung, Sittlichkeit und Tugend, Frömmigkeit · F 7" },
-        { label: "Wissensvermittlung", gloss: "den Docht entzünden, Gehirn wie Wachs; nicht konstruktivistisch · F 8" },
-        { label: "Würdigung", gloss: "Einendes des Menschseins, chancengleiche Bildung, Methodisierung · F 9" },
+        { label: "Ebenbild Gottes", gloss: "alle Menschen haben die gleiche Natur, alle sollen die Schule besuchen · F 4", chips: ["Vernunftwesen", "ursprünglich guter Mensch", "religiöse Denkfiguren", "gleiche Natur"] },
+        { label: "Allen alles lehren", gloss: "Allgemeine Didaktik: alle Menschen, alles, auf sichere Art · F 4", chips: ["Didactica Magna 1657", "vollständige Kunst", "methodisches Vorgehen", "Lehre vom Lehren"] },
+        { label: "Werkstätten der Menschlichkeit", gloss: "Schule bewirkt, dass der Mensch Mensch wird; Frontalunterricht · F 5", chips: ["Mensch Mensch werde", "Sprachen, Wissenschaft, Künste", "Grundlagen der Allgemeinbildung", "nur ein Lehrer"] },
+        { label: "Vier Stufen des Unterrichts", gloss: "Mutterschule, Muttersprachenschule, Lateinschule, Universität, je 6 Jahre · F 6", chips: ["Mutterschule: äußere Sinne", "Muttersprachenschule: innere Sinne", "Lateinschule: klassische Sprachen", "Universität: Forschung", "24 Jahre"] },
+        { label: "Drei Ziele von Bildung", gloss: "gelehrige Bildung, Sittlichkeit und Tugend, Frömmigkeit · F 7", chips: ["Gelehrige Bildung", "Sittlichkeit und Tugend", "Frömmigkeit", "Menschwerdung"] },
+        { label: "Wissensvermittlung", gloss: "den Docht entzünden, Gehirn wie Wachs; nicht konstruktivistisch · F 8", chips: ["unreiner Spiegel, rauhe Tafel", "den Docht zu entzünden", "Gebildet-Werden", "Wachs-Metapher", "statt Wissenskonstruktion"] },
+        { label: "Würdigung", gloss: "Einendes des Menschseins, chancengleiche Bildung, Methodisierung · F 9", chips: ["Das Einende des Menschseins", "chancengleiche Bildung", "Vorwegnahme neuzeitlicher Pädagogik", "Methodisierung des Unterrichts"] },
       ] },
     { id: "rousseau", label: "Rousseau", sub: "18. Jh. · Natürliche Erziehung · F 10 bis 18", seite: "left", karte: "rousseau",
       chips: ["Émile 1762", "negative Erziehung", "Schein der Freiheit", "4 Phasen 5/12/15/20", "Gesellschaft entartet"],
       kinder: [
-        { label: "Schulkritik", gloss: "Schule fördert Eigennutz, Eitelkeit, Habsucht; Katechismusunterricht · F 11" },
-        { label: "Negative Erziehung", gloss: "keine gesetzten Ziele, natürliche Entwicklung nicht behindern · F 12" },
-        { label: "Schein der Freiheit", gloss: "Erzieher bleibt Herr der Lage, aber keine Tyrannei · F 12" },
-        { label: "Menschenbild", gloss: "frei, empfindsam, vernünftig; alles entartet unter den Händen des Menschen · F 13" },
-        { label: "Vier Entwicklungsphasen", gloss: "Körper bis 5, Sinne bis 12, Geist bis 15, Gesellschaft bis 20 · F 14" },
-        { label: "Konsequenzen für Unterricht", gloss: "Nutzen selbst entdecken, kein Zwang, Erzieher arrangiert · F 15" },
-        { label: "Kritik", gloss: "Phasen vs. Entwicklungspsychologie; Mädchen-Erziehung; Sonderwelt · F 16, 17, 35" },
+        { label: "Schulkritik", gloss: "Schule fördert Eigennutz, Eitelkeit, Habsucht; Katechismusunterricht · F 11", chips: ["korrumpierte Gesellschaft", "Worte, die sie nicht verstehen", "unverständig, manipulierbar", "Katechismus = Glaubenslehre"] },
+        { label: "Negative Erziehung", gloss: "keine gesetzten Ziele, natürliche Entwicklung nicht behindern · F 12", chips: ["keine positiven Zielsetzungen", "nichts Bestimmtes machen", "gesellschaftlich vorgegebene Zwecksetzungen", "Erfahrungen zum Wachsen"] },
+        { label: "Schein der Freiheit", gloss: "Erzieher bleibt Herr der Lage, aber keine Tyrannei · F 12", chips: ["Herr der Lage", "keine Tyrannei", "natürliche Bedürfnisse"] },
+        { label: "Menschenbild", gloss: "frei, empfindsam, vernünftig; alles entartet unter den Händen des Menschen · F 13", chips: ["Vernünftigkeit", "Händen des Schöpfers", "aktiver Erkennender", "Herrschen und Beherrscht werden"] },
+        { label: "Vier Entwicklungsphasen", gloss: "Körper bis 5, Sinne bis 12, Geist bis 15, Gesellschaft bis 20 · F 14", chips: ["Körper bis 5", "Sinne bis 12", "Geistige Fähigkeiten bis 15", "Eingliederung bis 20"] },
+        { label: "Konsequenzen für Unterricht", gloss: "Nutzen selbst entdecken, kein Zwang, Erzieher arrangiert · F 15", chips: ["Stoff passt zur Entwicklungsphase", "Nutzen und Wert entdecken", "Kein Zwang zu lernen", "Lernumgebung arrangieren"] },
+        { label: "Kritik", gloss: "Phasen vs. Entwicklungspsychologie; Mädchen-Erziehung; Sonderwelt · F 16, 17, 35", chips: ["ausschließliche Fokussierung des Körpers", "Mädchen von anderer Natur", "Schmid 1992", "Pädagogische Sonderwelt"] },
       ] },
     { id: "humboldt", label: "Humboldt", sub: "19. Jh. · Allgemeine Menschenbildung · F 19 bis 25", seite: "right", karte: "humboldt",
       chips: ["4 Kräfte", "3 Stadien", "Schulpläne 1809", "Lernen des Lernens", "Einheitsschule"],
       kinder: [
-        { label: "Allgemeine Menschenbildung", gloss: "der Mensch stärkt seine Kräfte ohne äußeren Zweck · F 19, 20" },
-        { label: "Vier Kräfte", gloss: "physische Kraft, Denkkraft, Einbildungskraft, moralische Kraft · F 20" },
-        { label: "Gesinnung und Charakter", gloss: "Bildung ermöglicht Selbstständigkeit und Freiheit · F 21" },
-        { label: "Schulkritik", gloss: "Ständewesen; der Staat erzieht zum Bürger, nicht zum Menschen · F 22" },
-        { label: "Schulpläne 1809", gloss: "Königsberg, Litauen: gegliederte Einheitsschule, Lernen des Lernens · F 23" },
-        { label: "Drei Stadien", gloss: "Elementar-, Schul-, Universitätsunterricht · F 24" },
-        { label: "Kritik", gloss: "Abstraktion, fiktive Innerlichkeit, Sonderwelt · F 25, 35" },
+        { label: "Allgemeine Menschenbildung", gloss: "der Mensch stärkt seine Kräfte ohne äußeren Zweck · F 19, 20", chips: ["Kräfte seiner Natur stärken", "Werth und Dauer", "seine Kräfte bildet", "kein Ziel außerhalb des Menschen"] },
+        { label: "Vier Kräfte", gloss: "physische Kraft, Denkkraft, Einbildungskraft, moralische Kraft · F 20", chips: ["Physische Kraft: Vitalität", "Denkkraft: Logik", "Einbildungskraft: Welt abbilden", "Moralische Kraft: Handeln"] },
+        { label: "Gesinnung und Charakter", gloss: "Bildung ermöglicht Selbstständigkeit und Freiheit · F 21", chips: ["Formung der Persönlichkeit", "Aufklärung und Kultur", "Kenntnissen über die Welt", "Selbstständigkeit und Freiheit"] },
+        { label: "Schulkritik", gloss: "Ständewesen; der Staat erzieht zum Bürger, nicht zum Menschen · F 22", chips: ["Ritterakademien", "Gelehrtenschulen", "Dorfschulen", "staatsspezifische Interessen"] },
+        { label: "Schulpläne 1809", gloss: "Königsberg, Litauen: gegliederte Einheitsschule, Lernen des Lernens · F 23", chips: ["allgemeinbildende Schule", "nicht auf Abnehmerinteressen", "innerer Entwicklungsgang", "urteilskräftig, ausdrucksfähig", "empfindsam, körperlich beweglich"] },
+        { label: "Drei Stadien", gloss: "Elementar-, Schul-, Universitätsunterricht · F 24", chips: ["Elementar: Kulturtechniken", "Schule: gymnastisch, ästhetisch, didaktisch", "Universität: Forschung und Lehre"] },
+        { label: "Kritik", gloss: "Abstraktion, fiktive Innerlichkeit, Sonderwelt · F 25, 35", chips: ["Nicht umsetzbar", "restaurative Kräfte", "Abstraktion", "Fiktive Innerlichkeit", "Pädagogische Sonderwelt"] },
       ] },
     { id: "herbart", label: "Herbart", sub: "19. Jh. · Erziehender Unterricht · F 26 bis 33", seite: "right", karte: "herbart",
       chips: ["innere Freiheit", "Rechtlichkeit und Güte", "Bildsamkeit", "Gedankenkreis", "4 Formalstufen"],
       kinder: [
-        { label: "Innere Freiheit", gloss: "nicht tun müssen, wozu man geneigt ist; Bestrebungen beurteilen · F 27" },
-        { label: "Rechtlichkeit und Güte", gloss: "Gegenüber als gleichberechtigt sehen und mit Wohlwollen begegnen · F 27, 29" },
-        { label: "Bildsamkeit", gloss: "weder Anlage noch Umfeld allein: der Mensch bildet sich · F 28" },
-        { label: "Erziehender Unterricht", gloss: "Gedankenkreis erweitern und ordnen; ästhetische Darstellung der Welt · F 30" },
-        { label: "Formalstufen", gloss: "Klarheit, Assoziation, System, Methode · F 31" },
-        { label: "Schule heißt Muße", gloss: "gegen politische und ökonomische Einflussnahme; kein Zwang zur Bildung · F 33" },
-        { label: "Kritik", gloss: "freiwilliger Unterricht?; Formalstufen zu schematisch · F 33" },
+        { label: "Innere Freiheit", gloss: "nicht tun müssen, wozu man geneigt ist; Bestrebungen beurteilen · F 27", chips: ["Bestrebungen zu beurteilen", "bewusst entscheiden", "eigenen Willen beurteilen"] },
+        { label: "Rechtlichkeit und Güte", gloss: "Gegenüber als gleichberechtigt sehen und mit Wohlwollen begegnen · F 27, 29", chips: ["Zwei moralische Prinzipien", "Rechtlichkeit: gleichberechtigt", "Güte: Wohlwollen", "Legitimation", "eigene Zwecke setzt"] },
+        { label: "Bildsamkeit", gloss: "weder Anlage noch Umfeld allein: der Mensch bildet sich · F 28", chips: ["Selbstbestimmtheit", "Mensch sich bildet", "Unbestimmtheit", "Problem der Einflussnahme"] },
+        { label: "Erziehender Unterricht", gloss: "Gedankenkreis erweitern und ordnen; ästhetische Darstellung der Welt · F 30", chips: ["Ästhetische Darstellung der Welt", "An der Individualität ausgerichtet", "Erkenntnisse und Teilnahme", "Doppelte Aufgabe", "vielseitigen Interessen"] },
+        { label: "Formalstufen", gloss: "Klarheit, Assoziation, System, Methode · F 31", chips: ["Klarheit: Ziel setzen", "Assoziation: Anschauung und Begriffe", "System: integriert", "Methode: Anwendung", "Herbart 1806"] },
+        { label: "Schule heißt Muße", gloss: "gegen politische und ökonomische Einflussnahme; kein Zwang zur Bildung · F 33", chips: ["politischer und ökonomischer Einflussnahmen", "Muße = freie Zeit", "Kants Morallogik", "nur durch Einsicht", "nicht durch Anordnung"] },
+        { label: "Kritik", gloss: "freiwilliger Unterricht?; Formalstufen zu schematisch · F 33", chips: ["Freiwilliger Unterricht?", "Pflicht zur Teilnahme", "stark schematisches Vorgehen", "Komplexität menschlicher Bildung"] },
       ] },
     { id: "takehome", label: "Take Home", sub: "F 34 · 35", seite: "right", karte: "vergleich", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Anlagen und Umwelt", gloss: "der Mensch im Spannungsfeld; Schule als Ort allgemeiner Menschenbildung" },
-        { label: "Bildung vs. Ausbildung", gloss: "allgemeine Menschenbildung statt berufs- oder standesspezifischer Bildung" },
-        { label: "Pädagogische Sonderwelt", gloss: "Bildungsansprüche lösen sich von realen Bedingungen (Rousseau, Humboldt)" },
+        { label: "Anlagen und Umwelt", gloss: "der Mensch im Spannungsfeld; Schule als Ort allgemeiner Menschenbildung", chips: [] },
+        { label: "Bildung vs. Ausbildung", gloss: "allgemeine Menschenbildung statt berufs- oder standesspezifischer Bildung", chips: [] },
+        { label: "Pädagogische Sonderwelt", gloss: "Bildungsansprüche lösen sich von realen Bedingungen (Rousseau, Humboldt)", chips: [] },
       ] },
   ],
   grafiken: [
@@ -1317,65 +1387,65 @@ THEMEN.push({
     { id: "perspektiven", label: "Was ist eine gute Schule?", sub: "Vier Perspektiven · F 7 bis 11", seite: "left", karte: "perspektiven",
       chips: ["Schuleffektivität", "Schulklima", "Five Factor Model", "Fend 2000", "Klieme 2016"],
       kinder: [
-        { label: "Schuleffektivitätsforschung", gloss: "seit 1970er, international: Schulqualität als messbarer Effekt · F 7" },
-        { label: "Schulklimaforschung", gloss: "in Deutschland lange dominant: normatives Verständnis · F 8" },
-        { label: "Systemtheoretisch", gloss: "gute Schulen erfüllen Funktionen für die Gesellschaft · F 9" },
-        { label: "Bildungspolitisch", gloss: "Steuerungsinteresse der Administration, normative Rahmenkonzepte · F 9" },
-        { label: "Five Factor Model vs. Fend 2000", gloss: "5 Faktoren (Scheerens 2004) neben 7 Kriterien (Fend 2000) · F 10" },
-        { label: "Kein Widerspruch", gloss: "Leistung und Wohlbefinden hängen meist zusammen · Klieme · F 11" },
+        { label: "Schuleffektivitätsforschung", gloss: "seit 1970er, international: Schulqualität als messbarer Effekt · F 7", chips: ["Eingangsvoraussetzungen", "besonders hohe Leistungen", "gute Schülerleistungen", "geringe Abbruchquoten"] },
+        { label: "Schulklimaforschung", gloss: "in Deutschland lange dominant: normatives Verständnis · F 8", chips: ["Fend 1998", "soziale Integration", "Reichhaltigkeit des Schullebens", "Arbeitszufriedenheit des Kollegiums", "pädagogische Zuwendung"] },
+        { label: "Systemtheoretisch", gloss: "gute Schulen erfüllen Funktionen für die Gesellschaft · F 9", chips: ["gesellschaftliches Subsystem", "Kohärenz und Kontinuität", "alle Schichten", "Brücke zu Parsons und Fend"] },
+        { label: "Bildungspolitisch", gloss: "Steuerungsinteresse der Administration, normative Rahmenkonzepte · F 9", chips: ["Bildungsadministration", "effizient gestaltet", "normative Rahmenkonzepte", "Orientierungsrahmen Brandenburg"] },
+        { label: "Five Factor Model vs. Fend 2000", gloss: "5 Faktoren (Scheerens 2004) neben 7 Kriterien (Fend 2000) · F 10", chips: ["Effektive Schulleitung", "Leistungserwartungen", "Schulumwelt", "Zeitnutzung: nur Fend", "Förderliche Beziehungen: nur Fend"] },
+        { label: "Kein Widerspruch", gloss: "Leistung und Wohlbefinden hängen meist zusammen · Klieme · F 11", chips: ["nicht in allen Ländern", "hohem Wohlbefinden", "umfassendes Verständnis", "Klieme 2016"] },
       ] },
     { id: "rahmen", label: "Bedingungsfaktoren", sub: "Rahmenmodelle · F 12 bis 20", seite: "left", karte: "rahmen",
       chips: ["Kontext · Input · Prozess · Output", "Ditton 2000", "distal vs. proximal", "Mikro · Meso · Makro", "black box"],
       kinder: [
-        { label: "Drei Variablengruppen", gloss: "Kontext, Schuleingang, Prozess → Bildungsergebnisse · F 12" },
-        { label: "Strukturell vs. dynamisch", gloss: "Mehrebenensystem vs. Produktionsfunktion · Ditton 2000 · F 13" },
-        { label: "Distal vs. proximal", gloss: "distal = indirekt (Schulform), proximal = direkt (Unterricht) · F 14 bis 17" },
-        { label: "Mikro, Meso, Makro", gloss: "Lernen/Unterricht; Schule, Familie, Peers; Systembindung · F 14" },
-        { label: "Black-box-Forschung", gloss: "individuelle Lernprozesse werden nicht erfasst · F 18" },
-        { label: "Vier Faktorengruppen", gloss: "Kontext, Input, Prozess, Output · F 19" },
-        { label: "Modell Ditton 2007", gloss: "Voraussetzungen → Prozesse → Ergebnisse, drei Curricula · F 20" },
+        { label: "Drei Variablengruppen", gloss: "Kontext, Schuleingang, Prozess → Bildungsergebnisse · F 12", chips: ["Kontext: Lehrpläne", "Schuleingang: Eingangsleistung", "Prozess: Strukturiertheit, Lernzeit", "outcome, output", "Racherbäumer et al. 2012"] },
+        { label: "Strukturell vs. dynamisch", gloss: "Mehrebenensystem vs. Produktionsfunktion · Ditton 2000 · F 13", chips: ["strukturell: Mehrebenensystem", "dynamisch: Produktionsfunktion", "inputs → outputs", "geschachtelt"] },
+        { label: "Distal vs. proximal", gloss: "distal = indirekt (Schulform), proximal = direkt (Unterricht) · F 14 bis 17", chips: ["distal: Schulform, Ausstattung", "distal: Einzugsgebiet", "proximal: Unterrichtsqualität", "proximal: Lernaktivitäten", "proximal: Schulklima"] },
+        { label: "Mikro, Meso, Makro", gloss: "Lernen/Unterricht; Schule, Familie, Peers; Systembindung · F 14", chips: ["Mikro: Lernen und Unterricht", "Meso: Schule, Familie, Peergroup", "Makro: Systembindung"] },
+        { label: "Black-box-Forschung", gloss: "individuelle Lernprozesse werden nicht erfasst · F 18", chips: ["Input und Output", "nicht das Lernen dazwischen", "nur Problemlösekompetenz", "Aufmerksamkeit, Hausaufgaben, Fördermaßnahmen"] },
+        { label: "Vier Faktorengruppen", gloss: "Kontext, Input, Prozess, Output · F 19", chips: ["Kontext: sozial-regionales Umfeld", "Input: Ausstattung, Lehrpläne", "Prozess: Unterrichtsqualität, Schulmanagement", "Output: Schülerkompetenzen", "Organisationssysteme"] },
+        { label: "Modell Ditton 2007", gloss: "Voraussetzungen → Prozesse → Ergebnisse, drei Curricula · F 20", chips: ["Bedingungen, Intentionen", "Institutionsebene", "Interaktionsebene", "Outputs, Outcomes", "intendiert, implementiert, erreicht"] },
       ] },
     { id: "orientierung", label: "Orientierungsrahmen Brandenburg", sub: "Gute Schule in Brandenburg · F 21 bis 28", seite: "left", karte: "orientierung",
       chips: ["Rahmenbedingungen", "4 Qualitätsbereiche", "Ergebnisse und Wirkungen"],
       kinder: [
-        { label: "Drei Dimensionen", gloss: "Rahmenbedingungen, Prozesse, Ergebnisse und Wirkungen · F 22, 23" },
-        { label: "Rahmenbedingungen", gloss: "wirken auf die Schule, sie hat aber keinen grundsätzlichen Einfluss · F 23" },
-        { label: "Vier Qualitätsbereiche", gloss: "Führung; Lehren/Lernen; Lern-/Lebensort; lernende Organisation · F 23, 24" },
-        { label: "Vier Ergebniskategorien", gloss: "Kompetenzen; Übergänge/Abschlüsse; Teilhabe; Zufriedenheit · F 23" },
-        { label: "Beispielkriterien", gloss: "1.4.1 Ergebnisverantwortung; 4.2.1/4.2.2 datengestützt · F 25 bis 27" },
+        { label: "Drei Dimensionen", gloss: "Rahmenbedingungen, Prozesse, Ergebnisse und Wirkungen · F 22, 23", chips: ["Rahmenbedingungen", "Prozessdimension: 4 QB", "Ergebnisse: 4 Kategorien"] },
+        { label: "Rahmenbedingungen", gloss: "wirken auf die Schule, sie hat aber keinen grundsätzlichen Einfluss · F 23", chips: ["keinen grundsätzlichen Einfluss", "Aufgabe von Bildungspolitik", "Schulverwaltung"] },
+        { label: "Vier Qualitätsbereiche", gloss: "Führung; Lehren/Lernen; Lern-/Lebensort; lernende Organisation · F 23, 24", chips: ["Führung und Verantwortung", "Lehren und Lernen", "Lern-, Lebens- und Arbeitsort", "lernende Organisation"] },
+        { label: "Vier Ergebniskategorien", gloss: "Kompetenzen; Übergänge/Abschlüsse; Teilhabe; Zufriedenheit · F 23", chips: ["Kompetenzen", "Übergänge und Schulabschlüsse", "Teilhabe", "Zufriedenheit mit der Schule"] },
+        { label: "Beispielkriterien", gloss: "1.4.1 Ergebnisverantwortung; 4.2.1/4.2.2 datengestützt · F 25 bis 27", chips: ["1.4.1: Schulleitung steuert", "4.2.1: Unterrichtsentwicklung", "4.2.2: Schulentwicklung", "kollegiale Unterrichtsbesuche", "Qualitätsentwicklungszyklus"] },
       ] },
     { id: "komposition", label: "Kompositionseffekte", sub: "Bedingungen jenseits der Schulqualität · F 29 bis 35", seite: "right", karte: "komposition",
       chips: ["Harker & Tymms", "aggregierte Merkmale", "über das Individualmerkmal hinaus", "Baumert 2006", "Wirkungskreislauf"],
       kinder: [
-        { label: "Varianz der Leistungen", gloss: "Schulform erklärt am meisten, aber auch gleiche Schulform streut · F 30" },
-        { label: "Definition", gloss: "Klassen-Zusammensetzung wirkt über das Individualmerkmal hinaus · F 31, 32" },
-        { label: "Nicht gleich Qualität", gloss: "andere Ergebnisse je nach Komposition, ohne Qualitätsunterschied · F 33" },
-        { label: "Sechs ungünstige Merkmale", gloss: "bildungsfern, Wiederholer, niedriges Niveau, Arbeitslosigkeit · Baumert 2006 · F 34" },
-        { label: "Wirkungskreislauf", gloss: "Sozialindex → Leistung → Image → Lehrkräftemangel · F 35" },
+        { label: "Varianz der Leistungen", gloss: "Schulform erklärt am meisten, aber auch gleiche Schulform streut · F 30", chips: ["Schulformzugehörigkeit", "Varianz = Streuung", "zwischen Schulen der gleichen Schulform", "Großteil Kompositionseffekte"] },
+        { label: "Definition", gloss: "Klassen-Zusammensetzung wirkt über das Individualmerkmal hinaus · F 31, 32", chips: ["Harker und Tymms 2004", "aggregierte Individualmerkmale", "mittleres Leistungsniveau", "sozioökonomischer Status", "Klassendurchschnitt"] },
+        { label: "Nicht gleich Qualität", gloss: "andere Ergebnisse je nach Komposition, ohne Qualitätsunterschied · F 33", chips: ["andere Lernbedingungen", "zusätzlich zu individuellen Lernvoraussetzungen", "privilegierte Umgebung hilft", "Dumont 2013, Gärtner 2015"] },
+        { label: "Sechs ungünstige Merkmale", gloss: "bildungsfern, Wiederholer, niedriges Niveau, Arbeitslosigkeit · Baumert 2006 · F 34", chips: ["bildungsferne Familien", "hohe Wiederholerzahlen", "niedriges Leistungs- und Fähigkeitsniveau", "Eltern ohne Berufsausbildung", "familiäre Probleme, Arbeitslosigkeit, Gewalt"] },
+        { label: "Wirkungskreislauf", gloss: "Sozialindex → Leistung → Image → Lehrkräftemangel · F 35", chips: ["niedriger Sozialindex", "geringe Leistungen", "fehlende Schulabschlüsse", "negatives Schulimage", "Akquise von Lehrkräften"] },
       ] },
     { id: "effektiv", label: "Effektive Schulen in herausfordernder Lage", sub: "Schuleffektivität · F 36 bis 46", seite: "right", karte: "effektiv",
       chips: ["Value added", "Holtappels", "advantaged · mixed · disadvantaged", "5 Qualitätsmerkmale"],
       kinder: [
-        { label: "Effektive Schule", gloss: "mehr Leistungszuwachs, als die Herkunft erwarten lässt · F 37" },
-        { label: "Value-added-Ansatz", gloss: "Mehrwert gegenüber Schulen mit ähnlicher Schülerschaft · F 37" },
-        { label: "Herausfordernde Lage", gloss: "anspruchsvolle Problemkonstellation · Holtappels 2017 · F 38" },
-        { label: "OECD 2012: drei Typen", gloss: "advantaged = effektiv, disadvantaged = ineffektiv, mixed dazwischen · F 39 bis 43" },
-        { label: "Fünf Qualitätsmerkmale", gloss: "Schulleitung, Daten, Schulkultur, Lehr-Lernen, externe Hilfe · F 44 bis 46" },
+        { label: "Effektive Schule", gloss: "mehr Leistungszuwachs, als die Herkunft erwarten lässt · F 37", chips: ["Creemers, Peters & Reynolds 1989", "familiärer Hintergrund", "Leistungszuwachs", "Mehrwert"] },
+        { label: "Value-added-Ansatz", gloss: "Mehrwert gegenüber Schulen mit ähnlicher Schülerschaft · F 37", chips: ["Sammons 2007", "extra value", "similar intakes", "Intake = Schülerschaft"] },
+        { label: "Herausfordernde Lage", gloss: "anspruchsvolle Problemkonstellation · Holtappels 2017 · F 38", chips: ["hohe Anstrengungen", "höhere Anforderungen", "erwartet schlecht", "unerwartet gut", "Holtappels 2008"] },
+        { label: "OECD 2012: drei Typen", gloss: "advantaged = effektiv, disadvantaged = ineffektiv, mixed dazwischen · F 39 bis 43", chips: ["Advantaged: professionelle Entwicklung", "Mixed: selbststeuerungsfähig", "Disadvantaged: externe Unterstützung", "keine genauen Definitionen", "Deutschland rot markiert"] },
+        { label: "Fünf Qualitätsmerkmale", gloss: "Schulleitung, Daten, Schulkultur, Lehr-Lernen, externe Hilfe · F 44 bis 46", chips: ["Schulleitung: kooperativer Führungsstil", "Daten: interne Evaluation", "Schulkultur: hohe Leistungserwartung", "Lehr-Lernprozesse: Feedback", "extern: Eltern, Schulnetzwerke"] },
       ] },
     { id: "foerder", label: "Förderprogramme", sub: "Randwissen · F 47 bis 59", seite: "right", karte: "foerder", color: "var(--um)",
       chips: ["School Turnaround", "BISS", "Startchancen", "Anti-Mobbing-Fibel", "buddY"],
       kinder: [
-        { label: "School Turnaround", gloss: "Berlin, 10 Schulen, 4 Jahre, negative Entwicklungstendenz · F 48 bis 51" },
-        { label: "BISS-Sprachbildung", gloss: "Bildung durch Sprache und Schrift, fünfjährig, Bildungssprache Deutsch · F 52, 53" },
-        { label: "Startchancen-Programm", gloss: "~4000 Schulen, ab 2024/25, zehn Jahre, Basiskompetenzen · F 54, 55" },
-        { label: "Verhaltensstörungen", gloss: "Anti-Mobbing-Fibel (SMOB, 93 Fragen), buddY · F 56 bis 59" },
+        { label: "School Turnaround", gloss: "Berlin, 10 Schulen, 4 Jahre, negative Entwicklungstendenz · F 48 bis 51", chips: ["Robert-Bosch-Stiftung", "Krankenstand, Fehlzeiten", "vier Handlungsfelder", "Externe Prozessbegleiter", "Albrecht-von-Graefe-Schule"] },
+        { label: "BISS-Sprachbildung", gloss: "Bildung durch Sprache und Schrift, fünfjährig, Bildungssprache Deutsch · F 52, 53", chips: ["Bund-Länder-Initiative", "Sprachdiagnostik, Leseförderung", "sprachsensibler Fachunterricht", "drei Bildungsetappen", "Blended-Learning-Fortbildungen"] },
+        { label: "Startchancen-Programm", gloss: "~4000 Schulen, ab 2024/25, zehn Jahre, Basiskompetenzen · F 54, 55", chips: ["Bundesbildungsministerium", "größtes Bildungsprogramm", "Lesen, Schreiben, Rechnen", "Drei Säulen", "multiprofessionelle Teams"] },
+        { label: "Verhaltensstörungen", gloss: "Anti-Mobbing-Fibel (SMOB, 93 Fragen), buddY · F 56 bis 59", chips: ["Was tun wenn?", "Mythos von der Selbsthilfe", "SMOB-Fragebogen", "buddY-Programm", "Mind Sync"] },
       ] },
     { id: "takehome", label: "Take Home", sub: "F 60", seite: "right", karte: "bilanz", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Normativ oder messbar", gloss: "Schulkultur oder Leistung, Abschlüsse, Abbrüche" },
-        { label: "Nicht nur die Einzelschule", gloss: "Schulen sind in Systemstrukturen eingebettet" },
-        { label: "Innen und außen", gloss: "innere und äußere Bedingungen hängen wechselseitig zusammen" },
+        { label: "Normativ oder messbar", gloss: "Schulkultur oder Leistung, Abschlüsse, Abbrüche", chips: [] },
+        { label: "Nicht nur die Einzelschule", gloss: "Schulen sind in Systemstrukturen eingebettet", chips: [] },
+        { label: "Innen und außen", gloss: "innere und äußere Bedingungen hängen wechselseitig zusammen", chips: [] },
       ] },
   ],
   grafiken: [
@@ -1782,71 +1852,71 @@ THEMEN.push({
     { id: "staat", label: "Grundgesetz und Staat", sub: "Art. 6 und 7 GG, Schulaufsicht · F 6 bis 13, 85 bis 88", seite: "left", karte: "staat",
       chips: ["Art. 6 Abs. 2 GG", "Art. 7 Abs. 1 GG", "Ländersache", "MBJS", "4 Schulämter"],
       kinder: [
-        { label: "Grundrechte und Staatsorganisationsrecht", gloss: "zwei Teile des GG; Art. 6 und 7 regeln schulische Grundrechte · F 9" },
-        { label: "Art. 6 Abs. 2 GG", gloss: "Erziehung ist natürliches Recht der Eltern, der Staat wacht darüber · F 10" },
-        { label: "Art. 7 Abs. 1 GG", gloss: "das gesamte Schulwesen steht unter Aufsicht des Staates · F 10" },
-        { label: "Schulpflicht nicht im GG", gloss: "wird aus Art. 7 Abs. 1 GG hergeleitet, steht in Landesgesetzen · F 12" },
-        { label: "Bildung ist Ländersache", gloss: "darum gilt in Brandenburg das BbgSchulG · F 13" },
-        { label: "Schulaufsicht zweistufig", gloss: "oben MBJS, unten 4 staatliche Schulämter · F 87, 88" },
+        { label: "Grundrechte und Staatsorganisationsrecht", gloss: "zwei Teile des GG; Art. 6 und 7 regeln schulische Grundrechte · F 9", chips: ["Grundrechte: für Schulen wichtig", "Art. 6 und Art. 7 GG", "schulische Grundrechte"] },
+        { label: "Art. 6 Abs. 2 GG", gloss: "Erziehung ist natürliches Recht der Eltern, der Staat wacht darüber · F 10", chips: ["Pflege und Erziehung", "natürliche Recht der Eltern", "zuvörderst ihnen obliegende Pflicht", "staatliche Gemeinschaft wacht"] },
+        { label: "Art. 7 Abs. 1 GG", gloss: "das gesamte Schulwesen steht unter Aufsicht des Staates · F 10", chips: ["rot hinterlegt", "Herleitung der Schulpflicht", "Herleitung des Unparteilichkeitsgebots"] },
+        { label: "Schulpflicht nicht im GG", gloss: "wird aus Art. 7 Abs. 1 GG hergeleitet, steht in Landesgesetzen · F 12", chips: ["keine expliziten Vorgaben", "Landesverfassungen und Landesgesetze", "Beispiel Berlin § 42", "Brandenburg: § 37 BbgSchulG"] },
+        { label: "Bildung ist Ländersache", gloss: "darum gilt in Brandenburg das BbgSchulG · F 13", chips: ["Merksatz von F 13", "BbgSchulG vom 02.08.2002", "zuletzt geändert 2022", "Berlin: eigenes SchulG 2004", "Übersicht bei der KMK"] },
+        { label: "Schulaufsicht zweistufig", gloss: "oben MBJS, unten 4 staatliche Schulämter · F 87, 88", chips: ["Ministerium für Bildung, Jugend und Sport", "Neuruppin, Brandenburg, Frankfurt (Oder), Cottbus", "Schulräte: Fachaufsicht", "Lehrerstellen", "Dienstvorgesetzte der Lehrkräfte"] },
       ] },
     { id: "schule", label: "Schule und Mitwirkung", sub: "§§ 6, 7, 74, 81, 83 · F 15 bis 18, 75 bis 84", seite: "left", karte: "schule",
       chips: ["§ 6 Anstalt", "§ 7 Selbstständig", "§ 74 Mitwirkung", "§ 81 Eltern", "§ 83 Klassensprecher"],
       kinder: [
-        { label: "§ 6 Rechtsstellung", gloss: "nichtrechtsfähige öffentliche Anstalt des Schulträgers · F 16" },
-        { label: "Schulträger (§ 100)", gloss: "Gemeinde (Grundschule), Landkreis oder kreisfreie Stadt (weiterführend) · F 16" },
-        { label: "§ 7 Selbstständigkeit", gloss: "Schulprofil, Schulprogramm, interne und externe Evaluation · F 17" },
-        { label: "§ 74 Mitwirkungsrechte", gloss: "Eltern, Schüler (dem Alter entsprechend) und Lehrkräfte gestalten mit · F 77" },
-        { label: "§ 81 Elternversammlung", gloss: "ein Fünftel kann einberufen, zwei Vertreter, dreimal im Jahr · F 82" },
-        { label: "§ 83 Klassensprecher", gloss: "ab Jahrgang 4 zwei gewählt, zwei Stunden je Schulmonat frei · F 84" },
-        { label: "Fallbeispiel spickmich.de", gloss: "BGH: Bewertung von Lehrkräften ist Meinungsäußerung · F 80" },
+        { label: "§ 6 Rechtsstellung", gloss: "nichtrechtsfähige öffentliche Anstalt des Schulträgers · F 16", chips: ["keine eigene juristische Person", "Bevollmächtigung: Rechtsgeschäfte", "Abs. 2: versuchsweise", "Genehmigung des Ministeriums"] },
+        { label: "Schulträger (§ 100)", gloss: "Gemeinde (Grundschule), Landkreis oder kreisfreie Stadt (weiterführend) · F 16", chips: ["Gemeinde bei Grundschulen", "Landkreis", "kreisfreie Stadt", "weiterführende Schulen"] },
+        { label: "§ 7 Selbstständigkeit", gloss: "Schulprofil, Schulprogramm, interne und externe Evaluation · F 17", chips: ["Abs. 1: Profilierung", "Abstimmung mit Schulträger und Schulamt", "Abs. 2: Schulprogramm", "Abs. 5: Personalmittel", "Abs. 6: partnerschaftliches Zusammenwirken"] },
+        { label: "§ 74 Mitwirkungsrechte", gloss: "Eltern, Schüler (dem Alter entsprechend) und Lehrkräfte gestalten mit · F 77", chips: ["Selbstständigkeit gemäß § 7", "partnerschaftliches Zusammenwirken", "demokratisches Schulleben", "nicht personensorgeberechtigte Elternteil", "Gremien, Schulleben, Unterricht"] },
+        { label: "§ 81 Elternversammlung", gloss: "ein Fünftel kann einberufen, zwei Vertreter, dreimal im Jahr · F 82", chips: ["Mehrzahl der Schülerschaft minderjährig", "mindestens einem Fünftel", "Lernentwicklung statt Notengebung", "Aufrücken statt Versetzung", "zwei Elternvertreter, dreimal im Jahr"] },
+        { label: "§ 83 Klassensprecher", gloss: "ab Jahrgang 4 zwei gewählt, zwei Stunden je Schulmonat frei · F 84", chips: ["Ab Jahrgang 4", "zwei Klassensprecher", "zwei Stunden je Schulmonat", "Jahrgangsstufen 1 bis 3: herangeführt"] },
+        { label: "Fallbeispiel spickmich.de", gloss: "BGH: Bewertung von Lehrkräften ist Meinungsäußerung · F 80", chips: ["Schüler benoten Lehrkräfte", "BGH", "Meinungsäußerungen", "berufliche Tätigkeit", "Privatsphäre: stärkerer Schutz"] },
       ] },
     { id: "pflicht", label: "Schulstruktur und Schulpflicht", sub: "§§ 15 bis 17, 36 bis 38 · F 19 bis 25", seite: "left", karte: "pflicht",
       chips: ["Primarstufe 1 bis 6", "§ 36", "§ 37 Stichtag", "§ 38 zehn Jahre"],
       kinder: [
-        { label: "§ 15 innere, § 16 äußere Organisation", gloss: "Bildungsgänge; Schulstufen und Jahrgangsstufen · F 20" },
-        { label: "Primarstufe 1 bis 6, Sek I 7 bis 10", gloss: "Brandenburg: sechs Jahre Grundschule · F 20" },
-        { label: "§ 17 Abschlüsse", gloss: "von Berufsbildungsreife bis Abitur · F 21" },
-        { label: "§ 36 Grundsätze", gloss: "wer in Brandenburg wohnt, lebt oder arbeitet; auch bei Asyl und Duldung · F 23" },
-        { label: "§ 37 Beginn", gloss: "sechs bis 30. September, Start 1. August; Antragskinder bis 31. Dezember · F 24" },
-        { label: "§ 38 Dauer", gloss: "zehn Jahre; Befreiung nach Jg. 8 und neun Schulbesuchsjahren · F 25" },
+        { label: "§ 15 innere, § 16 äußere Organisation", gloss: "Bildungsgänge; Schulstufen und Jahrgangsstufen · F 20", chips: ["§ 15: Bildungsgänge", "gemeinsame Bildungsziele", "§ 16: Schulstufen und Jahrgangsstufen"] },
+        { label: "Primarstufe 1 bis 6, Sek I 7 bis 10", gloss: "Brandenburg: sechs Jahre Grundschule · F 20", chips: ["Sekundarstufe II: gymnasiale Oberstufe", "Gesamtschule, Gymnasium, Oberschule", "Oberstufenzentrum", "Förderschule", "Schule des 2. Bildungsweges"] },
+        { label: "§ 17 Abschlüsse", gloss: "von Berufsbildungsreife bis Abitur · F 21", chips: ["Hauptschulabschluss/Berufsbildungsreife", "Realschulabschluss/Fachoberschulreife", "Fachhochschulreife", "allgemeine Hochschulreife/Abitur", "Jeder Abschluss hat zwei Namen"] },
+        { label: "§ 36 Grundsätze", gloss: "wer in Brandenburg wohnt, lebt oder arbeitet; auch bei Asyl und Duldung · F 23", chips: ["Wohnung", "gewöhnlicher Aufenthalt", "Ausbildungs- oder Arbeitsstätte", "Asylantrag", "geduldet"] },
+        { label: "§ 37 Beginn", gloss: "sechs bis 30. September, Start 1. August; Antragskinder bis 31. Dezember · F 24", chips: ["schulärztliche Untersuchung", "Sprachstandsfeststellung", "bis zum 30. September", "am 1. August", "Antragskinder: 1. Oktober bis 31. Dezember"] },
+        { label: "§ 38 Dauer", gloss: "zehn Jahre; Befreiung nach Jg. 8 und neun Schulbesuchsjahren · F 25", chips: ["Grundschule + Sekundarstufe I", "10 Jahre", "nach Jahrgangsstufe 8", "neun Schulbesuchsjahren", "gleichwertige berufliche Förderung"] },
       ] },
     { id: "takehome", label: "Zahlen-Spickzettel", sub: "alle Zahlen und Zuständigkeiten", seite: "left", karte: "zahlen", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Fristen und Zahlen", gloss: "30. September, 1. August, zehn Jahre, zwei Wochen, ein Fünftel" },
-        { label: "Wer entscheidet was", gloss: "Klassenlehrer, Klassenkonferenz, Konferenz der Lehrkräfte, Schulamt, Ministerium" },
-        { label: "Paragrafen-Landkarte", gloss: "welcher § in welchem Teil des BbgSchulG steht" },
+        { label: "Fristen und Zahlen", gloss: "30. September, 1. August, zehn Jahre, zwei Wochen, ein Fünftel", chips: [] },
+        { label: "Wer entscheidet was", gloss: "Klassenlehrer, Klassenkonferenz, Konferenz der Lehrkräfte, Schulamt, Ministerium", chips: [] },
+        { label: "Paragrafen-Landkarte", gloss: "welcher § in welchem Teil des BbgSchulG steht", chips: [] },
       ] },
     { id: "verhaeltnis", label: "Schulverhältnis", sub: "§§ 44 bis 47, 57/58, 63/64 · F 26 bis 41", seite: "right", karte: "verhaeltnis",
       chips: ["§ 44 Pflichten", "§ 46 Information", "§ 47 Meinung", "Zeugnisarten", "§§ 63/64 Stufen"],
       kinder: [
-        { label: "§ 44 Anspruch und Pflicht", gloss: "Unterricht und Ferien; Teilnahmepflicht, Hausaufgaben, Tests · F 27" },
-        { label: "Fallbeispiel sonstige Mitarbeit", gloss: "Nichtversetzung bei Schweigen ist rechtens (VG Aachen) · F 28, 29" },
-        { label: "§ 46 Information und Beteiligung", gloss: "Eltern dürfen Unterricht besuchen; Volljährige: nur mit Erlaubnis · F 30, 31" },
-        { label: "§ 47 Meinungsfreiheit", gloss: "frei äußern ja; politische Werbung nein; Sponsoring erlaubt · F 32" },
-        { label: "§§ 57/58 Zeugnisse", gloss: "Abschluss-, Abgangs-, Überweisungszeugnis · F 34, 38" },
-        { label: "§§ 63/64 Grundsätze", gloss: "Erziehung vor Ordnung; Züchtigung verboten; vorher anhören · F 40, 41" },
-        { label: "Sechs Ordnungsmaßnahmen", gloss: "vom schriftlichen Verweis bis zur Verweisung von allen Schulen · F 41" },
+        { label: "§ 44 Anspruch und Pflicht", gloss: "Unterricht und Ferien; Teilnahmepflicht, Hausaufgaben, Tests · F 27", chips: ["Abs. 2: Unterricht und Ferien", "Abs. 3: regelmäßig teilnehmen", "verbindlich erklärten Arbeiten", "Hausaufgaben anzufertigen", "Tests, Untersuchungen und Befragungen"] },
+        { label: "Fallbeispiel sonstige Mitarbeit", gloss: "Nichtversetzung bei Schweigen ist rechtens (VG Aachen) · F 28, 29", chips: ["Jahrgangsstufe 12", "4 Fächer mangelhaft", "Verwaltungsgericht Aachen 2010", "nicht aktiv zu verlangen", "selbst verpflichtet mitzuwirken"] },
+        { label: "§ 46 Information und Beteiligung", gloss: "Eltern dürfen Unterricht besuchen; Volljährige: nur mit Erlaubnis · F 30, 31", chips: ["Information und Beratung", "Lernentwicklung, Leistungsstand", "nach vorheriger Anmeldung", "Volljährige: Erlaubnis", "Ausnahme: Entlassung, Fehlzeiten"] },
+        { label: "§ 47 Meinungsfreiheit", gloss: "frei äußern ja; politische Werbung nein; Sponsoring erlaubt · F 32", chips: ["Wort, Schrift und Bild", "Schranken: Jugendschutz, Ehre", "Abs. 2: Politische Werbung", "Abs. 4: Sponsoring", "Rechte der Schulträger"] },
+        { label: "§§ 57/58 Zeugnisse", gloss: "Abschluss-, Abgangs-, Überweisungszeugnis · F 34, 38", chips: ["Noten, Punkte, schriftliche Informationen", "VV-Zeugnisse 2011", "VV-Leistungsbewertung 2011", "Abgangszeugnis: ohne Abschluss", "Überweisungszeugnis: Schulwechsel"] },
+        { label: "§§ 63/64 Grundsätze", gloss: "Erziehung vor Ordnung; Züchtigung verboten; vorher anhören · F 40, 41", chips: ["Schutz von Personen und Sachen", "an die Einsicht", "entwürdigende Maßnahmen", "schwerwiegend + Erziehungsmaßnahme wirkungslos", "vor der Entscheidung anzuhören"] },
+        { label: "Sechs Ordnungsmaßnahmen", gloss: "vom schriftlichen Verweis bis zur Verweisung von allen Schulen · F 41", chips: ["Verweis: Klassenlehrer", "parallele Klasse: Konferenz der Lehrkräfte", "bis zu zwei Wochen: Klassenkonferenz", "andere Schule, Entlassung: Schulamt", "Verweisung: Zustimmung des Ministeriums"] },
       ] },
     { id: "lehrkraefte", label: "Lehrkräfte", sub: "§ 67, Fortbildung, Aufsicht · F 42 bis 51, 65 bis 74", seite: "right", karte: "lehrkraefte",
       chips: ["§ 67 eigene Verantwortung", "Fortbildungspflicht", "HH · HB · BY", "§ 146 Aufsicht", "Einzelfall"],
       kinder: [
-        { label: "Lehrkraft ist, wer …", gloss: "an einer Schule selbstständig Unterricht erteilt · F 43" },
-        { label: "§ 67 Abs. 2", gloss: "unterrichten und erziehen in eigener Verantwortung · F 45, 46" },
-        { label: "§ 67 Abs. 3 Fortbildung", gloss: "Kenntnisse ständig aktualisieren, auch in der unterrichtsfreien Zeit · F 46" },
-        { label: "BbgLeBiG § 9", gloss: "Fortbildung erhält, festigt, erweitert · F 48" },
-        { label: "Hamburg, Bremen, Bayern", gloss: "nur drei Länder mit Zeitumfang: 30 h, 30 h, 12 Tage in 4 Jahren · F 50, 51" },
-        { label: "Aufsichtspflicht § 146", gloss: "vor Schaden bewahren, Schaden durch Schüler verhindern; Dienstpflicht · F 71" },
-        { label: "Zwei Fallbeispiele", gloss: "Radiergummi: Schulleiter haftet; Steinwürfe: Klage abgewiesen · F 72 bis 74" },
+        { label: "Lehrkraft ist, wer …", gloss: "an einer Schule selbstständig Unterricht erteilt · F 43", chips: ["besondere Verantwortung", "gesetzlich klar geregelt", "wissen, anwenden, informieren"] },
+        { label: "§ 67 Abs. 2", gloss: "unterrichten und erziehen in eigener Verantwortung · F 45, 46", chips: ["Bildungs- und Erziehungsziele", "Rechts- und Verwaltungsvorschriften", "Beschlüsse der schulischen Gremien", "pädagogische Freiheit", "Recht und Pflicht zugleich"] },
+        { label: "§ 67 Abs. 3 Fortbildung", gloss: "Kenntnisse ständig aktualisieren, auch in der unterrichtsfreien Zeit · F 46", chips: ["Kenntnisse und Fähigkeiten", "in angemessenem Umfang", "herangezogen werden", "auch Lehrkräften an Ersatzschulen"] },
+        { label: "BbgLeBiG § 9", gloss: "Fortbildung erhält, festigt, erweitert · F 48", chips: ["Brandenburgisches Lehrerbildungsgesetz", "Abschnitt 3", "Erhaltung, Festigung, Erweiterung", "sich verändernden Rahmenbedingungen"] },
+        { label: "Hamburg, Bremen, Bayern", gloss: "nur drei Länder mit Zeitumfang: 30 h, 30 h, 12 Tage in 4 Jahren · F 50, 51", chips: ["Hamburg: 30 h, Portfolio", "Bremen: 30 h", "Bayern: 12 Tage über 4 Jahre", "bundesweit allgemeine Fortbildungspflicht", "Kuschel et al. 2020"] },
+        { label: "Aufsichtspflicht § 146", gloss: "vor Schaden bewahren, Schaden durch Schüler verhindern; Dienstpflicht · F 71", chips: ["VV-Aufsicht", "Fürsorge- und Aufsichtspflicht", "Schulweg: keine Aufsicht", "Unterrichtsweg", "Minderjährige"] },
+        { label: "Zwei Fallbeispiele", gloss: "Radiergummi: Schulleiter haftet; Steinwürfe: Klage abgewiesen · F 72 bis 74", chips: ["Radiergummischlacht", "BGH 1972: Schulleiter", "Steinwürfe in den Pool", "Klage abgewiesen", "Umstände des Einzelfalls"] },
       ] },
     { id: "neutral", label: "Neutralität", sub: "BeamtStG § 33, Beutelsbach · F 52 bis 64", seite: "right", karte: "neutral",
       chips: ["Mythos Neutralität", "Mäßigung", "Unparteilichkeit", "Beutelsbach 1976"],
       kinder: [
-        { label: "Mythos Neutralitätsgebot", gloss: "eine völlige Pflicht zur Neutralität gibt es nicht · F 52, 56" },
-        { label: "BeamtStG § 33 Abs. 2 Mäßigung", gloss: "Meinung nicht verbergen, sondern angemessen mäßigen · F 56" },
-        { label: "BeamtStG § 33 Abs. 1 Unparteilichkeit", gloss: "dem ganzen Volk dienen, nicht einer Partei; gilt auch ohne Beamtenstatus · F 61" },
-        { label: "Art. 5 GG und § 47 Abs. 2", gloss: "Meinungsfreiheit vs. Verbot politischer Werbung · F 53, 54" },
-        { label: "Beutelsbacher Konsens", gloss: "Überwältigungsverbot, Kontroversitätsgebot, Schülerorientierung · F 62, 63" },
+        { label: "Mythos Neutralitätsgebot", gloss: "eine völlige Pflicht zur Neutralität gibt es nicht · F 52, 56", chips: ["Joachim Wieland", "bpb-Artikel", "einseitig oder provokativ werben", "kritische Auseinandersetzung gefordert", "keine Parteipolitik"] },
+        { label: "BeamtStG § 33 Abs. 2 Mäßigung", gloss: "Meinung nicht verbergen, sondern angemessen mäßigen · F 56", chips: ["Mäßigung und Zurückhaltung", "politischer Betätigung", "nicht völlig verborgen", "Wrase 2020", "eigene Positionen vertreten"] },
+        { label: "BeamtStG § 33 Abs. 1 Unparteilichkeit", gloss: "dem ganzen Volk dienen, nicht einer Partei; gilt auch ohne Beamtenstatus · F 61", chips: ["unparteiisch und gerecht", "freiheitliche demokratische Grundordnung", "auch nicht verbeamtete Lehrkräfte", "Art. 7 Abs. 1 GG", "einseitige Beeinflussung vorbeugen"] },
+        { label: "Art. 5 GG und § 47 Abs. 2", gloss: "Meinungsfreiheit vs. Verbot politischer Werbung · F 53, 54", chips: ["Wort, Schrift und Bild", "Schranken: Jugendschutz, Ehre", "politische Sticker", "§ 4 BbgSchulG: Werteordnung"] },
+        { label: "Beutelsbacher Konsens", gloss: "Überwältigungsverbot, Kontroversitätsgebot, Schülerorientierung · F 62, 63", chips: ["1976", "Überwältigungsverbot: keine Indoktrination", "Kontroversitätsgebot: kontrovers darstellen", "Schülerorientierung: eigene Interessenlage", "didaktisches Grundprinzip, kein Gesetz"] },
       ] },
   ],
   grafiken: [
@@ -2301,62 +2371,62 @@ THEMEN.push({
     { id: "begriff", label: "Motivationsbegriff", sub: "Heckhausen, Spinath · F 6 bis 8", seite: "left", karte: "begriff",
       chips: ["Richtung, Dauer, Intensität", "Lernmotivation", "Erwartung + Wert", "Zielorientierung"],
       kinder: [
-        { label: "Definition Heckhausen 1989", gloss: "hypothetisches Konstrukt: Richtung, Dauer und Intensität von Verhalten · F 6" },
-        { label: "Motivation → Handlung", gloss: "Zustand, der Verhalten aktiviert und aufrechterhält · F 6" },
-        { label: "Lernmotivation", gloss: "Sammelbegriff: Warum lernt eine Person? (Spinath 2015) · F 7" },
-        { label: "Wichtigste Konstrukte", gloss: "intrinsisch/extrinsisch, Interesse, Erwartungen und Werte, Ziele, Leistungsmotiv · F 7" },
-        { label: "Vier Einflussgrößen", gloss: "Erfolgserwartung + Attribution, Wertüberzeugung, Spaß, Zielorientierung · F 8" },
+        { label: "Definition Heckhausen 1989", gloss: "hypothetisches Konstrukt: Richtung, Dauer und Intensität von Verhalten · F 6", chips: ["Richtung: was", "Dauer: wie lange", "Intensität: wie stark", "gedachter Begriff"] },
+        { label: "Motivation → Handlung", gloss: "Zustand, der Verhalten aktiviert und aufrechterhält · F 6", chips: ["zwei Kästen mit Pfeil", "Vier Leitfragen", "bei der Sache zu bleiben", "denkt und fühlt"] },
+        { label: "Lernmotivation", gloss: "Sammelbegriff: Warum lernt eine Person? (Spinath 2015) · F 7", chips: ["Spinath 2015, S. 46", "theoretische Konstrukte", "Was treibt die Person an?"] },
+        { label: "Wichtigste Konstrukte", gloss: "intrinsisch/extrinsisch, Interesse, Erwartungen und Werte, Ziele, Leistungsmotiv · F 7", chips: ["intrinsische und extrinsische Motivation", "Interesse", "Erwartungen und Werte", "Ziele", "Leistungsmotiv"] },
+        { label: "Vier Einflussgrößen", gloss: "Erfolgserwartung + Attribution, Wertüberzeugung, Spaß, Zielorientierung · F 8", chips: ["Gründe für Erfolg vs. Misserfolg", "erwarteter Nutzen", "Spaß als eigener Kasten", "Fähigkeiten demonstrieren und erweitern"] },
       ] },
     { id: "kontinuum", label: "Intrinsisch vs. extrinsisch", sub: "SDT-Kontinuum · F 10 bis 11", seite: "left", karte: "kontinuum",
       chips: ["Amotivation", "external", "introjiziert", "identifiziert", "integriert", "intrinsisch"],
       kinder: [
-        { label: "Intrinsische Motivation", gloss: "hohe Leistung, Ausdauer, Wohlbefinden, Berufswahl · F 10" },
-        { label: "Extrinsische Motivation", gloss: "geringe Ausdauer, geringes Interesse und Engagement · F 10" },
-        { label: "Amotivation", gloss: "„Ich lerne, aber ich finde es nicht spaßig oder sinnvoll\" · F 11" },
-        { label: "Vier Stufen extrinsisch", gloss: "external → introjiziert → identifiziert → integriert · F 11" },
-        { label: "Deci und Ryan 2004", gloss: "Selbstbestimmungstheorie der Motivation · F 11" },
+        { label: "Intrinsische Motivation", gloss: "hohe Leistung, Ausdauer, Wohlbefinden, Berufswahl · F 10", chips: ["Spaß macht und mich interessiert", "Aufmerksamkeit, Ausdauer", "Kompetenzerleben, Wohlbefinden", "Wahl der Ausbildung und des Berufes"] },
+        { label: "Extrinsische Motivation", gloss: "geringe Ausdauer, geringes Interesse und Engagement · F 10", chips: ["weil man das so von mir erwartet", "geringe Ausdauer", "geringes Interesse und Engagement", "= Stufe External"] },
+        { label: "Amotivation", gloss: "„Ich lerne, aber ich finde es nicht spaßig oder sinnvoll\" · F 11", chips: ["keine Motivation", "nicht spaßig oder sinnvoll", "außerhalb des Balkens", "nicht extrinsisch"] },
+        { label: "Vier Stufen extrinsisch", gloss: "external → introjiziert → identifiziert → integriert · F 11", chips: ["External: Druck von außen", "Introjiziert: weil es dazugehört", "Identifiziert: Abschluss machen", "Integriert: eigene Werte"] },
+        { label: "Deci und Ryan 2004", gloss: "Selbstbestimmungstheorie der Motivation · F 11", chips: ["Kontinuum", "immer selbstbestimmter", "vier Stufen"] },
       ] },
     { id: "absinken", label: "Absinken der Motivation", sub: "Entwicklung im Schulverlauf · F 12 bis 16", seite: "left", karte: "absinken",
       chips: ["Fredricks & Eccles", "Jugendalter", "Havighurst", "Stage-Environment-Fit"],
       kinder: [
-        { label: "Grundschule intrinsisch, dann Abnahme", gloss: "Fredricks & Eccles 2002, Kurven Mathematik und Sport · F 12, 13" },
-        { label: "Besonders stark im Jugendalter", gloss: "Anderman & Midgley 1997; Jacobs et al. 2002 · F 15" },
-        { label: "Entwicklungspsychologisch", gloss: "Entwicklungsaufgaben der Adoleszenz (Havighurst 1972) · F 15" },
-        { label: "Sozialkognitiv", gloss: "mangelnde Passung Person ↔ Umwelt, Stage-Environment-Fit (Eccles) · F 16" },
+        { label: "Grundschule intrinsisch, dann Abnahme", gloss: "Fredricks & Eccles 2002, Kurven Mathematik und Sport · F 12, 13", chips: ["Klasse 3 bis 12", "Wichtigkeit und Interesse", "Interesse fällt durchgehend", "Wichtigkeit steigt ab Klasse 9"] },
+        { label: "Besonders stark im Jugendalter", gloss: "Anderman & Midgley 1997; Jacobs et al. 2002 · F 15", chips: [] },
+        { label: "Entwicklungspsychologisch", gloss: "Entwicklungsaufgaben der Adoleszenz (Havighurst 1972) · F 15", chips: ["Autonomieentwicklung", "Peerbeziehungen", "Identitätsfindung", "Werte und Moralvorstellungen", "Bedeutung der Schule nimmt ab"] },
+        { label: "Sozialkognitiv", gloss: "mangelnde Passung Person ↔ Umwelt, Stage-Environment-Fit (Eccles) · F 16", chips: ["Eccles et al. 1993", "Autonomiebedürfnis der Adoleszenz", "neue Lehrkräfte, größere Klassen", "Kompetenz und Leistung", "Lehrer-Schüler-Beziehung"] },
       ] },
     { id: "takehome", label: "Take Home", sub: "PISA 2022, Take Home · F 34 bis 38", seite: "left", karte: "vergleich", color: "var(--ink)",
       chips: [],
       kinder: [
-        { label: "Sekundarstufe: Motivation sinkt kontinuierlich", gloss: "Take Home 1 · F 38" },
-        { label: "Unterricht kann gegensteuern", gloss: "Feedback, Mitbestimmung, Lebensweltbezug, authentische Situationen, kollaborativ · F 38" },
-        { label: "PISA 2022", gloss: "Freude und Interesse an Mathematik sinken 2003 → 2012 → 2022 · PISA-Diagramm, PDF 37 (ohne Foliennummer)" },
+        { label: "Sekundarstufe: Motivation sinkt kontinuierlich", gloss: "Take Home 1 · F 38", chips: [] },
+        { label: "Unterricht kann gegensteuern", gloss: "Feedback, Mitbestimmung, Lebensweltbezug, authentische Situationen, kollaborativ · F 38", chips: [] },
+        { label: "PISA 2022", gloss: "Freude und Interesse an Mathematik sinken 2003 → 2012 → 2022 · PISA-Diagramm, PDF 37 (ohne Foliennummer)", chips: [] },
       ] },
     { id: "sdt", label: "Drei Grundbedürfnisse", sub: "Selbstbestimmungstheorie · F 18", seite: "right", karte: "sdt",
       chips: ["Autonomie", "Kompetenz", "Eingebundenheit"],
       kinder: [
-        { label: "Autonomie", gloss: "Gefühl, selbst Ursprung des Handelns zu sein · F 18" },
-        { label: "Kompetenz", gloss: "Gefühl, kompetent zu sein; eigenes Können zeigen können · F 18" },
-        { label: "Eingebundenheit", gloss: "Gefühl der Zugehörigkeit; Interesse an der eigenen Person erfahren · F 18" },
-        { label: "Folge", gloss: "Befriedigung der Grundbedürfnisse fördert intrinsische Motivation · F 18" },
+        { label: "Autonomie", gloss: "Gefühl, selbst Ursprung des Handelns zu sein · F 18", chips: [] },
+        { label: "Kompetenz", gloss: "Gefühl, kompetent zu sein; eigenes Können zeigen können · F 18", chips: [] },
+        { label: "Eingebundenheit", gloss: "Gefühl der Zugehörigkeit; Interesse an der eigenen Person erfahren · F 18", chips: [] },
+        { label: "Folge", gloss: "Befriedigung der Grundbedürfnisse fördert intrinsische Motivation · F 18", chips: [] },
       ] },
     { id: "merkmale", label: "Fünf Unterrichtsmerkmale", sub: "Was fördert Motivation? · F 19 bis 28", seite: "right", karte: "merkmale",
       chips: ["Autonomie", "Kompetenz", "Unterstützendes Klima", "Persönliche Relevanz", "Feedback"],
       kinder: [
-        { label: "Aufbau der Grafik", gloss: "3 Merkmale (F 19) → 4 (F 23) → 5 (F 28) → intrinsische Motivation" },
-        { label: "Autonomie fördern", gloss: "Mitbestimmung, Freiräume, Aufgabenwahl, Kritik zulassen (Schiefele 2015) · F 20" },
-        { label: "Kompetenzerleben fördern", gloss: "Feedback, Lerntagebuch, Portfolio, Aufgabenklarheit · F 21" },
-        { label: "Unterstützendes Klima", gloss: "= soziale Eingebundenheit: zugewandt, gemeinsame Klassenregeln · F 22" },
-        { label: "Persönliche Relevanz", gloss: "Lebensweltbezug, Alltagskontexte (Stuckey et al. 2014) · F 24" },
-        { label: "Relevanz-Intervention, ARCS", gloss: "Texte über Nützlichkeit (Schreier 2014); ARCS-Kriterien (Keller 1983) · F 25 und 27" },
+        { label: "Aufbau der Grafik", gloss: "3 Merkmale (F 19) → 4 (F 23) → 5 (F 28) → intrinsische Motivation", chips: ["Anwendung der Selbstbestimmungstheorie", "Alltagsbezug im Erwartungs-Wert-Modell", "kollaborative Lernformen: nur F 38"] },
+        { label: "Autonomie fördern", gloss: "Mitbestimmung, Freiräume, Aufgabenwahl, Kritik zulassen (Schiefele 2015) · F 20", chips: ["Auswahl des Lernstoffes", "Projektunterricht", "selbstständige Wahl von Aufgaben", "offene Lerngelegenheiten", "Diskussionsformate, offene Fragen"] },
+        { label: "Kompetenzerleben fördern", gloss: "Feedback, Lerntagebuch, Portfolio, Aufgabenklarheit · F 21", chips: ["regelmäßiges und aufgabenbezogenes Feedback", "Lerntagebücher, Portfolios", "Aufgabenklarheit", "Verständlichkeit der Lehrinhalte", "Deci & Ryan 2004"] },
+        { label: "Unterstützendes Klima", gloss: "= soziale Eingebundenheit: zugewandt, gemeinsame Klassenregeln · F 22", chips: ["zugewandt, interessiert, anteilnehmend", "partnerschaftliches Verhältnis", "gemeinsame Festlegung von Klassenregeln", "wertschätzend, respektvoll"] },
+        { label: "Persönliche Relevanz", gloss: "Lebensweltbezug, Alltagskontexte (Stuckey et al. 2014) · F 24", chips: ["Lebenswelt der SuS", "persönlich, gesellschaftlich, beruflich", "alltagsbezogene Kontexte", "gegenwärtige und zukünftige Bedürfnisse"] },
+        { label: "Relevanz-Intervention, ARCS", gloss: "Texte über Nützlichkeit (Schreier 2014); ARCS-Kriterien (Keller 1983) · F 25 und 27", chips: ["Themeneinführung mit Alltagsbeispielen", "Praxisorientierung im Mathematikunterricht", "kurze Texte über die persönliche Relevanz", "authentische Situationen", "Spannungssituationen"] },
       ] },
     { id: "feedback", label: "Feedback und Attribution", sub: "Hattie & Timperley, Weiner · F 29 bis 31", seite: "right", karte: "feedback",
       chips: ["feed up", "feed back", "feed forward", "internal/external", "stabil/variabel", "günstige Attribution"],
       kinder: [
-        { label: "1. feed up", gloss: "Was ist das Ziel? Zielzustand muss beiden klar sein · F 29" },
-        { label: "2. feed back", gloss: "Wie geht es voran? Auskunft über aktuellen Lernzustand · F 29" },
-        { label: "3. feed forward", gloss: "Was kommt als Nächstes? Weitere Schritte zum Ziel · F 29" },
-        { label: "Weiner: 2×2-Matrix", gloss: "internal/external × stabil/variabel · F 30 (PDF 30, 32, 33)" },
-        { label: "Günstige Attribution", gloss: "Erfolg internal; Misserfolg variabel (internal oder external) · F 31" },
+        { label: "1. feed up", gloss: "Was ist das Ziel? Zielzustand muss beiden klar sein · F 29", chips: [] },
+        { label: "2. feed back", gloss: "Wie geht es voran? Auskunft über aktuellen Lernzustand · F 29", chips: [] },
+        { label: "3. feed forward", gloss: "Was kommt als Nächstes? Weitere Schritte zum Ziel · F 29", chips: [] },
+        { label: "Weiner: 2×2-Matrix", gloss: "internal/external × stabil/variabel · F 30 (PDF 30, 32, 33)", chips: ["internal = in mir", "external = außen", "stabil = bleibt so", "variabel = kann sich ändern", "Kontrollüberzeugung"] },
+        { label: "Günstige Attribution", gloss: "Erfolg internal; Misserfolg variabel (internal oder external) · F 31", chips: ["Schuster 2017", "Erfolg: Begabung oder Anstrengung", "Misserfolg: fehlende Vorbereitung", "Misserfolg: Schwierigkeit der Aufgaben", "nie: Mathe kann ich einfach nicht"] },
       ] },
   ],
   grafiken: [
@@ -2706,7 +2776,9 @@ function mindmap(spec, opt) {
   const W = cx + o.rootW / 2 + o.rootGap + wR + o.pad;
   const cy = H / 2;
   let s = ""; let hlX = null;
-  const wrap = (href, inner, cls) => href ? `<a href="${esc(href)}" class="${cls || ""}">${inner}</a>` : `<g class="${cls || ""}">${inner}</g>`;
+  const geo = (z, x, y, w, h, name) => z ? ` data-ziel="${esc(z)}" data-name="${esc(name || "")}" data-x="${x}" data-y="${y}" data-w="${w}" data-h="${h}"` : "";
+  const plus = (z, x, y) => (o.notizen && z) ? `<g class="plus" data-ziel="${esc(z)}" transform="translate(${x},${y})"><circle r="8"/><text y="3.5" text-anchor="middle">+</text></g>` : "";
+  const wrap = (href, inner, cls, g) => href ? `<a href="${esc(href)}" class="${cls || ""}"${g || ""}>${inner}</a>` : `<g class="${cls || ""}"${g || ""}>${inner}</g>`;
   const drawSide = (S, dir) => {
     const y0 = cy - S.h / 2;
     for (const bl of S.blocks) {
@@ -2722,7 +2794,7 @@ function mindmap(spec, opt) {
         + (bl.b.sub ? `<text class="gloss" x="${tx + bl.titleW / 2}" y="${ty + 31}" text-anchor="middle">${esc(bl.b.sub)}</text>` : "");
       const isHl = (o.hl && bl.b.id === o.hl) || !!bl.b.hl;
       if (isHl) hlX = tx + bl.titleW / 2;
-      s += wrap(bl.b.href, inner, isHl ? "hl" : "");
+      s += wrap(bl.b.href, inner, isHl ? "hl" : "", geo(bl.b.ziel, tx, ty, bl.titleW, bl.titleH, bl.b.label)) + plus(bl.b.ziel, tx + bl.titleW, ty);
       const kx0 = dir > 0 ? tx + bl.titleW + o.kidGap : tx - o.kidGap;
       const ky0 = y0 + bl.y + bl.blockH / 2 - bl.kidsH / 2;
       const fromX = dir > 0 ? tx + bl.titleW : tx;
@@ -2733,7 +2805,7 @@ function mindmap(spec, opt) {
         let kin = `<rect class="box" x="${bx}" y="${by}" width="${r.boxW}" height="${r.boxH}" rx="5"/>`
           + `<text class="kt" x="${bx + 9}" y="${by + 16}">${esc(r.k.label)}</text>`
           + (r.k.gloss ? `<text class="gloss" x="${bx + 9}" y="${by + 29}">${esc(r.k.gloss)}</text>` : "");
-        s += wrap(r.k.href, kin, o.hl && r.k.id === o.hl ? "hl" : "");
+        s += wrap(r.k.href, kin, o.hl && r.k.id === o.hl ? "hl" : "", geo(r.k.ziel, bx, by, r.boxW, r.boxH, r.k.label)) + plus(r.k.ziel, bx + r.boxW, by);
         let ly = by + r.boxH + 4;
         for (const ln of r.lines) {
           let lx = dir > 0 ? bx : bx + r.boxW;
@@ -2750,10 +2822,10 @@ function mindmap(spec, opt) {
     }
   };
   drawSide(L, -1); drawSide(R, 1);
-  s += `<rect class="root" x="${cx - o.rootW / 2}" y="${cy - 26}" width="${o.rootW}" height="52" rx="10"/>`;
+  s += `<rect class="root" x="${cx - o.rootW / 2}" y="${cy - 26}" width="${o.rootW}" height="52" rx="10"${geo(spec.ziel, cx - o.rootW / 2, cy - 26, o.rootW, 52, spec.root[0])}/>` + plus(spec.ziel, cx + o.rootW / 2, cy - 26);
   s += `<text class="root-t" x="${cx}" y="${cy - 3}" text-anchor="middle">${esc(spec.root[0])}</text>`;
   s += `<text class="root-t" x="${cx}" y="${cy + 15}" text-anchor="middle" style="font-size:11.5px;font-weight:500">${esc(spec.root[1])}</text>`;
-  return { svg: `<svg viewBox="0 0 ${Math.ceil(W)} ${Math.ceil(H)}" width="${Math.ceil(W)}" role="img" aria-label="${esc(o.aria || "Mind-Map")}">${s}</svg>`, cx, hlX, W };
+  return { svg: `<svg viewBox="0 0 ${Math.ceil(W)} ${Math.ceil(H)}" width="${Math.ceil(W)}" role="img" aria-label="${esc(o.aria || "Mind-Map")}">${s}</svg>`, cx, hlX, W, H };
 }
 
 // Karte einsetzen und so scrollen, dass die Wurzel (oder der markierte Ast) sichtbar ist
@@ -2777,14 +2849,22 @@ function setzeMap(el, m) {
 const KURZ = { st1: "ST I", st2: "ST II", st3: "ST III", sq: "Schulqualität", sr: "Schulrecht", um: "Motivation" };
 
 function gesamtSpec() {
-  const mk = (t) => ({ id: t.id, label: t.label, sub: t.sub, color: t.color, href: `#thema/${t.id}`,
-    kinder: t.aeste.map((a) => ({ id: a.id, label: a.label, gloss: a.sub, chips: a.chips, href: `#thema/${t.id}/${a.id}` })) });
+  const mk = (t) => ({ id: t.id, label: t.label, sub: t.sub, color: t.color, href: `#thema/${t.id}`, ziel: t.id,
+    kinder: t.aeste.map((a) => ({ id: a.id, label: a.label, gloss: a.sub, chips: a.chips, href: `#thema/${t.id}/${a.id}`, ziel: `${t.id}/${a.id}` })) });
   const ids = THEMEN.map((t) => t.id);
   const left = ["st1", "st2", "st3"].filter((i) => ids.includes(i)).map((i) => mk(thema(i)));
   const right = ["sq", "sr", "um"].filter((i) => ids.includes(i)).map((i) => mk(thema(i)));
-  return { root: ["Schultheorie &", "Bildungsforschung"], left, right };
+  return { root: ["Schultheorie &", "Bildungsforschung"], ziel: "gesamt", left, right };
 }
 
+// Drei runde Knoepfe je Thema: Hoeren, Aeste-Quiz, Grafik-Quiz, mit gruenem Haken wenn erledigt
+function aktionen(track, t) {
+  const m = MANIFEST[track]; const da = m && m.dur;
+  const hoer = `<a class="rund ${da ? "" : "aus"}" href="#hoeren/${track}" title="${da ? "Anhören · " + minuten(m.dur) : "Noch nicht vertont, nur Text"}">▶${haken("hoeren:" + track)}</a>`;
+  const aeste = `<a class="rund" href="#quiz/${t ? t.id : "gesamt"}" title="Äste-Quiz">✎${haken("quiz:" + (t ? t.id : "gesamt"))}</a>`;
+  const graf = t ? `<a class="rund ${t.grafiken.length ? "" : "aus"}" href="#thema/${t.id}/grafiken" title="Grafiken ausfüllen">▦${haken("gquiz:" + t.id)}</a>` : `<a class="rund" href="#bquiz/gesamt" title="Begriffe-Quiz">Aa${haken("begriffe:gesamt")}</a>`;
+  return `<div class="aktionen">${hoer}${aeste}${graf}</div>`;
+}
 function viewGesamt(mitMap) {
   const n = THEMEN.reduce((a, t) => a + t.karten.length, 0);
   return `
@@ -2797,28 +2877,30 @@ function viewGesamt(mitMap) {
     <p class="lead">Sechs Oberthemen, ${THEMEN.reduce((a, t) => a + t.aeste.length, 0)} Unterthemen, ${n} Karten. Seitlich scrollen, am Handy zoomen, alles ist antippbar.</p></div>
   ${mitMap ? `<div class="map" id="map-gesamt"></div>` : ""}
   <div class="legende">${THEMEN.map((t) => `<span style="--bc:${t.color}">${esc(t.label)}</span>`).join("")}</div>
-  <div class="hoer-start" style="--bc:var(--ink)"><div><div class="eyebrow">Zum Hören</div><b>Die ganze Vorlesung in einem Kapitel</b><small>Stufe 1: alles einmal genannt, als Erzählung. Die Karte bleibt dabei verdeckt, am Ende trägst du die Äste selbst ein.</small></div>${playChip("gesamt", "gross") || '<span class="hint">folgt</span>'}</div>
-  <div class="themen-liste">${THEMEN.map((t) => `<a href="#thema/${t.id}" style="--bc:${t.color}"><b>${esc(t.label)}</b><small>${esc(t.sub)} · ${t.aeste.length} Unterthemen, ${t.karten.length} Karten · Folien ${esc(t.folien)}</small><span class="chips-zeile">${playChip(trackId(t))}<a class="play quiz" href="#quiz/${t.id}">✎ Äste-Quiz</a></span></a>`).join("")}</div>
+  <div class="themen-liste">
+    <div class="kachel gesamt" style="--bc:var(--ink)"><a class="titel" href="#hoeren/gesamt"><b>Die ganze Vorlesung in einem Kapitel</b><small>Stufe 1 · ${MANIFEST.gesamt && MANIFEST.gesamt.dur ? minuten(MANIFEST.gesamt.dur) : "Text"} · Karte bleibt verdeckt, am Ende trägst du die sechs Äste ein</small></a>${aktionen("gesamt", null)}</div>
+    ${THEMEN.map((t) => `<div class="kachel" style="--bc:${t.color}"><a class="titel" href="#thema/${t.id}"><b>${esc(t.label)}</b><small>${esc(t.sub)} · ${t.aeste.length} Unterthemen, ${t.karten.length} Karten</small></a>${aktionen(trackId(t), t)}</div>`).join("")}
+  </div>
   <p class="hint">Schulgeschichte, Unterrichtsqualität und Schulevaluation fehlen absichtlich: laut Rose nicht klausurrelevant, und es gibt dazu keinen Foliensatz.</p>
   <p class="stand">Stand 14.09.2026. Quelle: Vorlesungsfolien „Schultheorie und Bildungsforschung" (Lazarides, Uni Potsdam), jede Angabe mit Folientext und Folienbild abgeglichen. Bei Schulqualität und Schulrecht springen die aufgedruckten Nummern; angegeben ist immer die Nummer, die auf der Folie steht.</p>`;
 }
 
 function themaSpec(t) {
-  const mk = (a) => ({ id: a.id, label: a.label, sub: a.sub, color: a.color || t.color, href: `#karte/${t.id}/${a.karte}`,
-    kinder: a.kinder.map((k) => ({ label: k.label, gloss: k.gloss, href: `#karte/${t.id}/${k.karte || a.karte}` })) });
-  return { root: [t.label, t.sub], left: t.aeste.filter((a) => a.seite !== "right").map(mk), right: t.aeste.filter((a) => a.seite === "right").map(mk) };
+  const mk = (a) => ({ id: a.id, label: a.label, sub: a.sub, color: a.color || t.color, href: `#karte/${t.id}/${a.karte}`, ziel: `${t.id}/${a.id}`,
+    kinder: a.kinder.map((k, i) => ({ label: k.label, gloss: k.gloss, chips: k.chips, href: `#karte/${t.id}/${k.karte || a.karte}`, ziel: `${t.id}/${a.id}/${i}` })) });
+  return { root: [t.label, t.sub], ziel: t.id, left: t.aeste.filter((a) => a.seite !== "right").map(mk), right: t.aeste.filter((a) => a.seite === "right").map(mk) };
 }
 
 function viewThema(t, astId, mitMap) {
   return `
   <div class="stufe-kopf" style="--bc:${t.color}"><div class="nr">STUFE 2 · ${esc(t.label).toUpperCase()}</div><h2>${esc(t.sub)}</h2>
-    <p class="lead">${t.intro} Folien ${esc(t.folien)}.</p><div class="chips-zeile">${playChip(trackId(t), "gross")}<a class="play quiz" href="#quiz/${t.id}">✎ Äste-Quiz</a></div></div>
+    <p class="lead">${t.intro} Folien ${esc(t.folien)}.</p>${aktionen(trackId(t), t)}</div>
   ${mitMap ? `<div class="map" id="map-thema"></div>` : ""}
   <p class="hint">Jeder Knoten in der Karte oben: Fachbegriff, darunter in einfachen Worten, was er meint. Antippen öffnet die Karte dazu.</p>
   <div class="stufe-kopf" style="--bc:${t.color}"><h3>Karten dieses Themas</h3></div>
   <div class="kette" style="--bc:${t.color}">${t.karten.map((k) => `<a href="#karte/${t.id}/${k.id}">${esc(k.titel.split(":")[0])}${MANIFEST && MANIFEST[trackId(t, k)] ? " ▶" : ""}</a>`).join("")}<a href="#alle/${t.id}">Alle untereinander</a></div>
-  ${t.grafiken.length ? `<div class="stufe-kopf" style="--bc:${t.color}"><h3>Die Grafiken der Folien, nachgezeichnet</h3></div>
-  <div class="grafiken">${t.grafiken.map((g) => `<figure class="grafik"><span class="f-tag">${esc(g.ftag)}</span><h3>${esc(g.titel)}</h3>${g.svg}<figcaption>${g.caption}</figcaption></figure>`).join("")}</div>` : ""}
+  ${t.grafiken.length ? `<div class="stufe-kopf" style="--bc:${t.color}"><div class="mit-quiz"><h3>Die Grafiken der Folien, nachgezeichnet</h3>${haken("gquiz:" + t.id) ? '<i class="haken statisch" title="alle Grafiken richtig ausgefüllt">✓</i>' : `<span class="hint">${t.grafiken.filter((_, i) => erledigt(`gquiz:${t.id}:${i}`)).length} von ${t.grafiken.length} gelöst</span>`}</div></div>
+  <div class="grafiken" id="grafiken">${t.grafiken.map((g, i) => grafikHtml(t, i)).join("")}</div>` : ""}
   <div class="sprung" style="--bc:${t.color}"><a href="#gesamt">‹ Gesamtkarte</a><a class="primaer" href="#karte/${t.id}/${t.karten[0].id}">Erste Karte ›</a></div>`;
 }
 
@@ -2938,38 +3020,29 @@ async function ladeTrack(id) {
 }
 const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
-// ============ Hoeren-Ansicht ============
+// ============ Hoeren-Ansicht: Lyrics links, Karte/Grafik/Quiz rechts; der Player sitzt in der oberen Leiste ============
+function kapitelListe(aktivId) {
+  const tracks = trackListe();
+  const liste = (stufe) => tracks.filter((x) => x.stufe === stufe).map((x) => {
+    const m = MANIFEST[x.id]; const da = m && m.dur; const gehoert = (lesen("gehoert", {}))[x.id] || erledigt("hoeren:" + x.id);
+    return `<a class="tr ${x.id === aktivId ? "aktiv" : ""} ${da ? "" : "ohne"} ${gehoert ? "fertig" : ""}" href="#hoeren/${x.id}" style="--bc:${x.thema ? x.thema.color : "var(--ink)"}"><span>${esc(x.titel)}</span><small>${da ? minuten(m.dur) : (m ? "nur Text" : "folgt")}</small></a>`;
+  }).join("");
+  return `<h4>Stufe 1</h4><div class="trl">${liste(1)}</div><h4>Stufe 2 · Überblicke</h4><div class="trl">${liste(2)}</div><h4>Stufe 3 · Karten</h4><div class="trl">${liste(3)}</div>`;
+}
 function viewHoeren(info) {
   const t = info.thema, tracks = trackListe();
-  const idx = tracks.findIndex((x) => x.id === info.id), prev = tracks[idx - 1], next = tracks[idx + 1];
   const liste = (stufe) => tracks.filter((x) => x.stufe === stufe).map((x) => {
-    const m = MANIFEST[x.id]; const da = m && m.dur; const gehoert = (lesen("gehoert", {}))[x.id];
+    const m = MANIFEST[x.id]; const da = m && m.dur; const gehoert = (lesen("gehoert", {}))[x.id] || erledigt("hoeren:" + x.id);
     return `<a class="tr ${x.id === info.id ? "aktiv" : ""} ${da ? "" : "ohne"} ${gehoert ? "fertig" : ""}" href="#hoeren/${x.id}" style="--bc:${x.thema ? x.thema.color : "var(--ink)"}"><span>${esc(x.titel)}</span><small>${da ? minuten(m.dur) : (m ? "nur Text" : "folgt")}</small></a>`;
   }).join("");
   const stufeLabel = { 1: "STUFE 1 · GESAMT", 2: "STUFE 2 · " + (t ? t.label.toUpperCase() : ""), 3: "STUFE 3 · " + (t ? t.label.toUpperCase() : "") }[info.stufe];
   return `
   <div class="hoeren" style="--bc:${t ? t.color : "var(--ink)"}">
     <div class="links">
-      <div class="player" id="player">
-        <div class="stufe-kopf" style="margin:0 0 6px"><div class="nr">${esc(stufeLabel)}</div><h2 id="pl-titel">${esc(info.titel)}</h2></div>
-        <div class="zeile" id="pl-zeile"><input type="range" id="pl-seek" min="0" max="1000" value="0" aria-label="Position"><span class="zeit"><span id="pl-cur">0:00</span> / <span id="pl-dur">0:00</span></span></div>
-        <div class="knoepfe">
-          <a class="kn" href="${prev ? "#hoeren/" + prev.id : "#hoeren"}" title="Voriges Kapitel" ${prev ? "" : "aria-disabled='true'"}>⏮</a>
-          <button class="kn" id="pl-back" title="15 Sekunden zurück">−15</button>
-          <button class="kn gross" id="pl-play" title="Abspielen">▶</button>
-          <button class="kn" id="pl-fwd" title="15 Sekunden vor">+15</button>
-          <a class="kn" href="${next ? "#hoeren/" + next.id : "#hoeren"}" title="Nächstes Kapitel">⏭</a>
-          <select id="pl-rate" aria-label="Tempo"><option value="0.8">0,8×</option><option value="1" selected>1×</option><option value="1.15">1,15×</option><option value="1.3">1,3×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option></select>
-        </div>
-        <div class="schalter"><label><input type="checkbox" id="pl-folgen" checked> Karte folgt dem Ton</label><span id="pl-msg" class="hint"></span></div>
-      </div>
+      <div class="stufe-kopf" style="margin:0 0 6px"><div class="nr">${esc(stufeLabel)}</div><h2>${esc(info.titel)}</h2><div class="schalter"><label><input type="checkbox" id="pl-folgen" checked> Karte folgt dem Ton</label><span id="pl-msg" class="hint"></span></div></div>
       <div class="tabs" id="tabs"><button class="tab aktiv" data-tab="text">Text</button><button class="tab" data-tab="karte">Karte</button></div>
       <div class="transkript" id="transkript"><p class="hint">Text wird geladen …</p></div>
-      <details class="kapitel"><summary>Alle Kapitel</summary>
-        <h4>Stufe 1</h4><div class="trl">${liste(1)}</div>
-        <h4>Stufe 2 · Überblicke</h4><div class="trl">${liste(2)}</div>
-        <h4>Stufe 3 · Karten</h4><div class="trl">${liste(3)}</div>
-      </details>
+      <div class="naechstes" id="naechstes"></div>
     </div>
     <div class="rechts" id="pane"><div class="pane-kopf"><span id="pane-titel" class="eyebrow">Karte</span><a class="klein" id="pane-voll" href="#gesamt">Ganze Seite ↗</a></div><div id="pane-inhalt"></div></div>
   </div>`;
@@ -2981,9 +3054,8 @@ function verdecktHtml(txt, weiter) {
 
 // Was rechts steht, wenn kein Marker aktiv ist
 function paneStandard(info) {
-  const q = lesen("quiz", {});
-  if (info.stufe === 1) return q.gesamt ? { path: "gesamt", titel: "Gesamtkarte" } : { html: verdecktHtml("Die Karte bleibt verdeckt, bis das Kapitel zu Ende ist. Dann trägst du die Äste selbst ein.", ["Jetzt schon zum Quiz", "#quiz/gesamt"]), titel: "Verdeckt" };
-  if (info.stufe === 2) return q[info.thema.id] ? { path: "thema/" + info.thema.id, titel: info.thema.label } : { path: "gesamt", opts: { ohneKinder: info.thema.id }, titel: "Gesamtkarte (Äste von " + info.thema.label + " verdeckt)" };
+  if (info.stufe === 1) return erledigt("quiz:gesamt") ? { path: "gesamt", titel: "Gesamtkarte" } : { html: verdecktHtml("Die Karte bleibt verdeckt, bis das Kapitel zu Ende ist. Dann trägst du die Äste selbst ein.", null), titel: "Verdeckt" };
+  if (info.stufe === 2) return erledigt("quiz:" + info.thema.id) ? { path: "thema/" + info.thema.id, titel: info.thema.label } : { path: "gesamt", opts: { ohneKinder: info.thema.id }, titel: "Gesamtkarte (Äste von " + info.thema.label + " verdeckt)" };
   return { path: `karte/${info.thema.id}/${info.karte.id}`, titel: info.karte.titel.split(":")[0] };
 }
 function paneZeigen(info, was) {
@@ -2992,7 +3064,7 @@ function paneZeigen(info, was) {
   if (was.html) { el.innerHTML = was.html; tt.textContent = was.titel || ""; voll.hidden = true; return; }
   if (was.grafik != null && info.thema) {
     const g = info.thema.grafiken[was.grafik]; if (!g) return;
-    el.innerHTML = `<figure class="grafik"><span class="f-tag">${esc(g.ftag)}</span><h3>${esc(g.titel)}</h3>${g.svg}<figcaption>${g.caption}</figcaption></figure>`;
+    el.innerHTML = grafikHtml(info.thema, was.grafik);
     tt.textContent = "Grafik: " + g.titel; voll.hidden = false; voll.href = "#thema/" + info.thema.id; return;
   }
   renderPath(was.path, el, { eingebettet: true, ...(was.opts || {}) });
@@ -3002,48 +3074,31 @@ function paneZeigen(info, was) {
 async function starteHoeren(info) {
   const tr = await ladeTrack(info.id);
   const tk = document.getElementById("transkript"); if (!tk) return;
-  HP.id = info.id; HP.paras = tr.paras; HP.starts = tr.starts; HP.cur = -1; HP.folgen = true;
+  HP.info = info; HP.id = info.id; HP.paras = tr.paras; HP.starts = tr.starts; HP.cur = -1; HP.folgen = true; HP.audio = tr.audio;
+  if (HP.fertig && HP.fertig !== info.id) HP.fertig = null;
   tk.innerHTML = tr.paras.length ? tr.paras.map((p) => `<p class="abs ${p.aside ? "aside" : ""} ${p.titel ? "titel" : ""}" data-i="${p.i}">${p.aside ? '<span class="tag">nicht auf den Folien</span> ' : ""}${esc(p.text)}</p>`).join("")
     : `<p class="hint">Für dieses Kapitel gibt es noch keinen Text.</p>`;
   if (!tr.audio) document.getElementById("pl-msg").textContent = tr.paras.length ? "Noch nicht vertont, nur Text." : "";
   tk.querySelectorAll(".abs").forEach((p) => p.addEventListener("click", () => { const i = +p.dataset.i; if (HP.starts[i] != null && tr.audio) { AUDIO.currentTime = HP.starts[i]; AUDIO.play(); } }));
-  // Audio nur neu laden, wenn ein anderer Track laeuft (Navigieren innerhalb der Seite unterbricht sonst)
   const src = `hoeren/${info.id}.mp3`;
   if (tr.audio && !AUDIO.src.endsWith(src)) {
-    AUDIO.src = src; AUDIO.playbackRate = +document.getElementById("pl-rate").value;
+    AUDIO.src = src; AUDIO.playbackRate = lesen("rate", 1);
     const pos = (lesen("pos", {}))[info.id];
     if (pos) AUDIO.addEventListener("loadedmetadata", () => { AUDIO.currentTime = Math.min(pos, AUDIO.duration - 3); }, { once: true });
   }
-  paneZeigen(info, paneStandard(info));
-  bindePlayer(info, tr);
-  syncTick(info);
-}
-function bindePlayer(info, tr) {
-  const $ = (id) => document.getElementById(id);
-  const play = $("pl-play"), seek = $("pl-seek"), rate = $("pl-rate"), folgen = $("pl-folgen");
-  const zeichne = () => { play.textContent = AUDIO.paused ? "▶" : "❚❚"; play.title = AUDIO.paused ? "Abspielen" : "Pause"; };
-  play.onclick = () => { if (!tr.audio) return; AUDIO.paused ? AUDIO.play() : AUDIO.pause(); };
-  $("pl-back").onclick = () => { AUDIO.currentTime = Math.max(0, AUDIO.currentTime - 15); };
-  $("pl-fwd").onclick = () => { AUDIO.currentTime = Math.min(AUDIO.duration || 0, AUDIO.currentTime + 15); };
-  rate.value = String(lesen("rate", 1)); AUDIO.playbackRate = +rate.value;
-  rate.onchange = () => { AUDIO.playbackRate = +rate.value; speichern("rate", +rate.value); };
-  folgen.checked = HP.folgen; folgen.onchange = () => { HP.folgen = folgen.checked; if (HP.folgen) syncTick(info, true); };
-  seek.oninput = () => { if (AUDIO.duration) AUDIO.currentTime = seek.value / 1000 * AUDIO.duration; };
-  AUDIO.onplay = AUDIO.onpause = zeichne; zeichne();
-  if (AUDIO.duration && tr.audio) { $("pl-dur").textContent = fmt(AUDIO.duration); $("pl-cur").textContent = fmt(AUDIO.currentTime); seek.value = Math.round(AUDIO.currentTime / AUDIO.duration * 1000); }
-  AUDIO.ontimeupdate = () => { if (HP.id !== info.id) return; syncTick(info); if (AUDIO.duration) { seek.value = Math.round(AUDIO.currentTime / AUDIO.duration * 1000); $("pl-cur").textContent = fmt(AUDIO.currentTime); $("pl-dur").textContent = fmt(AUDIO.duration); } if (Math.floor(AUDIO.currentTime) % 5 === 0) { const p = lesen("pos", {}); p[info.id] = AUDIO.currentTime; speichern("pos", p); } };
-  AUDIO.onloadedmetadata = () => { $("pl-dur").textContent = fmt(AUDIO.duration); };
-  AUDIO.onended = () => { const g = lesen("gehoert", {}); g[info.id] = Date.now(); speichern("gehoert", g); const p = lesen("pos", {}); delete p[info.id]; speichern("pos", p); kapitelEnde(info); };
-  $("tabs").querySelectorAll(".tab").forEach((b) => b.onclick = () => { $("tabs").querySelectorAll(".tab").forEach((x) => x.classList.toggle("aktiv", x === b)); document.querySelector(".hoeren").dataset.tab = b.dataset.tab; });
-  // Links im rechten Pane bleiben im Pane (der Player laeuft weiter); "Ganze Seite" verlaesst ihn bewusst.
-  $("pane").addEventListener("click", (e) => {
-    const a = e.target.closest("a[href^='#']"); if (!a || a.id === "pane-voll" || a.classList.contains("play")) return;
-    const h = a.getAttribute("href").slice(1); if (/^(quiz|hoeren)/.test(h)) return;
+  const folgen = document.getElementById("pl-folgen"); folgen.checked = true; folgen.onchange = () => { HP.folgen = folgen.checked; if (HP.folgen) syncTick(info, true); };
+  document.getElementById("tabs").querySelectorAll(".tab").forEach((b) => b.onclick = () => { document.getElementById("tabs").querySelectorAll(".tab").forEach((x) => x.classList.toggle("aktiv", x === b)); document.querySelector(".hoeren").dataset.tab = b.dataset.tab; });
+  document.getElementById("pane").addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#']"); if (!a || a.id === "pane-voll" || a.classList.contains("play") || a.classList.contains("rund")) return;
+    const h = a.getAttribute("href").slice(1); if (/^(hoeren)/.test(h)) return;
     e.preventDefault(); HP.folgen = false; folgen.checked = false;
     paneZeigen(info, { path: h, titel: "" });
   });
+  if (HP.fertig === info.id) kapitelEnde(info, true); else paneZeigen(info, paneStandard(info));
+  naechstesZeichnen(); leisteZeichnen(); syncTick(info, true);
 }
 function syncTick(info, force) {
+  if (!HP.info || HP.info.id !== info.id) return;
   const t = AUDIO.currentTime; let i = -1;
   for (let k = 0; k < HP.starts.length; k++) if (HP.starts[k] <= t + 0.05) i = k;
   if (i === HP.cur && !force) return;
@@ -3051,30 +3106,152 @@ function syncTick(info, force) {
   document.querySelectorAll("#transkript .abs").forEach((p) => p.classList.toggle("aktiv", +p.dataset.i === i));
   const el = document.querySelector(`#transkript .abs[data-i="${i}"]`);
   if (el && HP.folgen && !AUDIO.paused) el.scrollIntoView({ block: "center", behavior: "smooth" });
-  if (!HP.folgen) return;
-  // Marker: die naechste Grafik/Karte ab dem aktuellen Absatz rueckwaerts gesucht
+  if (!HP.folgen || HP.fertig === info.id) return;
   let m = null; for (let k = i; k >= 0; k--) { if (HP.paras[k] && HP.paras[k].marker) { m = HP.paras[k].marker; break; } }
   if (m && m.grafik != null) paneZeigen(info, { grafik: m.grafik });
   else if (m && m.karte && info.thema) paneZeigen(info, { path: `karte/${info.thema.id}/${m.karte}`, titel: m.karte });
   else paneZeigen(info, paneStandard(info));
 }
-function kapitelEnde(info) {
-  const msg = document.getElementById("pl-msg"); if (!msg) return;
-  if (info.stufe === 1) msg.innerHTML = `Kapitel zu Ende. <a href="#quiz/gesamt">Jetzt die Äste eintragen ›</a>`;
-  else if (info.stufe === 2) msg.innerHTML = `Kapitel zu Ende. <a href="#quiz/${info.thema.id}">Jetzt die Unterthemen eintragen ›</a>`;
-  else { const n = trackListe(); const ix = n.findIndex((x) => x.id === info.id); msg.innerHTML = n[ix + 1] ? `Kapitel zu Ende. <a href="#hoeren/${n[ix + 1].id}">Weiter: ${esc(n[ix + 1].titel)} ›</a>` : "Das war das letzte Kapitel."; }
+
+// Welche Quizze zu einem Kapitel gehoeren (Schluessel in ERLEDIGT) und ob alle durch sind
+function quizPflicht(info) {
+  if (info.stufe === 1) return ["quiz:gesamt", "begriffe:gesamt"];
+  if (info.stufe === 2) return ["quiz:" + info.thema.id, ...(info.thema.grafiken.length ? ["gquiz:" + info.thema.id] : [])];
+  const kf = KARTEN_FRAGEN && KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id];
+  return kf && kf.ids && kf.ids.length ? ["fragen:" + info.thema.id + "/" + info.karte.id] : [];
 }
-// Mini-Leiste, wenn Audio laeuft und die Hoeren-Ansicht verlassen wurde
-const MINI = document.createElement("div"); MINI.id = "mini"; MINI.hidden = true; document.body.appendChild(MINI);
-function miniZeichnen() {
-  const inHoeren = location.hash.startsWith("#hoeren"); const info = HP.id && trackInfo(HP.id);
-  MINI.hidden = inHoeren || !info || !AUDIO.src;
-  if (MINI.hidden) return;
-  MINI.innerHTML = `<button id="mini-play">${AUDIO.paused ? "▶" : "❚❚"}</button><a href="#hoeren/${info.id}"><b>${esc(info.titel)}</b><small>${fmt(AUDIO.currentTime)} / ${fmt(AUDIO.duration)}</small></a>`;
-  document.getElementById("mini-play").onclick = () => AUDIO.paused ? AUDIO.play() : AUDIO.pause();
+const quizzeFertig = (info) => quizPflicht(info).every(erledigt);
+function naechstesZeichnen() {
+  const el = document.getElementById("naechstes"); const info = HP.info; if (!el || !info) return;
+  const nx = naechsterTrack(info.id); const frei = quizzeFertig(info); const pflicht = quizPflicht(info);
+  const offen = pflicht.filter((k) => !erledigt(k)).length;
+  el.innerHTML = nx ? `<a class="btn-next ${frei ? "frei leuchtet" : "gesperrt"}" href="#hoeren/${nx.id}" ${frei ? "" : 'aria-disabled="true"'}>Nächstes Kapitel: ${esc(nx.titel)} ›</a><span class="hint">${frei ? "Alle Quizze zu diesem Kapitel sind durch." : pflicht.length ? `Erst die ${offen === 1 ? "eine offene Aufgabe" : offen + " offenen Aufgaben"} zu diesem Kapitel, dann geht es weiter.` : ""}</span>` : `<span class="hint">Das war das letzte Kapitel.</span>`;
+  if (frei && el.dataset.warFrei !== "1") { el.dataset.warFrei = "1"; }
 }
-AUDIO.addEventListener("play", miniZeichnen); AUDIO.addEventListener("pause", miniZeichnen);
-setInterval(() => { if (!MINI.hidden) { const s = MINI.querySelector("small"); if (s) s.textContent = `${fmt(AUDIO.currentTime)} / ${fmt(AUDIO.duration)}`; } }, 1000);
+// Welches Quiz nach einem Kapitel dran ist
+function quizNach(info) {
+  if (info.stufe === 1) return erledigt("quiz:gesamt") ? [["Begriffe", "#bquiz/gesamt"]] : [["Äste eintragen", "#quiz/gesamt"], ["Begriffe", "#bquiz/gesamt"]];
+  if (info.stufe === 2) return [["Unterthemen eintragen", "#quiz/" + info.thema.id], ["Grafiken", "#thema/" + info.thema.id + "/grafiken"]];
+  const kf = KARTEN_FRAGEN && KARTEN_FRAGEN[info.thema.id + "/" + info.karte.id];
+  return kf && kf.ids && kf.ids.length ? [["5 Klausurfragen", `index.html#quiz/${info.thema.id}/${info.karte.id}?n=5`]] : [["Zur Karte", `#karte/${info.thema.id}/${info.karte.id}`]];
+}
+// Kapitelende: kein Autoplay. Das Quiz erscheint direkt rechts im Pane, die Leiste und der passende Knopf leuchten.
+function kapitelEnde(info, still) {
+  if (!still) ereignis("hoeren", info.id, 1, 1, null);
+  HP.fertig = info.id;
+  const q = quizNach(info);
+  const msg = document.getElementById("pl-msg");
+  if (msg) msg.innerHTML = `<b>Kapitel abgeschlossen.</b> ${q.map(([l, h], i) => `<a class="${i ? "" : "primaer"}" href="${h}">${esc(l)} ›</a>`).join(" ")}`;
+  document.querySelectorAll(".rund").forEach((b) => { if (q.some(([, h]) => b.getAttribute("href") === h)) b.classList.add("leuchtet"); });
+  naechstesZeichnen();
+  // Quiz inline rechts: Stufe 1/2 Aeste-Quiz, Stufe 3 die Karte mit ihrer Fragen-Leiste
+  if (document.getElementById("pane-inhalt")) {
+    if (info.stufe === 1) paneZeigen(info, { path: "quiz/gesamt", titel: "Quiz: Äste eintragen" });
+    else if (info.stufe === 2) paneZeigen(info, { path: "quiz/" + info.thema.id, titel: "Quiz: Unterthemen von " + info.thema.label });
+    else paneZeigen(info, { path: `karte/${info.thema.id}/${info.karte.id}`, titel: info.karte.titel.split(":")[0] });
+    const tabs = document.getElementById("tabs"); if (tabs && innerWidth < 900) tabs.querySelector('[data-tab="karte"]').click();
+  }
+  leisteZeichnen();
+}
+
+// ============ Obere Leiste: Modus-Umschalter + Player-Widget ============
+const modus = () => location.hash.startsWith("#classic") ? "classic" : location.hash.startsWith("#hoeren") ? "hoeren" : "karte";
+let KARTE_HASH = "#gesamt", HOEREN_HASH = "#hoeren/gesamt";
+function leisteZeichnen() {
+  const m = modus(); document.querySelectorAll(".modi a").forEach((a) => a.classList.toggle("aktiv", a.dataset.modus === m));
+  document.querySelector('.modi a[data-modus="karte"]').href = KARTE_HASH; document.querySelector('.modi a[data-modus="hoeren"]').href = HOEREN_HASH;
+  const info = HP.info; const w = document.getElementById("widget");
+  if (!info) { w.innerHTML = `<a class="w-titel" href="#hoeren/gesamt"><b>Hörbuch</b><small>Kapitel 1: die ganze Vorlesung</small></a><button class="w-kn klein menu" id="w-menu" title="Alle Kapitel">☰</button>`; document.getElementById("w-menu").onclick = () => { const mn = document.getElementById("kapitel-menu"); mn.hidden = !mn.hidden; if (!mn.hidden) mn.innerHTML = kapitelListe(null); }; return; }
+  const fertig = HP.fertig === info.id; const q = fertig ? quizNach(info) : [];
+  w.classList.toggle("fertig", fertig);
+  w.innerHTML = `<button class="w-kn" id="pl-play" title="Abspielen">${AUDIO.paused ? "▶" : "❚❚"}</button>
+    <a class="w-titel" href="#hoeren/${info.id}"><b>${esc(info.titel)}</b><small id="w-zeit">${fertig ? "Kapitel abgeschlossen" : HP.audio ? `${fmt(AUDIO.currentTime)} / ${fmt(AUDIO.duration)}` : "nur Text"}</small></a>
+    <input type="range" id="pl-seek" min="0" max="1000" value="${AUDIO.duration ? Math.round(AUDIO.currentTime / AUDIO.duration * 1000) : 0}" aria-label="Position" ${HP.audio ? "" : "disabled"}>
+    <button class="w-kn klein" id="pl-back" title="15 Sekunden zurück">−15</button><button class="w-kn klein" id="pl-fwd" title="15 Sekunden vor">+15</button>
+    <select id="pl-rate" aria-label="Tempo">${[0.8, 1, 1.15, 1.3, 1.5, 1.75, 2].map((r) => `<option value="${r}" ${r === lesen("rate", 1) ? "selected" : ""}>${String(r).replace(".", ",")}×</option>`).join("")}</select>
+    ${fertig ? q.map(([l, h]) => `<a class="w-quiz" href="${h}">${esc(l)} ›</a>`).join("") : ""}
+    <button class="w-kn klein menu" id="w-menu" title="Alle Kapitel" aria-expanded="false">☰</button>`;
+  document.getElementById("w-menu").onclick = (e) => { const mn = document.getElementById("kapitel-menu"); const auf = mn.hidden; mn.hidden = !auf; e.target.setAttribute("aria-expanded", String(auf)); if (auf) mn.innerHTML = kapitelListe(HP.info && HP.info.id); };
+  document.getElementById("pl-play").onclick = () => { if (!HP.audio) return; AUDIO.paused ? AUDIO.play() : AUDIO.pause(); };
+  document.getElementById("pl-back").onclick = () => { AUDIO.currentTime = Math.max(0, AUDIO.currentTime - 15); };
+  document.getElementById("pl-fwd").onclick = () => { AUDIO.currentTime = Math.min(AUDIO.duration || 0, AUDIO.currentTime + 15); };
+  document.getElementById("pl-rate").onchange = (e) => { AUDIO.playbackRate = +e.target.value; speichern("rate", +e.target.value); };
+  document.getElementById("pl-seek").oninput = (e) => { if (AUDIO.duration) AUDIO.currentTime = e.target.value / 1000 * AUDIO.duration; };
+}
+AUDIO.addEventListener("play", () => { leisteZeichnen(); if (modus() === "hoeren") grafikenZudecken(document.getElementById("pane-inhalt")); });
+AUDIO.addEventListener("pause", () => { leisteZeichnen(); if (modus() === "hoeren" && HP.fertig !== HP.id) grafikenAufdecken(document.getElementById("pane-inhalt")); });
+AUDIO.addEventListener("timeupdate", () => {
+  if (!HP.info) return; syncTick(HP.info);
+  const z = document.getElementById("w-zeit"), sk = document.getElementById("pl-seek");
+  if (z && HP.fertig !== HP.id && AUDIO.duration) z.textContent = `${fmt(AUDIO.currentTime)} / ${fmt(AUDIO.duration)}`;
+  if (sk && AUDIO.duration && document.activeElement !== sk) sk.value = Math.round(AUDIO.currentTime / AUDIO.duration * 1000);
+  if (Math.floor(AUDIO.currentTime) % 5 === 0) { const p = lesen("pos", {}); p[HP.id] = AUDIO.currentTime; speichern("pos", p); }
+});
+AUDIO.addEventListener("loadedmetadata", leisteZeichnen);
+AUDIO.addEventListener("ended", () => { if (!HP.info) return; const g = lesen("gehoert", {}); g[HP.id] = Date.now(); speichern("gehoert", g); const p = lesen("pos", {}); delete p[HP.id]; speichern("pos", p); kapitelEnde(HP.info); });
+
+// ============ Grafiken mit Inline-Quiz: verdeckt, aufgedeckt (Auge), ausgefuellt (Stift) ============
+const OFFEN = new Set();          // temporaer aufgedeckt, Reset beim Neuladen
+const GQ = new Map();             // vorbereitete Luecken je Grafik (deterministisch)
+function gquizFuer(t, i) { const key = `${t.id}:${i}`; if (!GQ.has(key)) GQ.set(key, gquizVorbereiten(t.grafiken[i].svg)); return GQ.get(key); }
+function grafikHtml(t, i, opts = {}) {
+  const g = t.grafiken[i]; const key = `gquiz:${t.id}:${i}`; const geloest = erledigt(key); const offen = OFFEN.has(key); const q = gquizFuer(t, i);
+  const fuellt = opts.fuellt; const zeigeOriginal = geloest || offen || !q.luecken.length;
+  return `<figure class="grafik ${geloest ? "geloest" : ""}" data-key="${key}" data-t="${t.id}" data-i="${i}">
+    <div class="grafik-kopf"><span class="f-tag">${esc(g.ftag)}</span>${geloest ? '<i class="haken" title="richtig ausgefüllt">✓</i>' : q.luecken.length ? `<button type="button" class="rund klein g-auge ${offen ? "an" : ""}" title="${offen ? "Zudecken" : "Aufdecken"}">${offen ? "🙈" : "👁"}</button><button type="button" class="rund klein g-stift ${fuellt ? "an" : ""}" title="Ausfüllen">✎</button>` : ""}</div>
+    <h3>${esc(g.titel)}</h3>${zeigeOriginal ? g.svg : q.svg}
+    ${fuellt && !geloest ? `<form class="quiz-form g-form">${q.luecken.map((l) => `<label><span>(${l.nr})</span><input name="l${l.nr}" autocomplete="off" autocapitalize="off" placeholder="…" value="${esc((opts.werte || {})["l" + l.nr] || "")}" class="${(opts.falsch || []).includes(l.nr) ? "falsch" : ""}"></label>`).join("")}<div class="sprung"><button class="primaer" type="submit">Prüfen</button>${opts.hinweis ? `<span class="hint">${opts.hinweis}</span>` : ""}</div></form>` : ""}
+    ${zeigeOriginal ? `<figcaption>${g.caption}</figcaption>` : `<figcaption class="hint">Die großen Begriffe sind verdeckt. 👁 zeigt sie kurz, ✎ lässt dich eintragen; richtig ausgefüllt bleibt die Grafik offen.</figcaption>`}
+  </figure>`;
+}
+function figurNeu(fig, opts) { const t = thema(fig.dataset.t), i = +fig.dataset.i; fig.outerHTML = grafikHtml(t, i, opts); }
+function grafikenAufdecken(root) { if (!root) return; root.querySelectorAll("figure.grafik[data-key]").forEach((f) => { if (!erledigt(f.dataset.key)) { OFFEN.add(f.dataset.key); figurNeu(f); } }); }
+function grafikenZudecken(root) { if (!root) return; root.querySelectorAll("figure.grafik[data-key]").forEach((f) => { if (OFFEN.has(f.dataset.key)) { OFFEN.delete(f.dataset.key); figurNeu(f); } }); }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".g-auge, .g-stift"); if (!b) return;
+  const fig = b.closest("figure"); const key = fig.dataset.key;
+  if (b.classList.contains("g-auge")) { OFFEN.has(key) ? OFFEN.delete(key) : OFFEN.add(key); figurNeu(fig); }
+  else { const an = !fig.querySelector(".g-form"); if (an) OFFEN.delete(key); figurNeu(fig, { fuellt: an }); if (an) { const inp = document.querySelector(`figure[data-key="${key}"] input`); if (inp) inp.focus(); } }
+});
+document.addEventListener("submit", (e) => {
+  const f = e.target.closest("form.g-form"); if (!f) return; e.preventDefault();
+  const fig = f.closest("figure"); const t = thema(fig.dataset.t), i = +fig.dataset.i; const q = gquizFuer(t, i); const key = fig.dataset.key;
+  const werte = {}; const falsch = [];
+  for (const l of q.luecken) { const v = f.querySelector(`[name="l${l.nr}"]`).value.trim(); werte["l" + l.nr] = v; if (!passtLocker(v, l.begriff)) falsch.push(l.nr); }
+  const n = q.luecken.length - falsch.length;
+  ereignis("gquiz", `${t.id}:${i}`, n, q.luecken.length, { titel: t.grafiken[i].titel });
+  if (!falsch.length) { ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT); figurNeu(fig); const nf = document.querySelector(`figure[data-key="${key}"]`); if (nf) nf.insertAdjacentHTML("afterbegin", `<div class="feier">${feier()} Alle ${q.luecken.length} Begriffe richtig.</div>`); themaHakenPruefen(t); }
+  else figurNeu(fig, { fuellt: true, werte, falsch, hinweis: `${n} von ${q.luecken.length} richtig. Die rot markierten nochmal.` });
+});
+function themaHakenPruefen(t) { if (t.grafiken.every((_, i) => erledigt(`gquiz:${t.id}:${i}`)) && !erledigt("gquiz:" + t.id)) { ERLEDIGT["gquiz:" + t.id] = Date.now(); speichern("erledigt", ERLEDIGT); ereignis("gquiz", t.id, t.grafiken.length, t.grafiken.length, null); } }
+
+// ============ Lern-Ereignisse: gehoert, Aeste-Quiz, Grafik-Quiz (lokal + Supabase karten_events) ============
+let ERLEDIGT = lesen("erledigt", {});
+const erledigt = (key) => !!ERLEDIGT[key];
+const haken = (key) => erledigt(key) ? '<i class="haken" title="erledigt">✓</i>' : "";
+const evCfg = () => window.ST_CONFIG || {};
+const evRemote = () => !!(evCfg().supabaseUrl && evCfg().supabaseAnonKey && evCfg().syncCode);
+const evHdr = () => ({ apikey: evCfg().supabaseAnonKey, Authorization: "Bearer " + evCfg().supabaseAnonKey, "Content-Type": "application/json" });
+const bestanden = (art, punkte, von) => art === "hoeren" || art === "fragen" || (von > 0 && punkte / von >= (art === "gquiz" ? 0.7 : 0.8));
+function ereignis(art, ziel, punkte, von, detail) {
+  const key = art + ":" + ziel;
+  if (bestanden(art, punkte, von)) { ERLEDIGT[key] = Date.now(); speichern("erledigt", ERLEDIGT); naechstesZeichnen(); const el = document.getElementById("naechstes"); if (el && HP.info && quizzeFertig(HP.info) && art !== "hoeren") el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  const ev = { id: "e-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), raum: "rose", art, ziel, punkte, von, detail: detail || null };
+  const log = lesen("ereignisse", []); log.push({ ...ev, ts: Date.now() }); speichern("ereignisse", log.slice(-500));
+  if (evRemote()) fetch(`${evCfg().supabaseUrl}/rest/v1/karten_events`, { method: "POST", headers: evHdr(), body: JSON.stringify(ev) }).catch(() => {});
+}
+async function ereignisseLaden() {
+  if (!evRemote()) return;
+  try {
+    const r = await fetch(`${evCfg().supabaseUrl}/rest/v1/karten_events?raum=eq.rose&select=art,ziel,punkte,von,ts&order=ts.asc`, { headers: evHdr() });
+    if (!r.ok) return; let neu = false;
+    for (const e of await r.json()) { if (bestanden(e.art, e.punkte, e.von)) { const k = e.art + ":" + e.ziel; if (!ERLEDIGT[k]) { ERLEDIGT[k] = Date.parse(e.ts); neu = true; } } }
+    if (neu) { speichern("erledigt", ERLEDIGT); route(); }
+  } catch (e) {}
+}
+function naechsterTrack(id) { const l = trackListe(); const i = l.findIndex((x) => x.id === id); return l[i + 1] || null; }
+const EMOJIS = ["🎉", "🌟", "💪", "🧠", "🚀", "🦉", "🏆", "✨"];
+const feier = () => EMOJIS.sort(() => Math.random() - 0.5).slice(0, 3).join(" ");
 
 // ============ Quiz: Aeste eintragen ============
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9 ]/g, " ")
@@ -3128,16 +3305,116 @@ function starteQuiz(tid) {
     for (const ein of eingaben) { const ix = frei.findIndex((k) => passt(ein, k.keys)); if (ix >= 0) { treffer.set(frei[ix].id, ein); frei.splice(ix, 1); } }
     zeichne(treffer, false);
     const fehlt = frei; const q = lesen("quiz", {}); q[tid] = { richtig: [...treffer.keys()], von: kand.length, datum: Date.now() }; speichern("quiz", q);
-    const weiter = t ? [["Weiter zur Themenkarte", "#thema/" + t.id], ["Erste Karte anhören", "#hoeren/" + trackId(t, t.karten[0])]] : [["Gesamtkarte ansehen", "#gesamt"], ["Weiter: Überblick " + THEMEN[0].label, "#hoeren/" + trackId(THEMEN[0])]];
-    document.getElementById("quiz-ergebnis").innerHTML = `<div class="karte" style="--bc:${t ? t.color : "var(--st1)"}"><header><div class="wer">Ergebnis</div><h3>${treffer.size} von ${kand.length} Äste getroffen</h3></header>
+    ereignis("quiz", tid, treffer.size, kand.length, { getroffen: [...treffer.keys()] });
+    const ok = !fehlt.length;
+    const naechst = t ? naechsterTrack(trackId(t)) : naechsterTrack("gesamt");
+    const weiter = ok
+      ? (t ? [["Zur Themenkarte", "#thema/" + t.id], ["Grafiken ausfüllen", "#thema/" + t.id + "/grafiken"], ...(naechst ? [["Nächstes Kapitel hören: " + naechst.titel, "#hoeren/" + naechst.id]] : [])] : [["Gesamtkarte ansehen", "#gesamt"], ["Weiter: die wichtigsten Begriffe", "#bquiz/gesamt"]])
+      : [[t ? "Zur Themenkarte" : "Zur Gesamtkarte", t ? "#thema/" + t.id : "#gesamt"]];
+    document.getElementById("quiz-ergebnis").innerHTML = `<div class="karte ${ok ? "bestanden" : ""}" style="--bc:${t ? t.color : "var(--st1)"}"><header><div class="wer">Ergebnis</div><h3>${ok ? feier() + " " : ""}${treffer.size} von ${kand.length} Äste getroffen</h3></header>
       ${treffer.size ? `<div class="block"><h4>Getroffen</h4><div class="kette">${[...treffer].map(([id, ein]) => `<a class="ok">${esc(kand.find((k) => k.id === id).label)}<small> („${esc(ein)}")</small></a>`).join("")}</div></div>` : ""}
       ${fehlt.length ? `<div class="block"><h4>Noch verdeckt</h4><p class="hint">${fehlt.length} ${fehlt.length === 1 ? "Ast fehlt" : "Äste fehlen"}. Nochmal versuchen, oder aufdecken.</p><div class="sprung"><button class="primaer" id="quiz-nochmal" type="button">Nochmal</button><button id="quiz-auf" type="button">Aufdecken</button></div></div>` : `<div class="block"><h4>Alles drin</h4><p class="hint">Die Karte sortiert sich in die richtige Reihenfolge.</p></div>`}
-      <div class="sprung">${weiter.map(([l, h], i) => `<a class="${i ? "primaer" : ""}" href="${h}">${esc(l)} ›</a>`).join("")}</div></div>`;
+      <div class="sprung">${weiter.map(([l, h], i) => `<a class="${i === weiter.length - 1 && ok ? "primaer" : ""}" href="${h}">${esc(l)} ›</a>`).join("")}</div></div>`;
     const auf = () => { zeichne(treffer, true); document.getElementById("quiz-ergebnis").querySelector("h4:last-of-type"); const f = document.getElementById("quiz-ergebnis"); f.insertAdjacentHTML("beforeend", `<div class="karte" style="--bc:${t ? t.color : "var(--st1)"}"><div class="block"><h4>Das waren die fehlenden</h4><div class="kette">${fehlt.map((k) => `<a class="fehl">${esc(k.label)}</a>`).join("")}</div></div></div>`); };
     const nb = document.getElementById("quiz-nochmal"), ab = document.getElementById("quiz-auf");
     if (nb) nb.onclick = () => { document.getElementById("quiz-ergebnis").innerHTML = ""; e.target.querySelectorAll("input").forEach((i) => { const k = kand.find((c) => passt(i.value, c.keys)); if (!k || !treffer.has(k.id)) i.value = ""; }); };
     if (ab) ab.onclick = auf;
     if (!fehlt.length) setTimeout(() => zeichne(treffer, true), 600);
+  };
+}
+
+// ============ Grafik-Quiz: die grossen Begriffe einer Grafik ausblenden ============
+// Luecken = die fetten Beschriftungen (.bt). Aufeinanderfolgende .bt-Zeilen im selben <g> sind EIN Begriff
+// ("Politisches" + "System"). Hoechstens sechs Luecken je Grafik, sonst wird es zu tief.
+// Grafik-Luecken: ein Stichwort reicht. Trifft die Eingabe ein langes Wort des Begriffs (ab 7 Zeichen)
+// oder die Haelfte seiner Woerter, gilt die Luecke als getroffen ("Wirtschaft" fuer "Wirtschafts- und Beschaeftigungssystem").
+function passtLocker(input, begriff) {
+  const a = norm(input); if (a.length < 3) return false; if (passt(input, [norm(begriff)])) return true;
+  const at = a.split(" "); const wt = norm(begriff).split(" ").filter((w) => w.length >= 4);
+  const hit = (w) => at.some((x) => x === w || (x.length >= 5 && (x.includes(w) || w.includes(x))) || lev(x, w) <= Math.floor(w.length / 4));
+  const treffer = wt.filter(hit);
+  return treffer.some((w) => w.length >= 7) || (wt.length && treffer.length >= Math.ceil(wt.length / 2));
+}
+function gquizVorbereiten(svgHtml) {
+  const box = document.createElement("div"); box.innerHTML = svgHtml; const svg = box.querySelector("svg");
+  const gruppen = []; const gesehen = new Set();
+  for (const txt of svg.querySelectorAll("text.bt")) {
+    if (gesehen.has(txt)) continue;
+    const teile = [txt]; let n = txt.nextElementSibling;
+    while (n && n.tagName === "text" && n.classList.contains("bt")) { teile.push(n); gesehen.add(n); n = n.nextElementSibling; }
+    const begriff = teile.map((x) => x.textContent.trim()).join(" ").replace(/\s+/g, " ");
+    if (begriff.length < 3 || /^[\d\s.,:;–-]+$/.test(begriff)) continue;
+    gruppen.push({ begriff, teile });
+  }
+  const wahl = gruppen.length > 6 ? gruppen.sort(() => Math.random() - 0.5).slice(0, 6) : gruppen;
+  wahl.forEach((g, i) => { g.nr = i + 1; g.teile.forEach((x, j) => { x.textContent = j === 0 ? `(${g.nr})` : ""; x.classList.add("luecke"); }); });
+  return { svg: box.innerHTML, luecken: wahl.map((g) => ({ nr: g.nr, begriff: g.begriff })) };
+}
+function viewGquiz(t, idx) {
+  const alle = idx == null; const reihenfolge = alle ? t.grafiken.map((_, i) => i).sort(() => Math.random() - 0.5) : [idx];
+  return `
+  <div class="stufe-kopf" style="--bc:${t.color}"><div class="nr">GRAFIK-QUIZ · ${esc(t.label).toUpperCase()}</div><h2>${alle ? `Alle ${t.grafiken.length} Grafiken, zufällige Reihenfolge` : esc(t.grafiken[idx].titel)}</h2>
+    <p class="lead">Die großen Begriffe sind ausgeblendet. Trag ein, was an den nummerierten Stellen steht; Stichwort reicht. Pro Grafik ein Punkt ab 70 Prozent.</p></div>
+  <div id="gquiz-stand" class="hint"></div>
+  <div id="gquiz-buehne" data-reihe="${reihenfolge.join(",")}"></div>`;
+}
+function starteGquiz(t, idx) {
+  const buehne = document.getElementById("gquiz-buehne"); const reihe = buehne.dataset.reihe.split(",").map(Number); let pos = 0; let punkte = 0; const ergebnisse = [];
+  const zeige = () => {
+    const gi = reihe[pos]; const g = t.grafiken[gi]; const q = gquizVorbereiten(g.svg);
+    document.getElementById("gquiz-stand").textContent = reihe.length > 1 ? `Grafik ${pos + 1} von ${reihe.length} · bisher ${punkte} Punkt${punkte === 1 ? "" : "e"}` : "";
+    buehne.innerHTML = `<figure class="grafik"><span class="f-tag">${esc(g.ftag)}</span><h3>${esc(g.titel)}</h3>${q.svg}</figure>
+      <form class="quiz-form" id="gquiz-form">${q.luecken.map((l) => `<label><span>(${l.nr})</span><input name="l${l.nr}" autocomplete="off" autocapitalize="off" placeholder="…"></label>`).join("")}
+      <div class="sprung"><button class="primaer" type="submit">Prüfen</button><a href="#thema/${t.id}">‹ Abbrechen</a></div></form><div id="gquiz-ergebnis"></div>`;
+    document.getElementById("gquiz-form").onsubmit = (e) => {
+      e.preventDefault();
+      const treffer = q.luecken.map((l) => ({ ...l, ein: e.target.querySelector(`[name="l${l.nr}"]`).value.trim(), ok: passtLocker(e.target.querySelector(`[name="l${l.nr}"]`).value, l.begriff) }));
+      const n = treffer.filter((x) => x.ok).length; const punkt = q.luecken.length && n / q.luecken.length >= 0.7; if (punkt) punkte++;
+      ergebnisse.push({ grafik: gi, richtig: n, von: q.luecken.length });
+      ereignis("gquiz", `${t.id}:${gi}`, n, q.luecken.length, { titel: g.titel });
+      buehne.querySelector("figure").outerHTML = `<figure class="grafik"><span class="f-tag">${esc(g.ftag)}</span><h3>${esc(g.titel)}</h3>${g.svg}<figcaption>${g.caption}</figcaption></figure>`;
+      e.target.querySelectorAll("button, input").forEach((x) => x.disabled = true);
+      const letzte = pos === reihe.length - 1;
+      const weiter = letzte ? (() => {
+        if (reihe.length > 1) ereignis("gquiz", t.id, punkte, reihe.length, { ergebnisse });
+        const ok = punkte === reihe.length; const nx = naechsterTrack(trackId(t));
+        return `<div class="sprung">${ok ? `<a href="#thema/${t.id}">Zur Themenkarte</a>${nx ? `<a class="primaer" href="#hoeren/${nx.id}">Nächstes Kapitel hören: ${esc(nx.titel)} ›</a>` : ""}` : `<a class="primaer" href="#gquiz/${t.id}${reihe.length > 1 ? "" : "/" + gi}">Nochmal</a><a href="#thema/${t.id}">Zur Themenkarte</a>`}</div>`;
+      })() : `<div class="sprung"><button class="primaer" type="button" id="gquiz-weiter">Nächste Grafik ›</button></div>`;
+      document.getElementById("gquiz-ergebnis").innerHTML = `<div class="karte ${punkt ? "bestanden" : ""}" style="--bc:${t.color}"><header><div class="wer">Ergebnis</div><h3>${punkt ? feier() + " " : ""}${n} von ${q.luecken.length} Begriffe${letzte && reihe.length > 1 ? ` · insgesamt ${punkte} von ${reihe.length} Punkten` : ""}</h3></header>
+        <div class="block"><div class="kette">${treffer.map((x) => `<a class="${x.ok ? "ok" : "fehl"}">(${x.nr}) ${esc(x.begriff)}${x.ok ? "" : x.ein ? ` <small>(„${esc(x.ein)}")</small>` : ""}</a>`).join("")}</div></div>${weiter}</div>`;
+      const wb = document.getElementById("gquiz-weiter"); if (wb) wb.onclick = () => { pos++; zeige(); window.scrollTo(0, 0); };
+    };
+  };
+  zeige();
+}
+
+// ============ Begriffs-Quiz zu Kapitel 1: Definition steht, Begriff wird eingetragen ============
+const BEGRIFFE_GESAMT = [
+  { satz: "Theorien, die beschreiben, wie Schule ist, statt zu fordern, wie sie sein soll, heißen …", begriff: "empirisch-analytisch", alias: ["empirisch", "empirisch analytisch", "analytisch"] },
+  { satz: "Theorien, die sagen, wie Schule sein soll, heißen …", begriff: "normativ", alias: ["normative", "normativ orientiert"] },
+  { satz: "Parsons' Funktion, bei der die Schule Werte und Normen weitergibt, gegenüber dem politischen System: …", begriff: "Sozialisations-/Integrationsfunktion", alias: ["sozialisation", "sozialisationsfunktion", "integration", "integrationsfunktion"] },
+  { satz: "Parsons' Funktion, bei der die Schule mit Noten sortiert, wer später welchen Platz bekommt: …", begriff: "Selektionsfunktion", alias: ["selektion"] },
+  { satz: "Fends Begriff für die Weitergabe der Kultur, Werte und Symbolsysteme: …", begriff: "Enkulturation", alias: ["enkulturationsfunktion"] },
+  { satz: "Bourdieus Begriff für die erworbene Haltung, den Lebensstil, wie man redet und sich bewegt: …", begriff: "Habitus", alias: [] },
+  { satz: "Boudons Effekt, bei dem die Herkunft die Bildungsentscheidung beeinflusst, auch bei gleicher Leistung: …", begriff: "sekundäre Herkunftseffekte", alias: ["sekundär", "sekundaere herkunftseffekte", "sekundärer herkunftseffekt"] },
+  { satz: "Die Wirkung der Zusammensetzung einer Schülerschaft über das einzelne Merkmal hinaus: …", begriff: "Kompositionseffekt", alias: ["kompositionseffekte", "komposition"] },
+  { satz: "Der Grundgesetz-Artikel, der das gesamte Schulwesen unter die Aufsicht des Staates stellt: …", begriff: "Art. 7 GG", alias: ["artikel 7", "art 7", "7"] },
+];
+function viewBquiz() {
+  return `<div class="stufe-kopf" style="--bc:var(--st1)"><div class="nr">QUIZ · KAPITEL 1</div><h2>Die wichtigsten Begriffe</h2><p class="lead">Neun Sätze aus dem Kapitel, jeweils fehlt der Begriff. Stichwort reicht.</p>${haken("begriffe:gesamt") ? '<p class="hint">Schon einmal bestanden. Nochmal geht immer.</p>' : ""}</div>
+  <form class="quiz-form bquiz" id="bquiz-form">${BEGRIFFE_GESAMT.map((b, i) => `<label class="breit"><span>${esc(b.satz)}</span><input name="b${i}" autocomplete="off" autocapitalize="off" placeholder="…"></label>`).join("")}<div class="sprung"><button class="primaer" type="submit">Prüfen</button></div></form><div id="bquiz-ergebnis"></div>`;
+}
+function starteBquiz() {
+  const f = document.getElementById("bquiz-form"); if (!f) return;
+  f.onsubmit = (e) => {
+    e.preventDefault(); let n = 0; const zeilen = [];
+    BEGRIFFE_GESAMT.forEach((b, i) => { const inp = f.querySelector(`[name="b${i}"]`); const v = inp.value.trim(); const ok = passt(v, [norm(b.begriff), ...b.alias.map(norm)]) || (v && b.alias.map(norm).includes(norm(v))); inp.classList.toggle("falsch", !ok); if (ok) n++; zeilen.push({ b, v, ok }); });
+    ereignis("begriffe", "gesamt", n, BEGRIFFE_GESAMT.length, null);
+    const ok = n / BEGRIFFE_GESAMT.length >= 0.8; const nx = naechsterTrack("gesamt");
+    document.getElementById("bquiz-ergebnis").innerHTML = `<div class="karte ${ok ? "bestanden" : ""}" style="--bc:var(--st1)"><header><div class="wer">Ergebnis</div><h3>${ok ? feier() + " " : ""}${n} von ${BEGRIFFE_GESAMT.length} richtig</h3></header>
+      <div class="block"><div class="kette">${zeilen.map((z) => `<a class="${z.ok ? "ok" : "fehl"}">${esc(z.b.begriff)}${z.ok ? "" : z.v ? ` <small>(„${esc(z.v)}")</small>` : ""}</a>`).join("")}</div></div>
+      <div class="sprung">${ok ? `${nx ? `<a class="primaer" href="#hoeren/${nx.id}">Nächstes Kapitel hören: ${esc(nx.titel)} ›</a>` : ""}` : `<button class="primaer" type="button" id="bquiz-nochmal">Nochmal (nur die roten)</button>`}</div></div>`;
+    const nb = document.getElementById("bquiz-nochmal"); if (nb) nb.onclick = () => { document.getElementById("bquiz-ergebnis").innerHTML = ""; f.querySelectorAll("input.falsch").forEach((i) => { i.value = ""; i.classList.remove("falsch"); }); };
   };
 }
 
@@ -3148,21 +3425,105 @@ function pfad(items, hoch) {
   h.hidden = !hoch; if (hoch) h.href = hoch;
 }
 
+// ============ Notizen: an Dinge geheftet (Thema, Unterthema, Begriff) oder frei auf einer Karte ============
+// ziel = "st1" | "st1/parsons" | "st1/parsons/2" | "frei:gesamt" | "frei:thema:st1". Eine Notiz an "st1" erscheint
+// in der Gesamtkarte am Ast Schultheorie I UND in der Themenkarte an der Wurzel (Vererbung in beide Richtungen).
+let NOTIZEN_AN = lesen("notizenAn", false);
+let NOTIZEN = lesen("notizen", []);
+const CFG = window.ST_CONFIG || {};
+const NOTIZ_RAUM = "rose";
+const notizRemote = () => !!(CFG.supabaseUrl && CFG.supabaseAnonKey && CFG.syncCode);   // auf localhost aus (Testschutz)
+const notizHdr = () => ({ apikey: CFG.supabaseAnonKey, Authorization: "Bearer " + CFG.supabaseAnonKey, "Content-Type": "application/json" });
+function notizenLokal() { speichern("notizen", NOTIZEN); }
+async function notizenLaden() {
+  if (!notizRemote()) return;
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/rest/v1/karten_notizen?raum=eq.${NOTIZ_RAUM}&select=id,ziel,text,x,y,deleted,updated`, { headers: notizHdr() });
+    if (!r.ok) return;
+    const fern = await r.json(); let geaendert = false;
+    for (const f of fern) {
+      const ts = Date.parse(f.updated); const l = NOTIZEN.find((n) => n.id === f.id);
+      if (!l || ts > (l.updated || 0)) { const n = { id: f.id, ziel: f.ziel, text: f.text, x: f.x, y: f.y, deleted: f.deleted, updated: ts }; if (l) Object.assign(l, n); else NOTIZEN.push(n); geaendert = true; }
+    }
+    if (geaendert) { notizenLokal(); notizenZeichnen(); }
+  } catch (e) {}
+}
+async function notizSenden(n) {
+  if (!notizRemote()) return;
+  try { await fetch(`${CFG.supabaseUrl}/rest/v1/karten_notizen`, { method: "POST", headers: { ...notizHdr(), Prefer: "resolution=merge-duplicates" }, body: JSON.stringify({ id: n.id, raum: NOTIZ_RAUM, ziel: n.ziel, text: n.text, x: n.x, y: n.y, deleted: !!n.deleted }) }); } catch (e) {}
+}
+const notizTimer = new Map();
+function notizAendern(n, felder) {
+  Object.assign(n, felder, { updated: Date.now() }); notizenLokal();
+  clearTimeout(notizTimer.get(n.id)); notizTimer.set(n.id, setTimeout(() => notizSenden(n), 600));
+}
+function notizNeu(ziel, x, y) {
+  const n = { id: "n-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ziel, text: "", x, y, deleted: false, updated: Date.now() };
+  NOTIZEN.push(n); notizenLokal(); notizSenden(n); notizenZeichnen(n.id); return n;
+}
+// Zeichnet die Notizen, die zur aktuellen Hauptkarte gehoeren, als HTML-Schicht ueber das SVG
+function notizenZeichnen(fokusId) {
+  const el = document.getElementById("map-haupt"); const svg = el && el.querySelector("svg");
+  const alt = el && el.querySelector(".notiz-schicht"); if (alt) alt.remove();
+  if (!el || !svg || !NOTIZEN_AN || !MAP_KEY) return;
+  const vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect(), k = r.width / vb.width;
+  const basis = MAP_KEY === "gesamt" ? "gesamt" : "thema:" + MAP_KEY.split(":")[1];
+  const schicht = document.createElement("div"); schicht.className = "notiz-schicht"; schicht.style.width = r.width + "px"; schicht.style.height = r.height + "px";
+  const sichtbar = NOTIZEN.filter((n) => !n.deleted && (n.ziel === "frei:" + basis || svg.querySelector(`[data-ziel="${CSS.escape(n.ziel)}"]`)));
+  for (const n of sichtbar) {
+    let px, py, anker = null;
+    if (n.ziel.startsWith("frei:")) { px = n.x * k; py = n.y * k; }
+    else { anker = svg.querySelector(`[data-ziel="${CSS.escape(n.ziel)}"]`); px = (+anker.dataset.x + +anker.dataset.w + n.x) * k; py = (+anker.dataset.y + n.y) * k; }
+    const d = document.createElement("div"); d.className = "notiz"; d.dataset.id = n.id; d.style.left = px + "px"; d.style.top = py + "px";
+    d.innerHTML = `${anker ? '<span class="faden" title="haengt an ' + esc(anker.dataset.name || n.ziel) + '"></span>' : ""}<div class="griff"><span>${anker ? esc(anker.dataset.name || "").slice(0, 22) : "frei"}</span><button type="button" title="Löschen">×</button></div><div class="txt" contenteditable="true">${esc(n.text)}</div>`;
+    const txt = d.querySelector(".txt");
+    txt.addEventListener("input", () => notizAendern(n, { text: txt.innerText.trim() }));
+    d.querySelector("button").onclick = () => { if (txt.innerText.trim() && !confirm("Notiz löschen?")) return; notizAendern(n, { deleted: true }); notizSenden(n); d.remove(); };
+    // Ziehen am Griff, Position in SVG-Einheiten speichern
+    const g = d.querySelector(".griff"); let start = null;
+    g.addEventListener("pointerdown", (e) => { if (e.target.tagName === "BUTTON") return; start = { x: e.clientX, y: e.clientY, l: parseFloat(d.style.left), t: parseFloat(d.style.top) }; g.setPointerCapture(e.pointerId); e.preventDefault(); });
+    g.addEventListener("pointermove", (e) => { if (!start) return; d.style.left = start.l + e.clientX - start.x + "px"; d.style.top = start.t + e.clientY - start.y + "px"; });
+    g.addEventListener("pointerup", () => { if (!start) return; start = null; const L = parseFloat(d.style.left) / k, T = parseFloat(d.style.top) / k;
+      if (anker) notizAendern(n, { x: L - (+anker.dataset.x + +anker.dataset.w), y: T - +anker.dataset.y }); else notizAendern(n, { x: L, y: T }); });
+    schicht.appendChild(d);
+    if (fokusId === n.id) setTimeout(() => txt.focus(), 30);
+  }
+  el.appendChild(schicht);
+}
+function notizenBinden() {
+  const el = document.getElementById("map-haupt");
+  el.addEventListener("click", (e) => { const p = e.target.closest(".plus"); if (!p || !NOTIZEN_AN) return; e.preventDefault(); e.stopPropagation(); notizNeu(p.dataset.ziel, 10, -8); });
+  el.addEventListener("contextmenu", (e) => {
+    if (!NOTIZEN_AN) return; const svg = el.querySelector("svg"); if (!svg) return; e.preventDefault();
+    const node = e.target.closest("[data-ziel]:not(.plus)");
+    if (node) { notizNeu(node.dataset.ziel, 10, -8); return; }
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    const basis = MAP_KEY === "gesamt" ? "gesamt" : "thema:" + MAP_KEY.split(":")[1];
+    notizNeu("frei:" + basis, pt.x, pt.y);
+  });
+  const cb = document.getElementById("notizen-an"); cb.checked = NOTIZEN_AN;
+  cb.onchange = () => { NOTIZEN_AN = cb.checked; speichern("notizenAn", NOTIZEN_AN); MAP_KEY = null; route(); if (NOTIZEN_AN) notizenLaden(); };
+  addEventListener("resize", () => notizenZeichnen());
+  setInterval(() => { if (NOTIZEN_AN && !document.hidden) notizenLaden(); }, 30000);
+  if (NOTIZEN_AN) notizenLaden();
+}
+
 // Die Hauptkarte ueber dem Inhalt: bleibt ueber alle Stufen stehen, wechselt weich zwischen
 // Gesamtkarte und Themenkarte und markiert auf Stufe 3 den Ast der aktuellen Karte.
 let MAP_KEY = null;
-let mapZu = lesen("mapZu", null);
+let mapZu = lesen("mapZu", {});   // je Ebene: { karte: bool, sonst: bool }; Vorgabe: auf einer Karte eingeklappt
 function zeigeHauptkarte(key, titel, baue) {
   const sec = document.getElementById("karte-bereich"), el = document.getElementById("map-haupt"), tg = document.getElementById("map-toggle");
   const cs = document.getElementById("chips-schalter"), cb = document.getElementById("chips");
   if (!key) { sec.hidden = true; tg.hidden = true; MAP_KEY = null; return; }
   tg.hidden = false;
-  const zu = mapZu == null ? (innerWidth < 900 && key.startsWith("karte:")) : mapZu;
+  const ebene = key.startsWith("karte:") ? "karte" : "sonst";
+  const zu = mapZu[ebene] == null ? ebene === "karte" : mapZu[ebene];
   sec.hidden = zu; tg.textContent = zu ? "Karte einblenden" : "Karte ausblenden";
-  tg.onclick = () => { mapZu = !zu; speichern("mapZu", mapZu); MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
+  tg.onclick = () => { mapZu[ebene] = !zu; speichern("mapZu", mapZu); MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
   if (zu) return;
   document.getElementById("map-titel").textContent = titel;
-  cs.hidden = key !== "gesamt"; cb.checked = zeigeChips;
+  cs.hidden = false; cb.checked = zeigeChips;
   cb.onchange = () => { zeigeChips = cb.checked; MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
   const zoomen = (f) => { el.zoom = f == null ? 1 : Math.min(3, Math.max(0.5, (el.zoom || 1) * f)); MAP_KEY = null; zeigeHauptkarte(key, titel, baue); };
   document.getElementById("zoom-minus").onclick = () => zoomen(1 / 1.25);
@@ -3170,7 +3531,7 @@ function zeigeHauptkarte(key, titel, baue) {
   document.getElementById("zoom-fit").onclick = () => zoomen(null);
   if (MAP_KEY === key) return;
   const alt = MAP_KEY; MAP_KEY = key;
-  const zeichne = () => setzeMap(el, baue());
+  const zeichne = () => { const m = baue(); setzeMap(el, m); notizenZeichnen(); };
   if (alt && alt.split(":")[0] !== key.split(":")[0] || (alt && alt.startsWith("gesamt") !== key.startsWith("gesamt"))) {
     el.classList.add("wechsel"); setTimeout(() => { zeichne(); el.classList.remove("wechsel"); }, 180);
   } else zeichne();
@@ -3183,9 +3544,9 @@ function renderPath(path, view, opts = {}) {
   const t = p[1] && thema(p[1]);
   const emb = !!opts.eingebettet;
   const spalte = (html) => emb ? html : `<div class="inhalt">${html}</div>`;
-  const themaMap = (astId) => () => mindmap(themaSpec(t), { aria: "Themenkarte " + t.label, rootW: 200, hl: astId });
+  const themaMap = (astId) => () => mindmap(themaSpec(t), { aria: "Themenkarte " + t.label, rootW: 200, hl: astId, notizen: !emb && NOTIZEN_AN, chips: zeigeChips && !emb, chipMax: 260 });
   if (p[0] === "thema" && t) {
-    const ast = p[2] && t.aeste.find((a) => a.id === p[2]);
+    const ast = p[2] && p[2] !== "grafiken" && t.aeste.find((a) => a.id === p[2]);
     view.innerHTML = spalte(viewThema(t, ast && ast.id, emb));
     if (!emb) { pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`]], "#gesamt"); zeigeHauptkarte("thema:" + t.id + ":" + (ast ? ast.id : ""), "Themenkarte · " + t.label, themaMap(ast && ast.id)); }
     else setzeMap(view.querySelector("#map-thema"), themaMap(ast && ast.id)());
@@ -3197,6 +3558,15 @@ function renderPath(path, view, opts = {}) {
   } else if (p[0] === "alle" && t) {
     view.innerHTML = spalte(viewAlle(t));
     if (!emb) { pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], ["Alle Karten", `#alle/${t.id}`]], `#thema/${t.id}`); zeigeHauptkarte("thema:" + t.id + ":", "Themenkarte · " + t.label, themaMap(null)); }
+  } else if (p[0] === "bquiz") {
+    view.innerHTML = spalte(viewBquiz());
+    if (!emb) { zeigeHauptkarte(null); pfad([["Gesamtkarte", "#gesamt"], ["Begriffe-Quiz", "#bquiz/gesamt"]], "#gesamt"); }
+    starteBquiz();
+  } else if (p[0] === "gquiz" && t) {
+    const idx = p[2] != null && p[2] !== "" ? +p[2] : null;
+    view.innerHTML = spalte(viewGquiz(t, idx));
+    if (!emb) { zeigeHauptkarte(null); pfad([["Gesamtkarte", "#gesamt"], [t.label, `#thema/${t.id}`], ["Grafik-Quiz", `#gquiz/${t.id}`]], `#thema/${t.id}`); }
+    starteGquiz(t, idx);
   } else if (p[0] === "quiz" && (p[1] === "gesamt" || t)) {
     view.innerHTML = spalte(viewQuiz(p[1]));
     if (!emb) zeigeHauptkarte(null);
@@ -3211,7 +3581,7 @@ function renderPath(path, view, opts = {}) {
   } else {
     view.innerHTML = spalte(viewGesamt(emb));
     const spec = () => { const s = gesamtSpec(); if (opts.ohneKinder) for (const b of [...s.left, ...s.right]) if (b.id === opts.ohneKinder) { b.kinder = []; b.stub = true; } return s; };
-    const baue = () => mindmap(spec(), { aria: "Gesamtkarte aller Oberthemen", chipMax: 320, chips: zeigeChips && !emb });
+    const baue = () => mindmap(spec(), { aria: "Gesamtkarte aller Oberthemen", chipMax: 320, chips: zeigeChips && !emb, notizen: !emb && NOTIZEN_AN });
     if (!emb) { pfad([["Gesamtkarte", "#gesamt"]], null); zeigeHauptkarte("gesamt", "Gesamtkarte · alle sechs Themen", baue); }
     else setzeMap(view.querySelector("#map-gesamt"), baue());
   }
@@ -3219,16 +3589,33 @@ function renderPath(path, view, opts = {}) {
 async function route() {
   await ladeManifest();
   await ladeKartenFragen();
-  const view = document.getElementById("view");
+  const m = modus(); const view = document.getElementById("view"); const cl = document.getElementById("classic");
+  if (m === "classic") {
+    if (!cl.src) cl.src = "index.html"; cl.hidden = false; view.hidden = true; document.querySelector(".pfad").hidden = true; document.getElementById("karte-bereich").hidden = true; leisteZeichnen(); return;
+  }
+  cl.hidden = true; view.hidden = false; document.querySelector(".pfad").hidden = m === "hoeren";
+  if (m === "hoeren") HOEREN_HASH = location.hash; else KARTE_HASH = location.hash || "#gesamt";
   view.classList.add("wechsel");
   await new Promise((r) => setTimeout(r, 120));
   renderPath(location.hash, view);
-  miniZeichnen();
-  window.scrollTo(0, 0);
+  leisteZeichnen();
+  const sek = location.hash.split("/")[2]; if (sek === "grafiken") { const g = document.getElementById("grafiken"); if (g) g.scrollIntoView({ block: "start" }); } else window.scrollTo(0, 0);
   requestAnimationFrame(() => view.classList.remove("wechsel"));
 }
-addEventListener("hashchange", route);
+document.addEventListener("click", (e) => {
+  const a = e.target.closest('a[href^="index.html"]'); if (!a) return;
+  e.preventDefault(); const cl = document.getElementById("classic"); cl.src = a.getAttribute("href"); location.hash = "#classic";
+});
+// Der eingebettete Trainer meldet Sprünge zur Karte (statt die ganze Seite neu zu laden)
+addEventListener("message", (e) => {
+  if (!e.data) return;
+  if (typeof e.data.karte === "string") location.hash = e.data.karte;
+  if (typeof e.data.quizFertig === "string") { ereignis("fragen", e.data.quizFertig, e.data.punkte || 0, e.data.max || 0, { pass: e.data.pass }); leisteZeichnen(); }
+});
+addEventListener("hashchange", () => { document.getElementById("kapitel-menu").hidden = true; route(); });
+notizenBinden();
 route();
+ereignisseLaden();
 </script>
 
 </body>

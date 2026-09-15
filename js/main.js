@@ -1037,6 +1037,17 @@ function klausurtrainingHtml() {
   </div>`;
 }
 
+// Laeuft der Trainer eingebettet in karte.html (Modus "Trainer" der Schultheorie-Karte), fuehren
+// Links zur Karte nicht zu einem Neuladen, sondern melden der aeusseren Seite nur den Ziel-Hash.
+if (window.parent !== window) {
+  document.documentElement.classList.add("eingebettet");
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="karte.html"]'); if (!a) return;
+    e.preventDefault(); const h = a.getAttribute("href").split("#")[1] || "gesamt";
+    window.parent.postMessage({ karte: "#" + h }, "*");
+  });
+}
+
 function home() {
   stopTimer(); R = null;
   const s = C.state();
@@ -1107,7 +1118,7 @@ function home() {
 
   h(`<div class="fade-in" id="homeRoot">
     <div class="kopf">
-      <div class="kopf-zeile"><h1>✏️ ST-Trainer</h1><div class="topbar-tools">${geLinkHtml()}${themeBtnHtml()}<button class="kopf-knopf" id="gear" title="Einstellungen">⚙️</button></div></div>
+      <div class="kopf-zeile"><h1>✏️ ST-Trainer</h1><div class="topbar-tools">${geLinkHtml()}<a class="kopf-knopf" href="karte.html" title="Schultheorie-Karte" style="text-decoration:none">🗺</a><a class="kopf-knopf" href="karte.html#hoeren/gesamt" title="Hörbuch" style="text-decoration:none">🎧</a>${themeBtnHtml()}<button class="kopf-knopf" id="gear" title="Einstellungen">⚙️</button></div></div>
       <div class="untertitel">Schultheorie und Bildungsforschung</div>
     </div>
 
@@ -2725,6 +2736,8 @@ function ergebnis(session, runde, opts = {}) {
     const nm = document.getElementById("nochmal"); if (nm) nm.onclick = home;
     // Karten-Quiz: "Noch N" zieht neu aus derselben Karte (neue Session, kein Retry)
     const kn = document.getElementById("karteNoch"); if (kn) kn.onclick = () => starteKartenQuiz(session.cfg.karte, session.cfg.anzahl || 5, (session.proFrage || []).map((x) => x.qid));
+    // Eingebettet in karte.html: der aeusseren Seite melden, dass das Karten-Quiz durch ist (fuer Haken und "Naechstes Kapitel")
+    if (session.cfg?.karte && window.parent !== window && !opts.ausVerlauf) window.parent.postMessage({ quizFertig: session.cfg.karte, punkte: session.punkte, max: session.max, pass: !!pass }, "*");
   }
   bindUebe(); // "Wo du stehst"-Hebel direkt aus der Auswertung ueben
   // Auswertung beleben: Punktzahl zählt hoch, Themen-Balken wachsen rein.

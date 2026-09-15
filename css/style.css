@@ -1929,3 +1929,6 @@ button.ans:disabled { cursor: default; }
   border-color: var(--story-pink);
 }
 .story-intro .btn[disabled] { opacity: .55; }
+
+/* Eingebettet in karte.html: die Karten-/Hoerbuch-Knoepfe im Kopf sind dort doppelt (obere Leiste). */
+.eingebettet a.kopf-knopf[href^="karte"] { display: none; }

@@ -3904,8 +3904,10 @@ function grafikenVon(info) {
 // Aeste-Quiz gemeistert: die volle Karte (Gesamt oder Thema) mit Reset, direkt im Aufgabenfeld
 function quizFertigIn(box, tid) {
   if (!box) return;
-  box.innerHTML = `<div class="bq-fertig"><div class="bq-kopf"><span class="stand">✓</span><span class="hint">Äste eingetragen</span><button type="button" class="rund klein reset q-reset" data-tid="${esc(tid)}" title="Nochmal abfragen (neue Sitzung)">↺</button></div><div class="map"></div></div>`;
-  const el = box.querySelector(".map");
+  // Steht die Karte schon oben im Pane (alle Aufgaben erledigt), reicht hier die Zeile mit Reset
+  const obenKarte = HP.info && quizzeFertig(HP.info);
+  box.innerHTML = `<div class="bq-fertig"><div class="bq-kopf"><span class="stand">✓</span><span class="hint">Äste eingetragen: ${quizKandidaten(tid).map((k) => esc(k.label)).join(", ")}</span><button type="button" class="rund klein reset q-reset" data-tid="${esc(tid)}" title="Nochmal abfragen (neue Sitzung)">↺</button></div>${obenKarte ? "" : '<div class="map"></div>'}</div>`;
+  const el = box.querySelector(".map"); if (!el) return;
   const m = tid === "gesamt" ? mindmap(gesamtSpec(), { aria: "Gesamtkarte", chips: false }) : mindmap(themaSpec(thema(tid)), { aria: "Themenkarte", rootW: 200, chips: false });
   setzeMap(el, m);
 }
@@ -3928,7 +3930,8 @@ function aufgabenZeichnen(info, aufklappen) {
   const l = aufgabenListe(info); if (!l.length) { el.innerHTML = ""; return; }
   // Liste steht schon (gleiche Aufgaben): nur die Haken nachziehen, nichts neu bauen, sonst gehen Eingaben verloren
   const vorhanden = [...el.querySelectorAll(".aufgabe")];
-  if (vorhanden.length === l.length && vorhanden.every((d, i) => d.dataset.key === l[i].key)) {
+  const alleFertig = l.every((a) => erledigt(a.key));
+  if (!alleFertig && vorhanden.length === l.length && vorhanden.every((d, i) => d.dataset.key === l[i].key)) {
     vorhanden.forEach((d, i) => { const fertig = erledigt(l[i].key); if (fertig && !d.classList.contains("fertig")) { d.classList.add("fertig"); const st = d.querySelector(".stand"); if (st) st.textContent = "✓"; if (l[i].art === "quiz") quizFertigIn(d.querySelector(".aufgabe-inhalt"), l[i].ziel); if (l[i].art === "fragen") d.querySelector(".aufgabe-inhalt").innerHTML = ""; } });
     return;
   }

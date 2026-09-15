@@ -3810,14 +3810,18 @@ function verdecktHtml(txt, weiter) {
 // Was rechts steht, wenn kein Marker aktiv ist
 function paneStandard(info) {
   if (quizPflicht(info).some((k) => !erledigt(k)) && info.stufe !== 3) return { html: "", titel: "Aufgaben" };
-  if (info.stufe === 1) return erledigt("quiz:gesamt") ? { path: "gesamt", titel: "Gesamtkarte" } : { html: verdecktHtml("Die Karte bleibt verdeckt, bis das Kapitel zu Ende ist. Dann trägst du die Äste selbst ein.", null), titel: "Verdeckt" };
-  if (info.stufe === 2) return erledigt("quiz:" + info.thema.id) ? { path: "thema/" + info.thema.id, titel: info.thema.label } : { path: "gesamt", opts: { ohneKinder: info.thema.id }, titel: "Gesamtkarte (Äste von " + info.thema.label + " verdeckt)" };
+  if (info.stufe === 1) return erledigt("quiz:gesamt") ? { karte: "gesamt", titel: "Gesamtkarte" } : { html: verdecktHtml("Die Karte bleibt verdeckt, bis das Kapitel zu Ende ist. Dann trägst du die Äste selbst ein.", null), titel: "Verdeckt" };
+  if (info.stufe === 2) return erledigt("quiz:" + info.thema.id) ? { karte: info.thema.id, titel: info.thema.label } : { html: "", titel: "" };
   return { path: `karte/${info.thema.id}/${info.karte.id}`, titel: info.karte.titel.split(":")[0] };
 }
 function paneZeigen(info, was) {
   const el = document.getElementById("pane-inhalt"), tt = document.getElementById("pane-titel"), voll = document.getElementById("pane-voll");
   if (!el) return;
   if ("html" in was) { el.innerHTML = was.html; tt.textContent = was.titel || ""; voll.hidden = true; return; }   // auch leer = bewusst nichts
+  if (was.karte) {   // nur die Karte (Gesamt oder Thema), ohne Grafikliste und Text
+    el.innerHTML = `<div class="map"></div>`; const m = was.karte === "gesamt" ? mindmap(gesamtSpec(), { aria: "Gesamtkarte", chips: false }) : mindmap(themaSpec(thema(was.karte)), { aria: "Themenkarte", rootW: 200, chips: false });
+    setzeMap(el.querySelector(".map"), m); tt.textContent = "Karte"; voll.hidden = false; voll.href = was.karte === "gesamt" ? "#gesamt" : "#thema/" + was.karte; return;
+  }
   if (was.grafik != null && info.thema) {
     const g = info.thema.grafiken[was.grafik]; if (!g) return;
     el.innerHTML = grafikHtml(info.thema, was.grafik);

@@ -88,6 +88,23 @@ function frag(text, opts = {}) {
   });
 }
 const sag = (text) => frag(text, { nurOk: true, ja: "Ok" });
+// Wie frag(), aber mit beliebig vielen Knoepfen: [{ key, label, primaer }].
+// Loest mit dem key auf, oder null bei Tipp daneben. Gebaut fuer die Abgabe der
+// Klausur-Simulation (2. Durchgang / direkt abgeben / zurueck).
+function wahl(text, knoepfe) {
+  return new Promise((res) => {
+    const ov = document.createElement("div");
+    ov.className = "dlg-overlay";
+    ov.innerHTML = `<div class="dlg"><p>${esc(text)}</p><div class="btn-row wahl-row">
+      ${knoepfe.map((k) => `<button class="btn ${k.primaer ? "" : "secondary"}" data-k="${esc(k.key)}">${esc(k.label)}</button>`).join("")}</div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-k]");
+      if (b) { ov.remove(); res(b.dataset.k); }
+      else if (e.target === ov) { ov.remove(); res(null); }
+    });
+  });
+}
 /* Eine Nebenbei-Ansage: erscheint, bleibt kurz stehen, geht von allein wieder.
    Gegenstueck zu sag(), das ein Modal mit Ok-Knopf ist (frag mit nurOk).
    Angelegt am 19.08.2026 fuer die verkuerzte Runde: die Wackel-Runde und die
@@ -1366,7 +1383,7 @@ async function reopenSession(id) {
 function sessionDetail(id, zurueck = home) {
   const s = C.state().sessions.find((x) => x.id === id);
   if (!s) return home();
-  const pseudo = (s.proFrage || []).filter((x) => C.frage(x.qid)).map((x) => ({ qid: x.qid, optOrder: [...C.frage(x.qid).optionen.keys()], gewaehlt: x.gewaehlt }));
+  const pseudo = (s.proFrage || []).filter((x) => C.frage(x.qid)).map((x) => ({ qid: x.qid, optOrder: [...C.frage(x.qid).optionen.keys()], gewaehlt: x.gewaehlt, ...(x.flag ? { flag: true } : {}) }));
   ergebnis(s, pseudo, { ausVerlauf: true, zurueck });
 }
 // Detail eines Einzelfragen-Tags: Summen-Karte + dieselben Review-Blöcke wie
@@ -2056,7 +2073,8 @@ function beende(status = "fertig") {
   bankZeit();
   Beleg.schliesseSkript();
   const dauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
-  const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status, cfg: R.cfg, versuchVon: R.versuchVon, versuchNr: R.versuchNr };
+  const meta = { modus: R.cfg.modus, timerModus: R.cfg.timerModus, dauerSek, sprache: R.cfg.sprache, sessionId: R.id, erstellt: R.erstellt, status, cfg: R.cfg, versuchVon: R.versuchVon, versuchNr: R.versuchNr,
+    ...(R.durchgang === 2 ? { durchgang: 2, erstDauerSek: R.erstDauerSek ?? null } : {}) };
   const rundeKopie = R.runde;
   C.verwerfeOffene(R.id, false); // kein Grabstein: gleich kommt die gewertete Session mit derselben Id
   const session = C.werteAus(rundeKopie, meta);
@@ -2382,10 +2400,59 @@ function pkPaceHtml() {
   }
   return `<div class="pk-pace">${txt}</div>`;
 }
+// ---- Zwei Durchgaenge (Jennifer 17.09.2026) ----
+// Im offiziellen Look ohne Sofort-Feedback laeuft die Klausur wie im Ernstfall:
+// erster Durchgang ueber alle Fragen, dann "Ersten Durchgang abschliessen" —
+// die Antworten werden als Snapshot (r.erst) eingefroren, die Zeit laeuft
+// weiter, und im zweiten Durchgang zeigt das Raster, wo es sich lohnt
+// hinzuschauen: 🚩 markierte Fragen (Moodles "Frage markieren", gibt es in der
+// echten Klausur auch), ⏱ Fragen, die lange gedauert haben, und NICHT-Fragen
+// (Roses Quote dort: 52 % gegen 67 % sonst). Wohin sie geht, bleibt ihr
+// ueberlassen. Gewertet wird erst bei "Endgueltig abgeben", einmal, mit den
+// finalen Kreuzen; die Auswertung vergleicht dann erste gegen finale Antwort.
+const zweiDurchgaenge = () => !!R && !!R.cfg.examLook && R.cfg.feedback !== "sofort";
+// "Lange gebraucht" = deutlich ueber dem eigenen Median dieser Runde, mind. 60 s.
+function langsamAb(runde) {
+  const z = runde.map((r) => (r.erst ? r.erst.zeitSek : r.zeitSek) || 0).filter((x) => x > 0).sort((a, b) => a - b);
+  if (!z.length) return Infinity;
+  const med = z[Math.floor(z.length / 2)];
+  return Math.max(60, Math.round(med * 1.5));
+}
+const istNegation = (qid) => C.frage(qid)?.fragetyp === "negation";
+function starteDurchgang2() {
+  bankZeit();
+  for (const r of R.runde) r.erst = { gewaehlt: r.gewaehlt?.length ? [...r.gewaehlt] : null, zeitSek: r.zeitSek || 0 };
+  R.durchgang = 2;
+  R.erstDauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
+  // Einstieg: erste markierte Frage, sonst erste langsame, sonst Frage 1
+  const grenze = langsamAb(R.runde);
+  const erste = R.runde.findIndex((r) => r.flag);
+  const langsam = R.runde.findIndex((r) => (r.erst.zeitSek || 0) >= grenze);
+  R.idx = erste >= 0 ? erste : langsam >= 0 ? langsam : 0;
+  C.save();
+  zeigMoodle();
+  nebenbei("2. Durchgang: Im Raster sind 🚩 markierte, ⏱ langsame und ¬ NICHT-Fragen hervorgehoben. Deine ersten Antworten bleiben stehen, ändern kannst du, was du willst. Die Zeit läuft weiter.", 9000);
+}
+async function abgabeDialog() {
+  const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
+  if (zweiDurchgaenge() && R.durchgang !== 2) {
+    const k = await wahl(offen ? `Noch ${offen} Frage(n) unbeantwortet. Ersten Durchgang trotzdem abschließen und nochmal drüberschauen?` : "Alle Fragen beantwortet. Ersten Durchgang abschließen und in Ruhe nochmal drüberschauen? Die Zeit läuft dabei weiter.",
+      [{ key: "zurueck", label: "Zurück" }, { key: "direkt", label: "Direkt abgeben" }, { key: "d2", label: "2. Durchgang", primaer: true }]);
+    if (k === "d2") starteDurchgang2();
+    else if (k === "direkt") beende("fertig");
+    return;
+  }
+  if (await frag(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : R.durchgang === 2 ? "Endgültig abgeben? Danach kommt die Auswertung mit dem Vergleich beider Durchgänge." : "Test wirklich abgeben?", { ja: R.durchgang === 2 ? "Endgültig abgeben" : "Abgeben", nein: "Zurück" })) beende("fertig");
+}
+
 function zeigMoodle() {
   stopTimer();
   const r = R.runde[R.idx];
   const q = C.frage(r.qid);
+  const d2 = R.durchgang === 2;
+  const grenze = d2 ? langsamAb(R.runde) : Infinity;
+  const geaendert = (x) => d2 && x.erst && JSON.stringify([...(x.gewaehlt || [])].sort()) !== JSON.stringify([...(x.erst.gewaehlt || [])].sort());
+  const alleBeantwortet = R.runde.every((x) => x.gewaehlt?.length);
   // Antworten bei jedem Anzeigen frisch mischen — aber nur solange unbeantwortet,
   // sonst springen gespeicherte Kreuze beim Vor/Zurück-Blättern herum
   if (!r.gewaehlt?.length && !r.geprueft) C.shuffle(r.optOrder);
@@ -2416,12 +2483,14 @@ function zeigMoodle() {
         <div class="moodle-folien" id="mfPanel"><div class="mf-hint">Zu dieser Frage gibt es keinen Folien-Beleg (z.&nbsp;B. Gesetzestext) — nach dem Überprüfen führen die 📖-Chips direkt zur Quelle.</div></div>`;
   h(`<div class="fade-in">
     <div class="moodle">
-      <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span>
+      <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch${d2 ? ` <span class="dg-badge">2. Durchgang</span>` : ""}</span>
         <button class="mf-toggle${R.folienSicht === "pdf" ? " on" : ""}" id="skriptBtn" title="Ganze Folien-PDF wie in der echten Klausur (scrollen & suchen)">📕 Skript</button>
         <button class="mf-toggle${R.folienSicht === "folie" ? " on" : ""}" id="folienBtn" title="Passende Vorlesungsfolie zur Frage ein-/ausblenden">📄 Folie</button>
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
-        <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span></div>
+        <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span>
+          ${!locked ? `<button class="flag-btn${r.flag ? " on" : ""}" id="flagBtn" title="Wie in Moodle: Frage markieren, um später nochmal hinzuschauen">${r.flag ? "🚩 Markiert" : "⚑ Frage markieren"}</button>` : ""}
+          ${d2 ? `<div class="dg-hinweise">${r.flag ? `<span>🚩 markiert</span>` : ""}${(r.erst?.zeitSek || 0) >= grenze ? `<span>⏱ ${fmtUhr(r.erst.zeitSek)} im 1. Durchgang</span>` : ""}${istNegation(r.qid) ? `<span class="neg">¬ NICHT-Frage</span>` : ""}${geaendert(r) ? `<span class="rev">✎ geändert</span>` : ""}</div>` : ""}</div>
         ${folienPanel}
         ${fallHtml(q)}
         <div class="qtext">${esc(q.frage)}</div>
@@ -2447,10 +2516,16 @@ function zeigMoodle() {
       </div>
       <div class="moodle-nav">
         ${R.idx > 0 ? `<button id="prev">Vorherige Seite</button>` : "<span></span>"}
-        <button id="next" style="margin-left:auto">${R.idx + 1 === R.runde.length ? "Test beenden …" : "Nächste Seite"}</button>
+        <button id="next" style="margin-left:auto">${R.idx + 1 === R.runde.length ? (d2 ? "Endgültig abgeben …" : zweiDurchgaenge() ? "Ersten Durchgang abschließen …" : "Test beenden …") : "Nächste Seite"}</button>
       </div>
-      <div class="moodle-grid" id="grid">
-        ${R.runde.map((x, i) => `<button data-i="${i}" class="${x.gewaehlt?.length ? "answered" : ""} ${i === R.idx ? "now" : ""}">${i + 1}</button>`).join("")}
+      ${zweiDurchgaenge() && !d2 ? `<div class="dg-fertig${alleBeantwortet ? "" : " hidden"}" id="dgFertig"><span>Alle ${R.runde.length} Fragen beantwortet.</span><button class="btn small" id="d2Btn">✅ Ersten Durchgang abschließen → drüberschauen</button></div>` : ""}
+      ${d2 ? `<div class="dg-legende"><span>🚩 markiert</span><span>⏱ lange gebraucht</span><span>¬ NICHT-Frage</span><span>✎ geändert</span> <button class="linkish" id="d2Abgabe">Endgültig abgeben</button></div>` : ""}
+      <div class="moodle-grid${d2 ? " d2" : ""}" id="grid">
+        ${R.runde.map((x, i) => {
+          const cls = [x.gewaehlt?.length ? "answered" : "", i === R.idx ? "now" : "", x.flag ? "flag" : "",
+            d2 && (x.erst?.zeitSek || 0) >= grenze ? "slow" : "", d2 && istNegation(x.qid) ? "neg" : "", geaendert(x) ? "rev" : ""].filter(Boolean).join(" ");
+          return `<button data-i="${i}" class="${cls}">${i + 1}</button>`;
+        }).join("")}
       </div>
       ${pkPaceHtml()}
     </div>
@@ -2480,16 +2555,22 @@ function zeigMoodle() {
     img.onclick = () => Beleg.oeffneFolie(mfSeite);
     mal();
   }
-  const merke = () => { R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save(); };
+  const merke = () => {
+    R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save();
+    // Der "Ersten Durchgang abschliessen"-Balken erscheint, sobald das letzte Kreuz sitzt
+    document.getElementById("dgFertig")?.classList.toggle("hidden", !R.runde.every((x) => x.gewaehlt?.length));
+    document.querySelector(`.moodle-grid button[data-i="${R.idx}"]`)?.classList.toggle("answered", !!R.runde[R.idx].gewaehlt.length);
+  };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
   if (locked && r.selbst?.text) bindAbgleich(app.querySelector(".moodle-body"), (v) => { r.selbst.abgleich = v; C.save(); zeigMoodle(); });
   const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };
   document.getElementById("next").onclick = async () => {
-    if (R.idx + 1 === R.runde.length) {
-      const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
-      if (await frag(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : "Test wirklich abgeben?", { ja: "Abgeben", nein: "Zurück" })) beende("fertig");
-    } else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
+    if (R.idx + 1 === R.runde.length) abgabeDialog();
+    else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
   };
+  const fl = document.getElementById("flagBtn"); if (fl) fl.onclick = () => { bankZeit(); r.flag = !r.flag; C.save(); zeigMoodle(); };
+  const d2b = document.getElementById("d2Btn"); if (d2b) d2b.onclick = abgabeDialog;
+  const d2a = document.getElementById("d2Abgabe"); if (d2a) d2a.onclick = abgabeDialog;
   document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { bankZeit(); R.idx = +b.dataset.i; zeigMoodle(); });
   const check = document.getElementById("check");
   if (check) check.onclick = () => {
@@ -2600,7 +2681,57 @@ function reviewQ(r, erg) {
       const cls = gw && o.richtig ? "correct" : gw ? "wrong" : o.richtig ? "missed" : "";
       return `<label class="ans ${cls}"><input type="checkbox" disabled ${gw ? "checked" : ""}><span>${esc(o.text)}</span></label>
         ${o.erklaerung && (gw || o.richtig) ? `<div class="explain ${o.richtig ? "good" : "bad"}">${Beleg.render(o.erklaerung, q.oberthema)}</div>` : ""}`;
-    }).join("")}</div>${gespraechHtml(q.id, q.oberthema)}${Llm.chatBtnHtml(q)}</div>`;
+    }).join("")}</div>${erstAntwortHtml(q, r, erg)}${gespraechHtml(q.id, q.oberthema)}${Llm.chatBtnHtml(q)}</div>`;
+}
+// Zwei-Durchgang-Klausur: die Antwort aus dem ersten Durchgang unter der finalen,
+// nur wenn sie sich unterscheidet — mit Punkten vorher/nachher.
+function erstAntwortHtml(q, r, erg) {
+  const e = erg.erst; if (!e) return "";
+  const gleich = JSON.stringify([...(e.gewaehlt || [])].sort()) === JSON.stringify([...(r.gewaehlt || [])].sort());
+  if (gleich) return r.flag ? `<div class="erst-antwort muted">🚩 Im 2. Durchgang bestätigt.</div>` : "";
+  const d = erg.punkte - e.punkte;
+  const txt = (e.gewaehlt || []).map((oi) => { const o = q.optionen[oi]; return `<span class="${o.richtig ? "ok" : "bad"}">${o.richtig ? "✓" : "✗"} ${esc(o.text)}</span>`; }).join("");
+  return `<div class="erst-antwort ${d > 0 ? "up" : d < 0 ? "down" : ""}"><b>1. Durchgang${r.flag ? " · 🚩" : ""}:</b> ${txt || "<i>leer</i>"}
+    <span class="delta">${e.punkte} → ${erg.punkte} P.${d > 0 ? " 📈" : d < 0 ? " 📉" : ""}</span></div>`;
+}
+
+// Vergleichskarte in der Auswertung: erster Durchgang gegen finale Abgabe.
+// Was sie lernen soll: hilft ihr das Drueberschauen, oder war der erste
+// Instinkt besser? Das ist eine persoenliche Zahl, keine Regel — ueber ein
+// paar Klausur-Simulationen wird daraus ein Muster.
+function revisionHtml(session) {
+  if (session.durchgaenge !== 2) return "";
+  const pf = session.proFrage || [];
+  const mit = pf.filter((x) => x.erst);
+  const gleich = (x) => JSON.stringify([...(x.erst.gewaehlt || [])].sort()) === JSON.stringify([...(x.gewaehlt || [])].sort());
+  const geaendert = mit.filter((x) => !gleich(x));
+  const besser = geaendert.filter((x) => x.punkte > x.erst.punkte), schlechter = geaendert.filter((x) => x.punkte < x.erst.punkte);
+  const neutral = geaendert.length - besser.length - schlechter.length;
+  const dP = Math.round((session.punkte - (session.erstPunkte ?? session.punkte)) * 2) / 2;
+  const flags = pf.filter((x) => x.flag);
+  const flagsErstRichtig = flags.filter((x) => x.erst && x.erst.voll).length;
+  const negs = pf.filter((x) => x.fragetyp === "negation" && x.erst);
+  const negsGeaendert = negs.filter((x) => !gleich(x));
+  const negsBesser = negsGeaendert.filter((x) => x.punkte > x.erst.punkte).length;
+  const min1 = session.erstDauerSek != null ? Math.round(session.erstDauerSek / 60) : null;
+  const min2 = min1 != null ? Math.max(0, Math.round((session.dauerSek - session.erstDauerSek) / 60)) : null;
+  const satz = !geaendert.length ? "Du hast im 2. Durchgang nichts geändert — alles bestätigt. Das ist auch eine Information: dein erster Durchgang trägt."
+    : dP > 0 ? `<b>Drüberschauen hat sich gelohnt: +${dP} P.</b> ${besser.length} Frage${besser.length === 1 ? "" : "n"} verbessert${schlechter.length ? `, ${schlechter.length} verschlechtert` : ""}.`
+    : dP < 0 ? `<b>Diesmal war die erste Antwort öfter richtig</b> (${Math.abs(dP)} P. weniger nach dem Ändern). Nächstes Mal beim Umkreuzen fragen: Hab ich einen konkreten Grund, oder nur ein Gefühl?`
+    : `Geändert, aber unterm Strich gleich viele Punkte — ${besser.length} besser, ${schlechter.length} schlechter.`;
+  const zeilen = geaendert.map((x) => {
+    const i = pf.indexOf(x) + 1; const d = x.punkte - x.erst.punkte;
+    return `<div class="rev-row ${d > 0 ? "up" : d < 0 ? "down" : ""}"><span>Frage ${i}</span><span class="tags">${x.flag ? "🚩" : ""}${x.fragetyp === "negation" ? "<i>¬</i>" : ""}</span><span class="sc">${x.erst.punkte} → ${x.punkte} P.</span><span class="delta">${d > 0 ? `+${d}` : d < 0 ? d : "±0"}</span></div>`;
+  }).join("");
+  return `<div class="card rev-card glim"><h3>🔁 Erster Durchgang → Abgabe</h3>
+    <div class="rev-kopf"><span class="sc">${session.erstPunkte ?? "?"} P.</span><span class="pfeil">→</span><span class="sc">${session.punkte} P.</span><span class="delta ${dP > 0 ? "up" : dP < 0 ? "down" : ""}">${dP > 0 ? `+${dP}` : dP < 0 ? dP : "±0"}</span></div>
+    <p class="an-zeile">${satz}</p>
+    ${min1 != null ? `<p class="muted">⏱ 1. Durchgang ${min1} min · Drüberschauen ${min2} min</p>` : ""}
+    ${flags.length ? `<p class="an-zeile">🚩 ${flags.length} markiert — davon ${flagsErstRichtig} schon im ersten Durchgang voll richtig${flags.length && flagsErstRichtig / flags.length >= 0.6 ? ". Dein Bauchgefühl ist besser, als es sich anfühlt." : flags.length && flagsErstRichtig === 0 ? ". Die Markierungen sitzen: genau da lag was." : "."}</p>` : ""}
+    ${negs.length ? `<p class="an-zeile">¬ ${negs.length} NICHT-Frage${negs.length === 1 ? "" : "n"}${negsGeaendert.length ? `, ${negsGeaendert.length} davon geändert, ${negsBesser} verbessert` : ", keine geändert"}.</p>` : ""}
+    ${geaendert.length ? `<div class="rev-liste">${zeilen}</div>` : ""}
+    ${neutral ? `<p class="muted">${neutral} Änderung${neutral === 1 ? "" : "en"} ohne Punkt-Effekt.</p>` : ""}
+  </div>`;
 }
 
 // Versuchs-Vergleich: frühere Versuche derselben Fragen-Kette als Verlauf mit
@@ -2735,6 +2866,7 @@ function ergebnis(session, runde, opts = {}) {
       ${trendZeile}
     </div>
     ${pkErgebnisHtml(session)}
+    ${revisionHtml(session)}
     ${versuchsHtml(session)}
     <div class="card an-card glim"><h3>💡 Wo du stehst</h3>${analyseHtml(rundeAnalyse, "runde")}
       ${insights.length ? `<div class="insight-list">${insights.map((i) => `<div class="insight">${esc(i)}</div>`).join("")}</div>` : ""}</div>

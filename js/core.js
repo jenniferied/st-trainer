@@ -515,6 +515,7 @@ export function reaktiviereSession(id) {
     optOrder: r.optOrder || shuffle([...frage(r.qid).optionen.keys()]),
     gewaehlt: r.gewaehlt || null,
     zeitSek: r.zeitSek ?? null,
+    ...(r.erst ? { erst: r.erst } : {}), ...(r.flag ? { flag: true } : {}),
   }));
   const cfg = { pausierbar: true, feedback: ["klausur", "halbe"].includes(s.modus) ? "ende" : "sofort", modus: s.modus, timerModus: s.timerModus, ...(s.cfg || {}) };
   let restSek = null;
@@ -524,7 +525,8 @@ export function reaktiviereSession(id) {
   }
   const erste = runde.findIndex((r) => !r.gewaehlt);
   // Neue Id: die alte traegt jetzt einen Grabstein und darf nicht wiederverwendet werden
-  const sess = { id: neueId(), erstellt: s.erstellt, cfg, runde, idx: erste < 0 ? 0 : erste, restSek, dauerSek: s.dauerSek || 0 };
+  const sess = { id: neueId(), erstellt: s.erstellt, cfg, runde, idx: erste < 0 ? 0 : erste, restSek, dauerSek: s.dauerSek || 0,
+    ...(s.durchgaenge === 2 ? { durchgang: 2, erstDauerSek: s.erstDauerSek ?? null } : {}) };
   st.offen.push(sess); save();
   syncLernstand();
   return sess;
@@ -1521,7 +1523,14 @@ export function werteAus(runde, meta) {
         ...(r.selbst.proOption ? { selbstProOption: r.selbst.proOption } : {}) } : {}),
       // Paraphrase (Block D): "Was will diese Frage?" in Roses Worten — spaeter
       // auswertbar (falsch paraphrasiert <-> falsch beantwortet?)
-      ...(r.para ? { paraphrase: r.para } : {}) };
+      ...(r.para ? { paraphrase: r.para } : {}),
+      // Zwei Durchgaenge in der Klausur-Simulation (Jennifer 17.09.2026): die
+      // Antwort aus dem ersten Durchgang bleibt als Snapshot erhalten, gewertet
+      // wird NUR die finale — eine Zeile je Frage, kein zweites Log, kein
+      // doppelter Leitner. So bleibt "hat Drueberschauen geholfen?" auswertbar,
+      // ohne die Quoten in analyse-lernstand.py zu verdoppeln.
+      ...(r.erst ? { erst: { gewaehlt: r.erst.gewaehlt || null, zeitSek: r.erst.zeitSek ?? null, ...scoreFrage(q, r.erst.gewaehlt || []) } } : {}),
+      ...(r.flag ? { flag: true } : {}) };
   });
   const punkte = proFrage.reduce((a, x) => a + x.punkte, 0);
   const max = runde.map((r) => frage(r.qid).maxPunkte).reduce((a, b) => a + b, 0);
@@ -1533,19 +1542,25 @@ export function werteAus(runde, meta) {
     // nur lokal + im Lernstand-Sync; die Supabase-Tabelle sessions kennt die Spalte nicht
     nurPingo: !!(meta.cfg && meta.cfg.nurPingo),
     versuchVon: meta.versuchVon || null, versuchNr: meta.versuchNr || null,
+    // Zwei-Durchgang-Klausur: Punkte und Dauer des ersten Durchgangs fuer den
+    // Vergleich in der Auswertung (erstPunkte zaehlt nur Fragen mit Snapshot).
+    ...(meta.durchgang === 2 ? { durchgaenge: 2, erstDauerSek: meta.erstDauerSek ?? null,
+      erstPunkte: Math.round(proFrage.reduce((a, x) => a + (x.erst ? x.erst.punkte : x.punkte), 0) * 2) / 2 } : {}),
     anzahl: runde.length, beantwortet: proFrage.length,
     punkte: Math.round(punkte * 2) / 2, max, bestehenBei, bestanden: meta.status !== "abgebrochen" && punkte >= bestehenBei,
     proFrage,
     // Snapshot für "Fortsetzen" aus dem Verlauf (auch unbeantwortete Fragen)
     cfg: meta.cfg || null,
-    runde: runde.map((r) => ({ qid: r.qid, optOrder: r.optOrder, gewaehlt: r.gewaehlt || null, zeitSek: r.zeitSek ?? null })),
+    runde: runde.map((r) => ({ qid: r.qid, optOrder: r.optOrder, gewaehlt: r.gewaehlt || null, zeitSek: r.zeitSek ?? null,
+      ...(r.erst ? { erst: { gewaehlt: r.erst.gewaehlt || null, zeitSek: r.erst.zeitSek ?? null } } : {}), ...(r.flag ? { flag: true } : {}) })),
   };
   state().sessions.push(session);
   proFrage.forEach((x, i) => logAntwort({ ts: session.ts + i, qid: x.qid, sid: session.id, modus: session.modus, gewaehlt: x.gewaehlt, punkte: x.punkte, max: x.max, voll: x.voll, zeit: x.zeit,
     ...(x.selbstErkl != null || x.selbstAbgleich != null || x.selbstSkip ? { selbstErkl: x.selbstErkl ?? null, selbstAbgleich: x.selbstAbgleich ?? null, selbstSkip: !!x.selbstSkip,
       ...(x.selbstModus ? { selbstModus: x.selbstModus } : {}), ...(x.selbstErkl2 ? { selbstErkl2: x.selbstErkl2 } : {}),
       ...(x.selbstProOption ? { selbstProOption: x.selbstProOption } : {}) } : {}),
-    ...(x.paraphrase ? { paraphrase: x.paraphrase } : {}) }));
+    ...(x.paraphrase ? { paraphrase: x.paraphrase } : {}),
+    ...(x.erst ? { erst: { gewaehlt: x.erst.gewaehlt, punkte: x.erst.punkte, zeit: x.erst.zeitSek } } : {}), ...(x.flag ? { flag: true } : {}) }));
   // Der Lehrerzimmer-Modus zaehlt NICHT in den Leitner (Jennifer, 13.08.2026).
   // Seine Fragen sind fuer den Erzaehlfluss bewusst leicht gewaehlt; wuerden sie
   // regulaer hochstufen, meldeten "Schlaues Wiederholen" und "Fehler-Training"
@@ -2078,12 +2093,17 @@ export function mergeLernstand(remote) {
 
   // Offene Runden: die weiter fortgeschrittene Fassung gewinnt; fertig gewertete
   // oder verworfene fliegen raus.
+  // "Weiter fortgeschritten" heisst: erst der Durchgang (2 schlaegt 1 — im
+  // zweiten Durchgang der Klausur-Simulation aendert sich die Antwortzahl nicht
+  // mehr, sonst wuerde die Revision gegen ihren eigenen ersten Durchgang
+  // verlieren), dann die Zahl beantworteter Fragen.
   const beantwortet = (s) => (s.runde || []).filter((r) => r.gewaehlt?.length).length;
+  const stand = (s) => (s.durchgang || 1) * 10000 + beantwortet(s);
   const off = new Map();
   for (const s of [...(remote.offen || []), ...st.offen]) {
     if (tot.has(s.id) || sess.has(s.id)) continue;
     const alt = off.get(s.id);
-    if (!alt || beantwortet(s) >= beantwortet(alt)) off.set(s.id, s);
+    if (!alt || stand(s) >= stand(alt)) off.set(s.id, s);
   }
   st.offen = [...off.values()];
 

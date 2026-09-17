@@ -912,6 +912,39 @@ details.sub.alles-durch > summary { color: var(--ink-soft); }
 }
 .moodle-grid button.answered { background: #dee9f5; border-color: var(--up-blue); border-bottom: 3px solid var(--up-blue); }
 .moodle-grid button.now { outline: 2px solid var(--up-dark); }
+/* Zwei Durchgaenge (17.09.2026): Flagge wie in Moodle, im 2. Durchgang Marker im Raster */
+.moodle-grid button { position: relative; }
+.moodle-grid button.flag::after { content: "🚩"; position: absolute; top: -7px; right: -5px; font-size: .6rem; }
+.moodle-grid.d2 button.slow { border-color: #d98c00; box-shadow: inset 0 0 0 1px #d98c00; }
+.moodle-grid.d2 button.neg { color: #8a1c1c; font-weight: 700; }
+.moodle-grid.d2 button.neg::before { content: "¬"; position: absolute; left: 3px; top: 0; font-size: .6rem; color: #8a1c1c; font-weight: 700; }
+.moodle-grid.d2 button.rev { background: #fff3c4; border-bottom-color: #d98c00; }
+.dg-badge { background: var(--up-dark); color: #fff; border-radius: 3px; padding: 1px 6px; font-size: .72rem; margin-left: 6px; }
+.flag-btn { display: block; margin-top: 6px; background: #fff; border: 1px solid #bbb; border-radius: 4px; padding: 3px 8px; font-size: .78rem; color: #333; cursor: pointer; }
+.flag-btn.on { background: #fde8e8; border-color: #c62828; color: #8a1c1c; }
+.dg-hinweise { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.dg-hinweise span { background: #fff; border: 1px solid #ccc; border-radius: 3px; padding: 1px 5px; font-size: .72rem; color: #444; }
+.dg-hinweise span.neg { color: #8a1c1c; border-color: #8a1c1c; }
+.dg-hinweise span.rev { background: #fff3c4; border-color: #d98c00; }
+.dg-fertig { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 14px; background: #eaf5ea; border-top: 1px solid #ddd; font-size: .9rem; color: #2b4d2b; }
+.dg-legende { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 14px 0; background: #fff; border-top: 1px solid #ddd; font-size: .75rem; color: #555; }
+.dg-legende .linkish { margin-left: auto; background: none; border: none; color: var(--up-blue); text-decoration: underline; font-size: .8rem; cursor: pointer; }
+.wahl-row { flex-wrap: wrap; }
+/* Auswertung: Vergleich 1. Durchgang -> Abgabe */
+.erst-antwort { margin: 6px 0 2px; padding: 8px 10px; border-radius: 8px; background: var(--card-2, rgba(0,0,0,.04)); font-size: .88rem; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.erst-antwort.up { box-shadow: inset 3px 0 0 var(--ok); }
+.erst-antwort.down { box-shadow: inset 3px 0 0 var(--bad); }
+.erst-antwort .ok { color: var(--ok); } .erst-antwort .bad { color: var(--bad); }
+.erst-antwort .delta { margin-left: auto; font-weight: 600; white-space: nowrap; }
+.rev-kopf { display: flex; align-items: baseline; gap: 10px; font-size: 1.4rem; font-weight: 700; margin: 4px 0 8px; }
+.rev-kopf .pfeil { color: var(--ink-soft); font-weight: 400; }
+.rev-kopf .delta { font-size: 1rem; } .rev-kopf .delta.up { color: var(--ok); } .rev-kopf .delta.down { color: var(--bad); }
+.rev-liste { margin-top: 8px; }
+.rev-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); font-size: .9rem; align-items: center; }
+.rev-row .tags i { font-style: normal; color: #8a1c1c; font-weight: 700; margin-left: 4px; }
+.rev-row .sc { font-variant-numeric: tabular-nums; }
+.rev-row .delta { font-weight: 600; min-width: 2.5em; text-align: right; }
+.rev-row.up .delta { color: var(--ok); } .rev-row.down .delta { color: var(--bad); }
 
 /* ---------- Eigener Dialog (confirm/alert werden in Embeds stumm blockiert) ---------- */
 .dlg-overlay {

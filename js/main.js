@@ -88,23 +88,6 @@ function frag(text, opts = {}) {
   });
 }
 const sag = (text) => frag(text, { nurOk: true, ja: "Ok" });
-// Wie frag(), aber mit beliebig vielen Knoepfen: [{ key, label, primaer }].
-// Loest mit dem key auf, oder null bei Tipp daneben. Gebaut fuer die Abgabe der
-// Klausur-Simulation (2. Durchgang / direkt abgeben / zurueck).
-function wahl(text, knoepfe) {
-  return new Promise((res) => {
-    const ov = document.createElement("div");
-    ov.className = "dlg-overlay";
-    ov.innerHTML = `<div class="dlg"><p>${esc(text)}</p><div class="btn-row wahl-row">
-      ${knoepfe.map((k) => `<button class="btn ${k.primaer ? "" : "secondary"}" data-k="${esc(k.key)}">${esc(k.label)}</button>`).join("")}</div></div>`;
-    document.body.appendChild(ov);
-    ov.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-k]");
-      if (b) { ov.remove(); res(b.dataset.k); }
-      else if (e.target === ov) { ov.remove(); res(null); }
-    });
-  });
-}
 /* Eine Nebenbei-Ansage: erscheint, bleibt kurz stehen, geht von allein wieder.
    Gegenstueck zu sag(), das ein Modal mit Ok-Knopf ist (frag mit nurOk).
    Angelegt am 19.08.2026 fuer die verkuerzte Runde: die Wackel-Runde und die
@@ -2026,7 +2009,8 @@ function resumeSession(id) {
   R.startTs = Date.now();
   if (R.restSek != null && R.cfg.timerModus !== "aus") R.deadline = Date.now() + R.restSek * 1000;
   // Ohne Timer: erst fragen, ob's losgehen soll — die Fragezeit läuft sonst sofort
-  if (R.cfg.timerModus === "aus" && R.cfg.modus !== "klausur" && !R.cfg.examLook) bereit();
+  if (R.zfOffen) zeigZusammenfassung(); // auf der Zusammenfassung pausiert: dort weitermachen
+  else if (R.cfg.timerModus === "aus" && R.cfg.modus !== "klausur" && !R.cfg.examLook) bereit();
   else zeigFrage();
 }
 function pausiere() {
@@ -2400,16 +2384,26 @@ function pkPaceHtml() {
   }
   return `<div class="pk-pace">${txt}</div>`;
 }
-// ---- Zwei Durchgaenge (Jennifer 17.09.2026) ----
-// Im offiziellen Look ohne Sofort-Feedback laeuft die Klausur wie im Ernstfall:
-// erster Durchgang ueber alle Fragen, dann "Ersten Durchgang abschliessen" —
-// die Antworten werden als Snapshot (r.erst) eingefroren, die Zeit laeuft
-// weiter, und im zweiten Durchgang zeigt das Raster, wo es sich lohnt
-// hinzuschauen: 🚩 markierte Fragen (Moodles "Frage markieren", gibt es in der
-// echten Klausur auch), ⏱ Fragen, die lange gedauert haben, und NICHT-Fragen
-// (Roses Quote dort: 52 % gegen 67 % sonst). Wohin sie geht, bleibt ihr
-// ueberlassen. Gewertet wird erst bei "Endgueltig abgeben", einmal, mit den
-// finalen Kreuzen; die Auswertung vergleicht dann erste gegen finale Antwort.
+// ---- Zwei Durchgaenge (Jennifer 17.09.2026), nachgebaut nach Exam.UP ----
+// Exam.UP ist eine Moodle-4-Instanz der Uni Potsdam. Der echte Ablauf am Ende
+// eines Testversuchs: "Versuch beenden ..." (Knopf auf der letzten Seite und
+// Link unter der Test-Navigation) fuehrt auf die Seite "Zusammenfassung des
+// Versuchs" mit Status je Frage (Antwort gespeichert / Bisher nicht
+// beantwortet). Von dort "Zurueck zum Versuch" oder "Alle abgeben und beenden"
+// mit Bestaetigungsdialog. Waehrend des Versuchs kann jede Frage per Faehnchen
+// markiert werden ("Frage markieren" in der Info-Box), markierte Fragen tragen
+// in der Navigation ein rotes Dreieck oben rechts. Quelle: Moodle-Doku "Test
+// nutzen" und die Exam.UP-Einfuehrung des ZfQ (verlinkt docs.moodle.org/401).
+//
+// Genau die Zusammenfassungsseite ist im Ernstfall der Moment zwischen erstem
+// und zweitem Durchgang. Im offiziellen Look ohne Sofort-Feedback friert der
+// Trainer deshalb beim ersten Oeffnen der Zusammenfassung die Antworten als
+// Snapshot (r.erst) ein; geht Rose von dort zurueck in den Versuch, beginnt der
+// 2. Durchgang, die Uhr laeuft weiter. Trainer-Zusatz, den Exam.UP nicht hat:
+// im 2. Durchgang markiert die Navigation zusaetzlich ⏱ langsame Fragen und
+// ¬ NICHT-Fragen (Roses schwaechster Fragetyp) und ✎ geaenderte. Gewertet wird
+// einmal, bei "Alle abgeben und beenden", mit den finalen Kreuzen; die
+// Auswertung vergleicht erste gegen finale Antwort.
 const zweiDurchgaenge = () => !!R && !!R.cfg.examLook && R.cfg.feedback !== "sofort";
 // "Lange gebraucht" = deutlich ueber dem eigenen Median dieser Runde, mind. 60 s.
 function langsamAb(runde) {
@@ -2419,30 +2413,68 @@ function langsamAb(runde) {
   return Math.max(60, Math.round(med * 1.5));
 }
 const istNegation = (qid) => C.frage(qid)?.fragetyp === "negation";
-function starteDurchgang2() {
+// Moodle-Faehnchen (SVG, damit es auf jedem Handy gleich aussieht)
+const FLAG_SVG = (an) => `<svg class="mflag${an ? " on" : ""}" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 1v14M3 2h8l-2 3 2 3H3" fill="${an ? "#c62828" : "none"}" stroke="${an ? "#c62828" : "#555"}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+// Seite "Zusammenfassung des Versuchs" — Moodle-Look, Text und Knoepfe wie dort.
+function zeigZusammenfassung() {
+  stopTimer();
   bankZeit();
-  for (const r of R.runde) r.erst = { gewaehlt: r.gewaehlt?.length ? [...r.gewaehlt] : null, zeitSek: r.zeitSek || 0 };
-  R.durchgang = 2;
-  R.erstDauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
-  // Einstieg: erste markierte Frage, sonst erste langsame, sonst Frage 1
-  const grenze = langsamAb(R.runde);
-  const erste = R.runde.findIndex((r) => r.flag);
-  const langsam = R.runde.findIndex((r) => (r.erst.zeitSek || 0) >= grenze);
-  R.idx = erste >= 0 ? erste : langsam >= 0 ? langsam : 0;
-  C.save();
-  zeigMoodle();
-  nebenbei("2. Durchgang: Im Raster sind 🚩 markierte, ⏱ langsame und ¬ NICHT-Fragen hervorgehoben. Deine ersten Antworten bleiben stehen, ändern kannst du, was du willst. Die Zeit läuft weiter.", 9000);
-}
-async function abgabeDialog() {
-  const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
-  if (zweiDurchgaenge() && R.durchgang !== 2) {
-    const k = await wahl(offen ? `Noch ${offen} Frage(n) unbeantwortet. Ersten Durchgang trotzdem abschließen und nochmal drüberschauen?` : "Alle Fragen beantwortet. Ersten Durchgang abschließen und in Ruhe nochmal drüberschauen? Die Zeit läuft dabei weiter.",
-      [{ key: "zurueck", label: "Zurück" }, { key: "direkt", label: "Direkt abgeben" }, { key: "d2", label: "2. Durchgang", primaer: true }]);
-    if (k === "d2") starteDurchgang2();
-    else if (k === "direkt") beende("fertig");
-    return;
+  Beleg.schliesseSkript();
+  // Snapshot beim ersten Oeffnen: das ist der Stand des ersten Durchgangs.
+  if (zweiDurchgaenge() && R.durchgang !== 2 && !R.zfOffen) {
+    for (const r of R.runde) r.erst = { gewaehlt: r.gewaehlt?.length ? [...r.gewaehlt] : null, zeitSek: r.zeitSek || 0 };
+    R.erstDauerSek = (R.dauerSek || 0) + Math.round((Date.now() - (R.startTs || Date.now())) / 1000);
+    R.zfOffen = true;
   }
-  if (await frag(offen ? `Noch ${offen} Frage(n) unbeantwortet. Trotzdem abgeben?` : R.durchgang === 2 ? "Endgültig abgeben? Danach kommt die Auswertung mit dem Vergleich beider Durchgänge." : "Test wirklich abgeben?", { ja: R.durchgang === 2 ? "Endgültig abgeben" : "Abgeben", nein: "Zurück" })) beende("fertig");
+  C.save();
+  const offen = R.runde.filter((x) => !x.gewaehlt?.length).length;
+  h(`<div class="fade-in">
+    <div class="moodle">
+      <div class="moodle-bar"><span class="brand">exam.UP</span><span>Testversuch</span><span class="timer" id="t-anzeige"></span></div>
+      <div class="moodle-body">
+        <h2 class="zf-titel">Zusammenfassung des Versuchs</h2>
+        <table class="zf-tabelle"><thead><tr><th>Frage</th><th>Status</th></tr></thead><tbody>
+        ${R.runde.map((x, i) => `<tr class="${x.gewaehlt?.length ? "" : "leer"}"><td><a href="#" data-i="${i}">${i + 1}</a>${x.flag ? ` <span class="zf-flag" title="Markiert">${FLAG_SVG(true)}</span>` : ""}</td><td>${x.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}</td></tr>`).join("")}
+        </tbody></table>
+        ${offen ? `<p class="zf-hinweis">${offen} Frage${offen === 1 ? " ist" : "n sind"} noch nicht beantwortet.</p>` : ""}
+        <div class="zf-knoepfe">
+          <button class="mbtn secondary" id="zfZurueck">Zurück zum Versuch</button>
+          <button class="mbtn" id="zfAbgabe">Alle abgeben und beenden</button>
+        </div>
+      </div>
+    </div>
+    ${zweiDurchgaenge() ? `<p class="muted mt zf-trainer">Trainer-Tipp: „Zurück zum Versuch" startet den zweiten Durchgang. Die Navigation zeigt dann ${FLAG_SVG(true)} markierte, ⏱ langsame und ¬ NICHT-Fragen. Die Zeit läuft weiter, gewertet wird erst bei der Abgabe.</p>` : ""}
+    <div class="btn-row mt">
+      ${R.cfg.pausierbar || R.cfg.timerModus === "aus" ? `<button class="btn secondary" id="pauseBtn">⏸ Pausieren</button>` : ""}
+      <button class="btn ghost" id="abbruch">Abbrechen</button>
+    </div></div>`);
+  qStart = null;
+  startTick();
+  const zurueck = (i) => {
+    if (zweiDurchgaenge() && R.durchgang !== 2) {
+      R.durchgang = 2;
+      // Einstieg: gewuenschte Frage, sonst erste markierte, sonst erste langsame, sonst Frage 1
+      const grenze = langsamAb(R.runde);
+      const erste = R.runde.findIndex((r) => r.flag);
+      const langsam = R.runde.findIndex((r) => (r.erst?.zeitSek || 0) >= grenze);
+      R.idx = i != null ? i : erste >= 0 ? erste : langsam >= 0 ? langsam : 0;
+    } else if (i != null) R.idx = i;
+    delete R.zfOffen;
+    C.save();
+    zeigMoodle();
+  };
+  document.getElementById("zfZurueck").onclick = () => zurueck(null);
+  app.querySelectorAll(".zf-tabelle a").forEach((a) => a.onclick = (e) => { e.preventDefault(); zurueck(+a.dataset.i); });
+  document.getElementById("zfAbgabe").onclick = async () => {
+    if (!await frag("Wenn Sie den Versuch abgeben, können Sie Ihre Antworten nicht mehr ändern.", { ja: "Alle abgeben und beenden", nein: "Abbrechen" })) return;
+    // Direkt von der Zusammenfassung abgegeben: es gab keinen zweiten Durchgang,
+    // der Snapshot waere nur eine Kopie der finalen Antwort — weg damit.
+    if (R.durchgang !== 2) { for (const r of R.runde) delete r.erst; delete R.erstDauerSek; }
+    delete R.zfOffen;
+    beende("fertig");
+  };
+  const pb = document.getElementById("pauseBtn"); if (pb) pb.onclick = pausiere;
+  document.getElementById("abbruch").onclick = abbrechen;
 }
 
 function zeigMoodle() {
@@ -2452,7 +2484,6 @@ function zeigMoodle() {
   const d2 = R.durchgang === 2;
   const grenze = d2 ? langsamAb(R.runde) : Infinity;
   const geaendert = (x) => d2 && x.erst && JSON.stringify([...(x.gewaehlt || [])].sort()) !== JSON.stringify([...(x.erst.gewaehlt || [])].sort());
-  const alleBeantwortet = R.runde.every((x) => x.gewaehlt?.length);
   // Antworten bei jedem Anzeigen frisch mischen — aber nur solange unbeantwortet,
   // sonst springen gespeicherte Kreuze beim Vor/Zurück-Blättern herum
   if (!r.gewaehlt?.length && !r.geprueft) C.shuffle(r.optOrder);
@@ -2489,8 +2520,8 @@ function zeigMoodle() {
         <span class="timer" id="t-anzeige"></span></div>
       <div class="moodle-body">
         <div class="qinfo"><b>Frage ${R.idx + 1}</b>${locked ? "Antwort überprüft" : r.gewaehlt?.length ? "Antwort gespeichert" : "Bisher nicht beantwortet"}<br>Erreichbare Punkte: ${q.maxPunkte.toFixed(2).replace(".", ",")}<br><span class="q-zeit" id="q-zeit"></span>
-          ${!locked ? `<button class="flag-btn${r.flag ? " on" : ""}" id="flagBtn" title="Wie in Moodle: Frage markieren, um später nochmal hinzuschauen">${r.flag ? "🚩 Markiert" : "⚑ Frage markieren"}</button>` : ""}
-          ${d2 ? `<div class="dg-hinweise">${r.flag ? `<span>🚩 markiert</span>` : ""}${(r.erst?.zeitSek || 0) >= grenze ? `<span>⏱ ${fmtUhr(r.erst.zeitSek)} im 1. Durchgang</span>` : ""}${istNegation(r.qid) ? `<span class="neg">¬ NICHT-Frage</span>` : ""}${geaendert(r) ? `<span class="rev">✎ geändert</span>` : ""}</div>` : ""}</div>
+          ${!locked ? `<a href="#" class="flag-link" id="flagBtn" title="Frage markieren, um später nochmal hinzuschauen (wie in Exam.UP)">${FLAG_SVG(!!r.flag)} ${r.flag ? "Markierung entfernen" : "Frage markieren"}</a>` : ""}
+          ${d2 ? `<div class="dg-hinweise">${r.flag ? `<span>${FLAG_SVG(true)} markiert</span>` : ""}${(r.erst?.zeitSek || 0) >= grenze ? `<span>⏱ ${fmtUhr(r.erst.zeitSek)} im 1. Durchgang</span>` : ""}${istNegation(r.qid) ? `<span class="neg">¬ NICHT-Frage</span>` : ""}${geaendert(r) ? `<span class="rev">✎ geändert</span>` : ""}</div>` : ""}</div>
         ${folienPanel}
         ${fallHtml(q)}
         <div class="qtext">${esc(q.frage)}</div>
@@ -2516,16 +2547,16 @@ function zeigMoodle() {
       </div>
       <div class="moodle-nav">
         ${R.idx > 0 ? `<button id="prev">Vorherige Seite</button>` : "<span></span>"}
-        <button id="next" style="margin-left:auto">${R.idx + 1 === R.runde.length ? (d2 ? "Endgültig abgeben …" : zweiDurchgaenge() ? "Ersten Durchgang abschließen …" : "Test beenden …") : "Nächste Seite"}</button>
+        <button id="next" style="margin-left:auto">${R.idx + 1 === R.runde.length ? "Versuch beenden …" : "Nächste Seite"}</button>
       </div>
-      ${zweiDurchgaenge() && !d2 ? `<div class="dg-fertig${alleBeantwortet ? "" : " hidden"}" id="dgFertig"><span>Alle ${R.runde.length} Fragen beantwortet.</span><button class="btn small" id="d2Btn">✅ Ersten Durchgang abschließen → drüberschauen</button></div>` : ""}
-      ${d2 ? `<div class="dg-legende"><span>🚩 markiert</span><span>⏱ lange gebraucht</span><span>¬ NICHT-Frage</span><span>✎ geändert</span> <button class="linkish" id="d2Abgabe">Endgültig abgeben</button></div>` : ""}
+      ${d2 ? `<div class="dg-legende"><span>${FLAG_SVG(true)} markiert</span><span>⏱ lange gebraucht</span><span>¬ NICHT-Frage</span><span>✎ geändert</span></div>` : ""}
       <div class="moodle-grid${d2 ? " d2" : ""}" id="grid">
         ${R.runde.map((x, i) => {
           const cls = [x.gewaehlt?.length ? "answered" : "", i === R.idx ? "now" : "", x.flag ? "flag" : "",
             d2 && (x.erst?.zeitSek || 0) >= grenze ? "slow" : "", d2 && istNegation(x.qid) ? "neg" : "", geaendert(x) ? "rev" : ""].filter(Boolean).join(" ");
           return `<button data-i="${i}" class="${cls}">${i + 1}</button>`;
         }).join("")}
+        <a href="#" class="zf-link" id="zfLink">Versuch beenden …</a>
       </div>
       ${pkPaceHtml()}
     </div>
@@ -2557,20 +2588,17 @@ function zeigMoodle() {
   }
   const merke = () => {
     R.runde[R.idx].gewaehlt = [...app.querySelectorAll(".moodle input:checked")].map((x) => +x.dataset.oi); C.save();
-    // Der "Ersten Durchgang abschliessen"-Balken erscheint, sobald das letzte Kreuz sitzt
-    document.getElementById("dgFertig")?.classList.toggle("hidden", !R.runde.every((x) => x.gewaehlt?.length));
     document.querySelector(`.moodle-grid button[data-i="${R.idx}"]`)?.classList.toggle("answered", !!R.runde[R.idx].gewaehlt.length);
   };
   app.querySelectorAll(".moodle input").forEach((i) => i.onchange = merke);
   if (locked && r.selbst?.text) bindAbgleich(app.querySelector(".moodle-body"), (v) => { r.selbst.abgleich = v; C.save(); zeigMoodle(); });
   const prev = document.getElementById("prev"); if (prev) prev.onclick = () => { bankZeit(); R.idx--; zeigMoodle(); };
   document.getElementById("next").onclick = async () => {
-    if (R.idx + 1 === R.runde.length) abgabeDialog();
+    if (R.idx + 1 === R.runde.length) zeigZusammenfassung();
     else { bankZeit(); R.idx++; C.save(); zeigMoodle(); }
   };
-  const fl = document.getElementById("flagBtn"); if (fl) fl.onclick = () => { bankZeit(); r.flag = !r.flag; C.save(); zeigMoodle(); };
-  const d2b = document.getElementById("d2Btn"); if (d2b) d2b.onclick = abgabeDialog;
-  const d2a = document.getElementById("d2Abgabe"); if (d2a) d2a.onclick = abgabeDialog;
+  document.getElementById("zfLink").onclick = (e) => { e.preventDefault(); zeigZusammenfassung(); };
+  const fl = document.getElementById("flagBtn"); if (fl) fl.onclick = (e) => { e.preventDefault(); bankZeit(); r.flag = !r.flag; C.save(); zeigMoodle(); };
   document.getElementById("grid").querySelectorAll("button").forEach((b) => b.onclick = () => { bankZeit(); R.idx = +b.dataset.i; zeigMoodle(); });
   const check = document.getElementById("check");
   if (check) check.onclick = () => {

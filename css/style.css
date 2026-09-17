@@ -914,22 +914,36 @@ details.sub.alles-durch > summary { color: var(--ink-soft); }
 .moodle-grid button.now { outline: 2px solid var(--up-dark); }
 /* Zwei Durchgaenge (17.09.2026): Flagge wie in Moodle, im 2. Durchgang Marker im Raster */
 .moodle-grid button { position: relative; }
-.moodle-grid button.flag::after { content: "🚩"; position: absolute; top: -7px; right: -5px; font-size: .6rem; }
+/* Markierte Frage: rotes Dreieck oben rechts, wie im Moodle-Navigationsblock */
+.moodle-grid button.flag::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 10px 10px 0; border-color: transparent #c62828 transparent transparent; }
 .moodle-grid.d2 button.slow { border-color: #d98c00; box-shadow: inset 0 0 0 1px #d98c00; }
 .moodle-grid.d2 button.neg { color: #8a1c1c; font-weight: 700; }
 .moodle-grid.d2 button.neg::before { content: "¬"; position: absolute; left: 3px; top: 0; font-size: .6rem; color: #8a1c1c; font-weight: 700; }
 .moodle-grid.d2 button.rev { background: #fff3c4; border-bottom-color: #d98c00; }
 .dg-badge { background: var(--up-dark); color: #fff; border-radius: 3px; padding: 1px 6px; font-size: .72rem; margin-left: 6px; }
-.flag-btn { display: block; margin-top: 6px; background: #fff; border: 1px solid #bbb; border-radius: 4px; padding: 3px 8px; font-size: .78rem; color: #333; cursor: pointer; }
-.flag-btn.on { background: #fde8e8; border-color: #c62828; color: #8a1c1c; }
+.flag-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: .8rem; color: var(--up-blue); text-decoration: none; }
+.flag-link:hover { text-decoration: underline; }
+.mflag { vertical-align: -2px; flex-shrink: 0; }
+/* Zusammenfassung des Versuchs (Moodle-Seite vor der Abgabe) */
+.zf-titel { font-size: 1.25rem; font-weight: 400; margin: 4px 0 14px; color: #222; }
+.zf-tabelle { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.zf-tabelle th { text-align: left; font-weight: 700; padding: 8px 10px; border-bottom: 2px solid #ddd; color: #333; }
+.zf-tabelle td { padding: 8px 10px; border-bottom: 1px solid #e5e5e5; color: #333; }
+.zf-tabelle tr:nth-child(even) td { background: #f7f7f7; }
+.zf-tabelle tr.leer td { background: #fff; color: #777; }
+.zf-tabelle a { color: var(--up-blue); font-weight: 700; text-decoration: none; }
+.zf-flag { display: inline-block; margin-left: 4px; vertical-align: -2px; }
+.zf-hinweis { font-size: .9rem; color: #8a1c1c; margin: 10px 0 0; }
+.zf-knoepfe { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 18px; }
+.mbtn { background: var(--up-blue); color: #fff; border: none; border-radius: 4px; padding: 10px 16px; font-size: .92rem; cursor: pointer; }
+.mbtn.secondary { background: #fff; color: #333; border: 1px solid #bbb; }
+.zf-trainer { font-size: .85rem; }
+.zf-link { flex-basis: 100%; margin-top: 6px; font-size: .85rem; color: var(--up-blue); text-decoration: underline; }
 .dg-hinweise { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .dg-hinweise span { background: #fff; border: 1px solid #ccc; border-radius: 3px; padding: 1px 5px; font-size: .72rem; color: #444; }
 .dg-hinweise span.neg { color: #8a1c1c; border-color: #8a1c1c; }
 .dg-hinweise span.rev { background: #fff3c4; border-color: #d98c00; }
-.dg-fertig { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 14px; background: #eaf5ea; border-top: 1px solid #ddd; font-size: .9rem; color: #2b4d2b; }
 .dg-legende { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 14px 0; background: #fff; border-top: 1px solid #ddd; font-size: .75rem; color: #555; }
-.dg-legende .linkish { margin-left: auto; background: none; border: none; color: var(--up-blue); text-decoration: underline; font-size: .8rem; cursor: pointer; }
-.wahl-row { flex-wrap: wrap; }
 /* Auswertung: Vergleich 1. Durchgang -> Abgabe */
 .erst-antwort { margin: 6px 0 2px; padding: 8px 10px; border-radius: 8px; background: var(--card-2, rgba(0,0,0,.04)); font-size: .88rem; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .erst-antwort.up { box-shadow: inset 3px 0 0 var(--ok); }
